@@ -40,6 +40,7 @@ export interface StructureState {
   // Full state import/export
   loadStructure: (chart: TrustStructureChart) => void;
   resetToSample: () => void;
+  clearCanvas: () => void;
 }
 
 const initialSample = structuredClone(sampleTrustStructure);
@@ -162,4 +163,17 @@ export const useStructureStore = create<StructureState>((set) => ({
       highlightedDirector: null,
     });
   },
+
+  clearCanvas: () =>
+    set({
+      metadata: {
+        chartTitle: 'New Trust Structure',
+        effectiveDate: new Date().toISOString().split('T')[0],
+        confidentialityNotice: 'STRICTLY CONFIDENTIAL - PREPARED FOR CLIENT REVIEW ONLY',
+      },
+      entities: [],
+      relationships: [],
+      selectedEntityId: null,
+      highlightedDirector: null,
+    }),
 }));

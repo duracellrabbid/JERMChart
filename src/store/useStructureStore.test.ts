@@ -213,5 +213,19 @@ describe('useStructureStore', () => {
     expect(freshState.entities[0].directors.some((d) => d.id === 'mutated-dir')).toBe(false);
     expect(sampleTrustStructure.entities[0].directors.some((d) => d.id === 'mutated-dir')).toBe(false);
   });
+
+  it('clears canvas to an empty state with clearCanvas', () => {
+    const state = useStructureStore.getState();
+    expect(state.entities.length).toBeGreaterThan(0);
+
+    state.clearCanvas();
+
+    const cleared = useStructureStore.getState();
+    expect(cleared.entities).toEqual([]);
+    expect(cleared.relationships).toEqual([]);
+    expect(cleared.selectedEntityId).toBeNull();
+    expect(cleared.highlightedDirector).toBeNull();
+    expect(cleared.metadata.chartTitle).toBe('New Trust Structure');
+  });
 });
 
