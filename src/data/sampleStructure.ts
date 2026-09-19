@@ -1,0 +1,110 @@
+import { TrustStructureChart } from '../types/structure';
+
+export const sampleTrustStructure: TrustStructureChart = {
+  metadata: {
+    chartTitle: 'The Aurelius Dynasty Trust Structure',
+    clientReference: 'TRUST-2026-088',
+    effectiveDate: '2026-09-19',
+    confidentialityNotice: 'STRICTLY CONFIDENTIAL - PREPARED FOR CLIENT & TRUSTEE REVIEW ONLY',
+  },
+  entities: [
+    {
+      id: 'entity-1',
+      name: 'The Aurelius Dynasty Trust',
+      type: 'Trust',
+      jurisdiction: 'Jersey, Channel Islands',
+      registrationNumber: 'TR-JER-2018-912',
+      status: 'Active',
+      directors: [
+        { id: 'dir-1', name: 'Apex Trust Corp (Jersey) Ltd', isCorporate: true, isResident: true },
+        { id: 'dir-2', name: 'Julian Vance', isCorporate: false, isResident: true },
+      ],
+      ubosOrBeneficiaries: ['Marcus Aurelius (Settlor)', 'Vance Family Descendants (Beneficiaries)'],
+      notes: 'Discretionary irrevocable settlement governed by Jersey Law.',
+    },
+    {
+      id: 'entity-2',
+      name: 'Aurelius Global Holdings Ltd',
+      type: 'Holding Company',
+      jurisdiction: 'British Virgin Islands (BVI)',
+      registrationNumber: 'BVI-BC-1849201',
+      status: 'Active',
+      directors: [
+        { id: 'dir-2', name: 'Julian Vance', isCorporate: false, isResident: false },
+        { id: 'dir-3', name: 'Helena Sterling', isCorporate: false, isResident: false },
+      ],
+      ubosOrBeneficiaries: ['The Aurelius Dynasty Trust (100% Beneficial Interest)'],
+      notes: 'Primary offshore investment holding vehicle.',
+    },
+    {
+      id: 'entity-3',
+      name: 'Aurelius Capital Singapore Pte Ltd',
+      type: 'Operating Company',
+      jurisdiction: 'Singapore',
+      registrationNumber: '202018492K',
+      status: 'Active',
+      directors: [
+        { id: 'dir-3', name: 'Helena Sterling', isCorporate: false, isResident: false },
+        { id: 'dir-4', name: 'David Tan Wei Ming', isCorporate: false, isResident: true },
+      ],
+      ubosOrBeneficiaries: ['Aurelius Global Holdings Ltd'],
+      notes: 'APAC treasury and private equity management office.',
+    },
+    {
+      id: 'entity-4',
+      name: 'Aurelius Tech Ventures LLC',
+      type: 'LLC',
+      jurisdiction: 'Delaware, USA',
+      registrationNumber: 'DE-SR-7829104',
+      status: 'Active',
+      directors: [
+        { id: 'dir-2', name: 'Julian Vance', isCorporate: false, isResident: true },
+      ],
+      ubosOrBeneficiaries: ['Aurelius Global Holdings Ltd'],
+      notes: 'US venture capital portfolio holding entity.',
+    },
+    {
+      id: 'entity-5',
+      name: 'Aurelius Maritime Holdings Corp',
+      type: 'Holding Company',
+      jurisdiction: 'Marshall Islands',
+      registrationNumber: 'MI-108422',
+      status: 'Dormant',
+      directors: [
+        { id: 'dir-5', name: 'Pacific Corporate Services Ltd', isCorporate: true, isResident: true },
+      ],
+      ubosOrBeneficiaries: ['Aurelius Global Holdings Ltd'],
+      notes: 'Special purpose shipping SPV.',
+    },
+  ],
+  relationships: [
+    {
+      id: 'rel-1-2',
+      source: 'entity-1',
+      target: 'entity-2',
+      ownershipPercentage: 100,
+      shareClass: 'Ordinary Voting Shares',
+    },
+    {
+      id: 'rel-2-3',
+      source: 'entity-2',
+      target: 'entity-3',
+      ownershipPercentage: 100,
+      shareClass: 'Ordinary Shares',
+    },
+    {
+      id: 'rel-2-4',
+      source: 'entity-2',
+      target: 'entity-4',
+      ownershipPercentage: 75,
+      shareClass: 'Class A Member Units',
+    },
+    {
+      id: 'rel-2-5',
+      source: 'entity-2',
+      target: 'entity-5',
+      ownershipPercentage: 100,
+      shareClass: 'Ordinary Bearer Warrants',
+    },
+  ],
+};
