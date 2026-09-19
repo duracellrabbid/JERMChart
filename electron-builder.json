@@ -1,0 +1,38 @@
+{
+  "appId": "com.trustmanagement.structurechart",
+  "productName": "Trust Structure Chart Utility",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      },
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
+  },
+  "mac": {
+    "category": "public.app-category.business",
+    "target": ["dmg", "zip"]
+  },
+  "linux": {
+    "target": ["AppImage", "deb"],
+    "category": "Office"
+  }
+}

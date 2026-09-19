@@ -157,9 +157,31 @@ Trust officers can run the application offline on their workstation without an i
      ```
    - Then open `http://localhost:3000` in Chrome, Edge, or Firefox.
 
-### Option C: Desktop App Wrapper (Electron / Tauri / PWA)
-To distribute as a native Windows `.exe` or macOS `.dmg` installer:
-- The static files in `dist/` can be wrapped into a native desktop installer using [Tauri](https://tauri.app/) or [Electron](https://www.electronjs.org/).
+### Option C: Standalone Desktop App (Electron)
+The project includes a ready-to-use **Electron** desktop wrapper that turns the web application into a native desktop software package for Windows (`.exe`), macOS (`.dmg`), or Linux:
+
+1. **Run in Desktop Development Mode**:
+   Launch both the Vite dev server and the Electron desktop window with live reloading:
+   ```bash
+   npm run electron:dev
+   ```
+
+2. **Package Unpacked Executable (Immediate Local Testing)**:
+   Generates a standalone portable directory in `release/win-unpacked/`:
+   ```bash
+   npm run electron:pack
+   ```
+   Users can immediately double-click:
+   `release/win-unpacked/Trust Structure Chart Utility.exe`
+
+3. **Build Distributable Installers (.exe / Portable)**:
+   Compiles optimized production installers and standalone portable binaries into the `release/` directory:
+   ```bash
+   npm run electron:build
+   ```
+   This generates:
+   - **`release/Trust Structure Chart Utility Setup 1.0.0.exe`**: Standard Windows installer with desktop and start-menu shortcuts.
+   - **`release/Trust Structure Chart Utility 1.0.0.exe`**: Zero-install standalone portable `.exe` that users can copy to a USB drive or local folder and run immediately.
 
 ---
 
