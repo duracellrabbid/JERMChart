@@ -36,9 +36,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport, onOpenExcelI
         setIsResetMenuOpen(false);
       }
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsResetMenuOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isResetMenuOpen]);
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   parseExcelWorkbook,
   generateExcelTemplate,
@@ -27,7 +27,20 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose }) =
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
 
   const handleDownloadTemplate = () => {
     const bytes = generateExcelTemplate();
@@ -69,8 +82,21 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose }) =
     await processFile(file);
   };
 
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  };
+
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
     await processFile(file);
@@ -134,10 +160,17 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose }) =
 
           {/* Dropzone */}
           <div
+            data-testid="excel-dropzone"
             onClick={() => fileInputRef.current?.click()}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
-            className="border-2 border-dashed border-slate-300 hover:border-sky-500 bg-slate-50/50 hover:bg-sky-50/20 rounded-xl p-6 text-center cursor-pointer transition"
+            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${
+              isDragging
+                ? 'border-sky-500 bg-sky-50/50 ring-2 ring-sky-300'
+                : 'border-slate-300 hover:border-sky-500 bg-slate-50/50 hover:bg-sky-50/20'
+            }`}
           >
             <input
               ref={fileInputRef}

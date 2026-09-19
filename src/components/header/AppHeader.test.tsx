@@ -217,6 +217,19 @@ describe('AppHeader', () => {
     expect(screen.queryByRole('button', { name: /Clear Canvas \(Blank\)/i })).not.toBeInTheDocument();
   });
 
+  it('closes reset menu when Escape key is pressed', () => {
+    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+
+    const resetTrigger = screen.getByRole('button', { name: /Reset \/ New/i });
+    fireEvent.click(resetTrigger);
+
+    expect(screen.getByRole('button', { name: /Clear Canvas \(Blank\)/i })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+
+    expect(screen.queryByRole('button', { name: /Clear Canvas \(Blank\)/i })).not.toBeInTheDocument();
+  });
+
   it('calls onOpenExcelImport callback when Import Excel button is clicked', () => {
     render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
 

@@ -311,7 +311,7 @@ describe('ExcelImportModal Component', () => {
 
     render(<ExcelImportModal onClose={mockOnClose} />);
 
-    const dropzone = screen.getByText(/Click to browse or drop your Excel\/CSV file here/i).closest('div')!;
+    const dropzone = screen.getByTestId('excel-dropzone');
     const file = new File(['dropped content'], 'dropped.xlsx');
     file.arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(16));
 
@@ -326,5 +326,30 @@ describe('ExcelImportModal Component', () => {
       expect(screen.getByText('Dropped Corp')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Apply to Canvas/i })).not.toBeDisabled();
     });
+  });
+
+  it('closes modal when Escape key is pressed on window', () => {
+    render(<ExcelImportModal onClose={mockOnClose} />);
+
+    fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('highlights dropzone on dragEnter and removes highlight on dragLeave', () => {
+    render(<ExcelImportModal onClose={mockOnClose} />);
+
+    const dropzone = screen.getByTestId('excel-dropzone');
+    expect(dropzone.className).toContain('border-slate-300');
+    expect(dropzone.className).not.toContain('ring-2');
+
+    fireEvent.dragEnter(dropzone);
+    expect(dropzone.className).toContain('border-sky-500');
+    expect(dropzone.className).toContain('ring-2 ring-sky-300');
+
+    // Simulate dragLeave by leaving container (relatedTarget outside)
+    fireEvent.dragLeave(dropzone, { relatedTarget: document.body });
+    expect(dropzone.className).toContain('border-slate-300');
+    expect(dropzone.className).not.toContain('ring-2');
   });
 });
