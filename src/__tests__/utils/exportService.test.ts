@@ -4,8 +4,9 @@ import {
   parseJsonBackup,
   exportToImage,
   exportToPdf,
-} from './exportService';
-import { sampleTrustStructure } from '../data/sampleStructure';
+  exportToPptx,
+} from '../../utils/exportService';
+import { sampleTrustStructure } from '../../data/sampleStructure';
 
 vi.mock('html-to-image', () => ({
   toPng: vi.fn().mockResolvedValue('data:image/png;base64,mockpngdata'),
@@ -70,6 +71,56 @@ vi.mock('jspdf', () => {
   return {
     default: MockJsPDF,
     jsPDF: MockJsPDF,
+  };
+});
+
+const {
+  mockPptxConstructor,
+  mockAddSlide,
+  mockSlideAddText,
+  mockSlideAddShape,
+  mockSlideAddImage,
+  mockWriteFile,
+  MockPptxGenJS,
+  mockSlide,
+} = vi.hoisted(() => {
+  const mockPptxConstructor = vi.fn();
+  const mockSlideAddText = vi.fn();
+  const mockSlideAddShape = vi.fn();
+  const mockSlideAddImage = vi.fn();
+  const mockWriteFile = vi.fn().mockResolvedValue('Structure.pptx');
+  const mockSlide = {
+    addText: mockSlideAddText,
+    addShape: mockSlideAddShape,
+    addImage: mockSlideAddImage,
+  };
+  const mockAddSlide = vi.fn().mockReturnValue(mockSlide);
+
+  class MockPptxGenJS {
+    layout = '';
+    ShapeType = { line: 'line' };
+    constructor(...args: any[]) {
+      mockPptxConstructor(...args);
+    }
+    addSlide = mockAddSlide;
+    writeFile = mockWriteFile;
+  }
+
+  return {
+    mockPptxConstructor,
+    mockAddSlide,
+    mockSlideAddText,
+    mockSlideAddShape,
+    mockSlideAddImage,
+    mockWriteFile,
+    MockPptxGenJS,
+    mockSlide,
+  };
+});
+
+vi.mock('pptxgenjs', () => {
+  return {
+    default: MockPptxGenJS,
   };
 });
 
@@ -211,6 +262,56 @@ describe('exportService', () => {
       expect(mockLine).toHaveBeenCalledWith(15, 22, 297 - 15, 22);
       expect(mockAddImage).toHaveBeenCalled();
       expect(mockSave).toHaveBeenCalledWith(expect.stringMatching(/_Structure\.pdf$/));
+    });
+  });
+
+  describe('exportToPptx', () => {
+    let container: HTMLDivElement;
+
+    beforeEach(async () => {
+      const { toPng } = await import('html-to-image');
+      vi.mocked(toPng).mockResolvedValue('data:image/png;base64,mockpngdata');
+      mockAddSlide.mockReturnValue(mockSlide);
+      container = document.createElement('div');
+      container.id = 'test-canvas';
+      const viewport = document.createElement('div');
+      viewport.className = 'react-flow__viewport';
+      container.appendChild(viewport);
+      document.body.appendChild(container);
+    });
+
+    afterEach(() => {
+      container.remove();
+      vi.clearAllMocks();
+    });
+
+    it('throws error when element is not found', async () => {
+      await expect(
+        exportToPptx('non-existent', sampleTrustStructure.metadata)
+      ).rejects.toThrow('Element #non-existent not found');
+    });
+
+    it('generates 16:9 PowerPoint presentation with header, scaled chart image, and confidentiality footer', async () => {
+      await exportToPptx('test-canvas', sampleTrustStructure.metadata);
+
+      expect(mockPptxConstructor).toHaveBeenCalled();
+      expect(mockAddSlide).toHaveBeenCalled();
+      expect(mockSlideAddText).toHaveBeenCalledWith(
+        sampleTrustStructure.metadata.chartTitle,
+        expect.objectContaining({ fontSize: 16, bold: true })
+      );
+      expect(mockSlideAddShape).toHaveBeenCalled();
+      expect(mockSlideAddImage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: 'data:image/png;base64,mockpngdata',
+          sizing: expect.objectContaining({ type: 'contain' }),
+        })
+      );
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fileName: expect.stringMatching(/_Structure\.pptx$/),
+        })
+      );
     });
   });
 });

@@ -1,5 +1,6 @@
 import { toPng, toSvg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
+import pptxgen from 'pptxgenjs';
 import { ChartMetadata, TrustStructureChart } from '../types/structure';
 
 export function parseJsonBackup(jsonString: string): TrustStructureChart | null {
@@ -131,3 +132,85 @@ export async function exportToPdf(
   const safeTitle = (metadata.chartTitle || 'Trust').replace(/[^a-zA-Z0-9]/g, '_');
   pdf.save(`${safeTitle}_Structure.pdf`);
 }
+
+export async function exportToPptx(
+  elementId: string,
+  metadata: ChartMetadata
+): Promise<void> {
+  const element = document.getElementById(elementId);
+  if (!element) throw new Error(`Element #${elementId} not found`);
+
+  const viewport = element.querySelector('.react-flow__viewport') as HTMLElement;
+  const target = viewport || element;
+
+  const dataUrl = await toPng(target, {
+    pixelRatio: 2.5,
+    backgroundColor: '#ffffff',
+  });
+
+  const pptx = new pptxgen();
+  pptx.layout = 'LAYOUT_16x9';
+
+  const slide = pptx.addSlide();
+
+  // Header Title
+  slide.addText(metadata.chartTitle || 'Trust Structure Chart', {
+    x: 0.5,
+    y: 0.3,
+    w: 9.0,
+    h: 0.4,
+    fontSize: 16,
+    bold: true,
+    color: '0F172A',
+  });
+
+  // Metadata Subtitle
+  slide.addText(
+    `Matter Ref: ${metadata.clientReference || 'N/A'}  |  Effective Date: ${metadata.effectiveDate}`,
+    {
+      x: 0.5,
+      y: 0.7,
+      w: 9.0,
+      h: 0.3,
+      fontSize: 9,
+      color: '64748B',
+    }
+  );
+
+  // Line separator
+  slide.addShape(pptx.ShapeType.line, {
+    x: 0.5,
+    y: 1.05,
+    w: 9.0,
+    h: 0,
+    line: { color: 'E2E8F0', width: 1 },
+  });
+
+  // Main Chart Image (centered in 9.0 x 4.0 area)
+  slide.addImage({
+    data: dataUrl,
+    x: 0.5,
+    y: 1.15,
+    w: 9.0,
+    h: 3.9,
+    sizing: { type: 'contain', w: 9.0, h: 3.9 },
+  });
+
+  // Footer Confidentiality
+  slide.addText(
+    metadata.confidentialityNotice || 'STRICTLY CONFIDENTIAL - PREPARED FOR CLIENT REVIEW ONLY',
+    {
+      x: 0.5,
+      y: 5.25,
+      w: 9.0,
+      h: 0.25,
+      fontSize: 8,
+      color: '94A3B8',
+      align: 'center',
+    }
+  );
+
+  const safeTitle = (metadata.chartTitle || 'Trust').replace(/[^a-zA-Z0-9]/g, '_');
+  await pptx.writeFile({ fileName: `${safeTitle}_Structure.pptx` });
+}
+
