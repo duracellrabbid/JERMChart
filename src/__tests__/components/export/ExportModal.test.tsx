@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ExportModal } from './ExportModal';
-import { useStructureStore } from '../../store/useStructureStore';
-import * as exportService from '../../utils/exportService';
+import { ExportModal } from '../../../components/export/ExportModal';
+import { useStructureStore } from '../../../store/useStructureStore';
+import * as exportService from '../../../utils/exportService';
 
-vi.mock('../../utils/exportService', () => ({
+vi.mock('../../../utils/exportService', () => ({
   exportToImage: vi.fn().mockResolvedValue(undefined),
   exportToPdf: vi.fn().mockResolvedValue(undefined),
+  exportToPptx: vi.fn().mockResolvedValue(undefined),
   downloadJsonBackup: vi.fn(),
   parseJsonBackup: vi.fn(),
 }));
@@ -28,6 +29,7 @@ describe('ExportModal Component', () => {
     expect(screen.getByText(/Print-Ready PDF/i)).toBeInTheDocument();
     expect(screen.getByText(/High-Resolution PNG/i)).toBeInTheDocument();
     expect(screen.getByText(/Vector SVG/i)).toBeInTheDocument();
+    expect(screen.getByText(/PowerPoint \(\.pptx\)/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Save JSON File/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Load JSON File/i })).toBeInTheDocument();
   });
@@ -53,6 +55,21 @@ describe('ExportModal Component', () => {
         expect.objectContaining({ chartTitle: expect.any(String) })
       );
       expect(screen.getByText(/PDF generated successfully/i)).toBeInTheDocument();
+    });
+  });
+
+  it('triggers PowerPoint export and displays success feedback', async () => {
+    render(<ExportModal onClose={mockOnClose} />);
+
+    const pptxBtn = screen.getByRole('button', { name: /PowerPoint \(\.pptx\)/i });
+    fireEvent.click(pptxBtn);
+
+    await waitFor(() => {
+      expect(exportService.exportToPptx).toHaveBeenCalledWith(
+        'trust-structure-canvas',
+        expect.objectContaining({ chartTitle: expect.any(String) })
+      );
+      expect(screen.getByText(/PowerPoint presentation generated successfully/i)).toBeInTheDocument();
     });
   });
 

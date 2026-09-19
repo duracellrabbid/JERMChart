@@ -3,10 +3,11 @@ import { useStructureStore } from '../../store/useStructureStore';
 import {
   exportToImage,
   exportToPdf,
+  exportToPptx,
   downloadJsonBackup,
   parseJsonBackup,
 } from '../../utils/exportService';
-import { FileDown, Image, FileText, Upload, Check, X } from 'lucide-react';
+import { FileDown, Image, FileText, Upload, Check, X, Presentation } from 'lucide-react';
 
 interface ExportModalProps {
   onClose: () => void;
@@ -51,6 +52,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
     try {
       await exportToPdf('trust-structure-canvas', metadata);
       setSuccessMsg('A4 Landscape PDF generated successfully.');
+    } catch (err) {
+      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPptx = async () => {
+    setIsExporting(true);
+    try {
+      await exportToPptx('trust-structure-canvas', metadata);
+      setSuccessMsg('PowerPoint presentation generated successfully.');
     } catch (err) {
       alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
@@ -133,6 +146,29 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
                 </div>
                 <div className="text-[11px] text-slate-500">
                   Includes trust header, date, and confidentiality notice
+                </div>
+              </div>
+            </div>
+            <span className="text-xs font-semibold text-sky-600 group-hover:underline">
+              {isExporting ? 'Exporting...' : 'Download'}
+            </span>
+          </button>
+
+          <button
+            onClick={handleExportPptx}
+            disabled={isExporting}
+            className="w-full p-3 rounded-lg border border-slate-200 hover:border-orange-500 hover:bg-orange-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded bg-orange-100 text-orange-700">
+                <Presentation className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-semibold text-xs text-slate-900">
+                  PowerPoint (.pptx)
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Widescreen 16:9 slide with corporate branding & chart
                 </div>
               </div>
             </div>
