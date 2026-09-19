@@ -197,4 +197,21 @@ describe('useStructureStore', () => {
     expect(useStructureStore.getState().entities.length).toBe(5);
     expect(useStructureStore.getState().metadata.chartTitle).toContain('Aurelius');
   });
+
+  it('resets to sample with deep immutability using structuredClone', () => {
+    const state = useStructureStore.getState();
+    // Direct mutation attempt on nested object
+    state.entities[0].directors.push({
+      id: 'mutated-dir',
+      name: 'Mutated Director',
+      isCorporate: false,
+      isResident: false,
+    });
+
+    state.resetToSample();
+    const freshState = useStructureStore.getState();
+    expect(freshState.entities[0].directors.some((d) => d.id === 'mutated-dir')).toBe(false);
+    expect(sampleTrustStructure.entities[0].directors.some((d) => d.id === 'mutated-dir')).toBe(false);
+  });
 });
+

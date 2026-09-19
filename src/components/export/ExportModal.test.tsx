@@ -181,6 +181,21 @@ describe('ExportModal Component', () => {
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith('Invalid or corrupted structure file.');
+      expect(fileInput.value).toBe('');
+    });
+  });
+
+  it('displays alert dialog when export throws an error', async () => {
+    vi.mocked(exportService.exportToPdf).mockRejectedValueOnce(new Error('PDF generation failed'));
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+    render(<ExportModal onClose={mockOnClose} />);
+
+    const pdfBtn = screen.getByRole('button', { name: /Print-Ready PDF/i });
+    fireEvent.click(pdfBtn);
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Export failed: PDF generation failed');
     });
   });
 });

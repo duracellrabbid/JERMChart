@@ -27,6 +27,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
     try {
       await exportToImage('trust-structure-canvas', 'png', metadata.chartTitle);
       setSuccessMsg('High-Res PNG downloaded successfully.');
+    } catch (err) {
+      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsExporting(false);
     }
@@ -37,6 +39,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
     try {
       await exportToImage('trust-structure-canvas', 'svg', metadata.chartTitle);
       setSuccessMsg('Vector SVG downloaded successfully.');
+    } catch (err) {
+      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsExporting(false);
     }
@@ -47,6 +51,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
     try {
       await exportToPdf('trust-structure-canvas', metadata);
       setSuccessMsg('A4 Landscape PDF generated successfully.');
+    } catch (err) {
+      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsExporting(false);
     }
@@ -63,13 +69,19 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
 
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const content = ev.target?.result as string;
-      const parsed = parseJsonBackup(content);
-      if (parsed) {
-        loadStructure(parsed);
-        setSuccessMsg(`Loaded ${parsed.entities.length} entities from backup.`);
-      } else {
-        alert('Invalid or corrupted structure file.');
+      try {
+        const content = ev.target?.result as string;
+        const parsed = parseJsonBackup(content);
+        if (parsed) {
+          loadStructure(parsed);
+          setSuccessMsg(`Loaded ${parsed.entities.length} entities from backup.`);
+        } else {
+          alert('Invalid or corrupted structure file.');
+        }
+      } finally {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     };
     reader.readAsText(file);

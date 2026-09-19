@@ -85,6 +85,24 @@ describe('EntityCardNode', () => {
     expect(screen.getByText('No directors recorded')).toBeInTheDocument();
   });
 
+  it('renders safely when directors is undefined or missing', () => {
+    const props = createProps({
+      data: {
+        ...baseEntityData,
+        directors: undefined,
+      },
+    });
+
+    render(
+      <ReactFlowProvider>
+        <EntityCardNode {...(props as any)} />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByText('Directors (0)')).toBeInTheDocument();
+    expect(screen.getByText('No directors recorded')).toBeInTheDocument();
+  });
+
   it('renders UBO summary and additional count badge when multiple UBOs', () => {
     render(
       <ReactFlowProvider>

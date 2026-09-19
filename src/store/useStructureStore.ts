@@ -42,10 +42,12 @@ export interface StructureState {
   resetToSample: () => void;
 }
 
+const initialSample = structuredClone(sampleTrustStructure);
+
 export const useStructureStore = create<StructureState>((set) => ({
-  metadata: { ...sampleTrustStructure.metadata },
-  entities: [...sampleTrustStructure.entities],
-  relationships: [...sampleTrustStructure.relationships],
+  metadata: initialSample.metadata,
+  entities: initialSample.entities,
+  relationships: initialSample.relationships,
   selectedEntityId: null,
   highlightedDirector: null,
   sortCriteria: 'alphabetical',
@@ -150,12 +152,14 @@ export const useStructureStore = create<StructureState>((set) => ({
       highlightedDirector: null,
     }),
 
-  resetToSample: () =>
+  resetToSample: () => {
+    const sample = structuredClone(sampleTrustStructure);
     set({
-      metadata: { ...sampleTrustStructure.metadata },
-      entities: [...sampleTrustStructure.entities],
-      relationships: [...sampleTrustStructure.relationships],
+      metadata: sample.metadata,
+      entities: sample.entities,
+      relationships: sample.relationships,
       selectedEntityId: null,
       highlightedDirector: null,
-    }),
+    });
+  },
 }));

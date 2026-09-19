@@ -16,8 +16,9 @@ export const EntityCardNode = memo(({ id, data, selected }: NodeProps) => {
   const setHighlightedDirector = useStructureStore((state) => state.setHighlightedDirector);
 
   const isSelected = selected || selectedEntityId === id;
-  const containsHighlightedDirector =
-    highlightedDirector && entity.directors.some((d) => d.name === highlightedDirector);
+  const containsHighlightedDirector = Boolean(
+    highlightedDirector && entity.directors?.some((d) => d.name === highlightedDirector)
+  );
   const isDimmed = highlightedDirector && !containsHighlightedDirector;
 
   return (
@@ -73,15 +74,15 @@ export const EntityCardNode = memo(({ id, data, selected }: NodeProps) => {
       <div className="p-3 pt-2 bg-slate-50/70 rounded-b-lg">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-            <Building2 className="w-3 h-3" /> Directors ({entity.directors.length})
+            <Building2 className="w-3 h-3" /> Directors ({entity.directors?.length ?? 0})
           </span>
         </div>
 
         <div className="space-y-1">
-          {entity.directors.length === 0 ? (
+          {(entity.directors?.length ?? 0) === 0 ? (
             <div className="text-[11px] italic text-slate-400">No directors recorded</div>
           ) : (
-            entity.directors.map((dir) => {
+            entity.directors?.map((dir) => {
               const isTargeted = highlightedDirector === dir.name;
               return (
                 <div

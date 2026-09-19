@@ -93,6 +93,23 @@ describe('StructureCanvas', () => {
     expect(useStructureStore.getState().relationships.length).toBe(initialRelCount);
   });
 
+  it('does not add relationship if source and target are identical (prevents self-loops)', () => {
+    render(<StructureCanvas />);
+
+    const initialRelCount = useStructureStore.getState().relationships.length;
+
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-1',
+        target: 'entity-1',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    expect(useStructureStore.getState().relationships.length).toBe(initialRelCount);
+  });
+
   it('updates layout when sort criteria changes', () => {
     render(<StructureCanvas />);
 
