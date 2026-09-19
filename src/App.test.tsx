@@ -47,4 +47,25 @@ describe('App Integration', () => {
     // Modal is closed
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('opens and closes excel import modal when import excel button is clicked and closed', () => {
+    render(<App />);
+
+    expect(screen.queryByRole('heading', { name: /Import Structure from Excel/i })).not.toBeInTheDocument();
+
+    // Click Import Excel button
+    const importBtn = screen.getByRole('button', { name: /Import Excel/i });
+    fireEvent.click(importBtn);
+
+    // Modal is opened
+    expect(screen.getByRole('heading', { name: /Import Structure from Excel/i })).toBeInTheDocument();
+
+    // Click Cancel button
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+
+    // Modal is closed
+    expect(screen.queryByRole('heading', { name: /Import Structure from Excel/i })).not.toBeInTheDocument();
+  });
 });
+

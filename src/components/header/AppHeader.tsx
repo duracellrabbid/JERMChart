@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useStructureStore } from '../../store/useStructureStore';
 import { SiblingSortCriteria } from '../../types/structure';
 import {
@@ -6,21 +6,41 @@ import {
   FileDown,
   RotateCcw,
   ShieldAlert,
+  ChevronDown,
+  FileSpreadsheet,
+  Trash2,
 } from 'lucide-react';
 
 interface AppHeaderProps {
   onOpenExport: () => void;
+  onOpenExcelImport: () => void;
 }
 
-export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport }) => {
+export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport, onOpenExcelImport }) => {
   const metadata = useStructureStore((state) => state.metadata);
   const setMetadata = useStructureStore((state) => state.setMetadata);
   const sortCriteria = useStructureStore((state) => state.sortCriteria);
   const setSortCriteria = useStructureStore((state) => state.setSortCriteria);
   const resetToSample = useStructureStore((state) => state.resetToSample);
+  const clearCanvas = useStructureStore((state) => state.clearCanvas);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [initialTitle, setInitialTitle] = useState('');
+  const [isResetMenuOpen, setIsResetMenuOpen] = useState(false);
+  const resetMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isResetMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (resetMenuRef.current && !resetMenuRef.current.contains(event.target as Node)) {
+        setIsResetMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isResetMenuOpen]);
 
   const handleStartEditing = () => {
     setInitialTitle(metadata.chartTitle);
@@ -122,23 +142,63 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport }) => {
           <Sparkles className="w-3.5 h-3.5" /> Auto-Tidy
         </button>
 
-        {/* Reset Sample */}
+        {/* Reset / New Dropdown */}
+        <div className="relative" ref={resetMenuRef}>
+          <button
+            onClick={() => setIsResetMenuOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-md border border-slate-700 transition cursor-pointer"
+            title="Reset or clear structure canvas"
+            aria-expanded={isResetMenuOpen}
+            aria-haspopup="true"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>Reset / New</span>
+            <ChevronDown className="w-3 h-3 text-slate-400" />
+          </button>
+
+          {isResetMenuOpen && (
+            <div className="absolute right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-30">
+              <button
+                onClick={() => {
+                  setIsResetMenuOpen(false);
+                  if (window.confirm('Clear all entities and start with a blank canvas?')) {
+                    clearCanvas();
+                  }
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-rose-300 hover:bg-rose-950/40 hover:text-rose-200 flex items-center gap-2 transition cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+                <span>Clear Canvas (Blank)</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsResetMenuOpen(false);
+                  if (window.confirm('Reset chart to Aurelius Dynasty Trust sample template?')) {
+                    resetToSample();
+                  }
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2 transition cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
+                <span>Load Sample Template</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Import Excel Trigger */}
         <button
-          onClick={() => {
-            if (window.confirm('Reset chart to Aurelius Dynasty Trust sample template?')) {
-              resetToSample();
-            }
-          }}
-          className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-md border border-slate-700 transition"
-          title="Reset to sample template"
+          onClick={onOpenExcelImport}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-md border border-slate-700 shadow transition cursor-pointer"
+          title="Import structure from Excel workbook"
         >
-          <RotateCcw className="w-3 h-3" /> Reset
+          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" /> Import Excel
         </button>
 
         {/* Export Trigger */}
         <button
           onClick={onOpenExport}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-md shadow transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-md shadow transition cursor-pointer"
         >
           <FileDown className="w-3.5 h-3.5" /> Export Chart
         </button>
