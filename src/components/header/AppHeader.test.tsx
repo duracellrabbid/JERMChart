@@ -54,6 +54,41 @@ describe('AppHeader', () => {
     expect(screen.getByText(/Imperial Trust/i)).toBeInTheDocument();
   });
 
+  it('enters title edit mode when pressing Enter or Space on title heading', () => {
+    const { unmount } = render(<AppHeader onOpenExport={onOpenExportMock} />);
+
+    const heading = screen.getByRole('heading', { level: 1 });
+    expect(heading).toHaveAttribute('tabIndex', '0');
+
+    // Test Enter key
+    fireEvent.keyDown(heading, { key: 'Enter', code: 'Enter' });
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    unmount();
+
+    // Test Space key
+    render(<AppHeader onOpenExport={onOpenExportMock} />);
+    const heading2 = screen.getByRole('heading', { level: 1 });
+    fireEvent.keyDown(heading2, { key: ' ', code: 'Space' });
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+  });
+
+  it('reverts title to initial value and closes edit mode on Escape key press', () => {
+    render(<AppHeader onOpenExport={onOpenExportMock} />);
+
+    const titleElement = screen.getByText(/The Aurelius Dynasty Trust Structure/i);
+    fireEvent.click(titleElement);
+
+    const input = screen.getByDisplayValue('The Aurelius Dynasty Trust Structure');
+    fireEvent.change(input, { target: { value: 'Draft Trust Name That Will Be Cancelled' } });
+    expect(useStructureStore.getState().metadata.chartTitle).toBe('Draft Trust Name That Will Be Cancelled');
+
+    fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(useStructureStore.getState().metadata.chartTitle).toBe('The Aurelius Dynasty Trust Structure');
+    expect(screen.getByText(/The Aurelius Dynasty Trust Structure/i)).toBeInTheDocument();
+  });
+
   it('displays sibling sort criteria and updates store on selection change', () => {
     render(<AppHeader onOpenExport={onOpenExportMock} />);
 

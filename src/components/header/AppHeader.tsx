@@ -20,6 +20,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport }) => {
   const resetToSample = useStructureStore((state) => state.resetToSample);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [initialTitle, setInitialTitle] = useState('');
+
+  const handleStartEditing = () => {
+    setInitialTitle(metadata.chartTitle);
+    setIsEditingTitle(true);
+  };
 
   return (
     <header className="h-14 bg-slate-900 text-white flex items-center justify-between px-4 border-b border-slate-800 flex-shrink-0 z-20">
@@ -38,6 +44,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport }) => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   setIsEditingTitle(false);
+                } else if (e.key === 'Escape') {
+                  setMetadata({ chartTitle: initialTitle });
+                  setIsEditingTitle(false);
                 }
               }}
               onChange={(e) => setMetadata({ chartTitle: e.target.value })}
@@ -45,9 +54,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport }) => {
             />
           ) : (
             <h1
-              onClick={() => setIsEditingTitle(true)}
+              tabIndex={0}
+              onClick={handleStartEditing}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleStartEditing();
+                }
+              }}
               title="Click to edit structure title"
-              className="font-bold text-sm text-slate-100 hover:text-sky-300 cursor-pointer flex items-center gap-2"
+              className="font-bold text-sm text-slate-100 hover:text-sky-300 cursor-pointer flex items-center gap-2 focus:outline-none focus:ring-1 focus:ring-sky-400 rounded px-1"
             >
               {metadata.chartTitle}
               <span className="text-[10px] text-slate-400 font-normal">

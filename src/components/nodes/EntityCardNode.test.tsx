@@ -166,6 +166,25 @@ describe('EntityCardNode', () => {
     expect(useStructureStore.getState().highlightedDirector).toBeNull();
   });
 
+  it('supports keyboard interaction (Enter and Space) on director tag to toggle highlight', () => {
+    render(
+      <ReactFlowProvider>
+        <EntityCardNode {...(createProps() as any)} />
+      </ReactFlowProvider>
+    );
+
+    const directorBtn = screen.getByRole('button', { name: /Sophia Sterling/i });
+    expect(directorBtn).toHaveAttribute('tabIndex', '0');
+
+    // Press Enter to toggle highlight on
+    fireEvent.keyDown(directorBtn, { key: 'Enter', code: 'Enter' });
+    expect(useStructureStore.getState().highlightedDirector).toBe('Sophia Sterling');
+
+    // Press Space to toggle highlight off
+    fireEvent.keyDown(directorBtn, { key: ' ', code: 'Space' });
+    expect(useStructureStore.getState().highlightedDirector).toBeNull();
+  });
+
   it('applies spotlight ring when entity contains highlighted director', () => {
     act(() => {
       useStructureStore.setState({ highlightedDirector: 'Sophia Sterling' });

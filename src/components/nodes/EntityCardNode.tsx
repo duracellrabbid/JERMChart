@@ -87,9 +87,18 @@ export const EntityCardNode = memo(({ id, data, selected }: NodeProps) => {
               return (
                 <div
                   key={dir.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
                     setHighlightedDirector(isTargeted ? null : dir.name);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setHighlightedDirector(isTargeted ? null : dir.name);
+                    }
                   }}
                   className={`flex items-center justify-between text-xs px-2 py-1 rounded transition-colors ${
                     isTargeted

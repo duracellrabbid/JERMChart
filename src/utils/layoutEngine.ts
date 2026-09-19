@@ -17,7 +17,8 @@ export function calculateCardHeight(directorCount: number): number {
 export function sortSiblingEntities(
   siblings: EntityNodeData[],
   relationships: OwnershipEdgeData[],
-  criteria: SiblingSortCriteria
+  criteria: SiblingSortCriteria,
+  parentId?: string
 ): EntityNodeData[] {
   const result = [...siblings];
 
@@ -28,7 +29,9 @@ export function sortSiblingEntities(
     case 'ownership': {
       // Find incoming ownership percentage
       const getPct = (id: string) => {
-        const edge = relationships.find((r) => r.target === id);
+        const edge = relationships.find((r) =>
+          parentId ? r.source === parentId && r.target === id : r.target === id
+        );
         return edge?.ownershipPercentage ?? 0;
       };
       return result.sort((a, b) => getPct(b.id) - getPct(a.id));
@@ -75,7 +78,7 @@ export function calculateSortedLayout(
   parentToChildren.forEach((children, parentId) => {
     parentToChildren.set(
       parentId,
-      sortSiblingEntities(children, relationships, sortCriteria)
+      sortSiblingEntities(children, relationships, sortCriteria, parentId)
     );
   });
 

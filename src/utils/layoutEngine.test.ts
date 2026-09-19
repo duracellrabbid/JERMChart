@@ -96,6 +96,28 @@ describe('layoutEngine', () => {
       expect(sorted[0].id).toBe('3'); // 25% > 0%
       expect(sorted[1].id).toBe('2');
     });
+
+    it('correctly sorts siblings relative to specific parentId in multi-parent relationships', () => {
+      // Child 2 has 20% from Parent 1, 80% from Parent 4
+      // Child 3 has 70% from Parent 1, 30% from Parent 4
+      const multiParentEdges: OwnershipEdgeData[] = [
+        { id: 'e1', source: 'p1', target: '2', ownershipPercentage: 20 },
+        { id: 'e2', source: 'p1', target: '3', ownershipPercentage: 70 },
+        { id: 'e3', source: 'p4', target: '2', ownershipPercentage: 80 },
+        { id: 'e4', source: 'p4', target: '3', ownershipPercentage: 30 },
+      ];
+      const siblings = [mockEntities[1], mockEntities[2]]; // '2' and '3'
+
+      // Under Parent 1: Child 3 (70%) > Child 2 (20%)
+      const sortedUnderP1 = sortSiblingEntities(siblings, multiParentEdges, 'ownership', 'p1');
+      expect(sortedUnderP1[0].id).toBe('3');
+      expect(sortedUnderP1[1].id).toBe('2');
+
+      // Under Parent 4: Child 2 (80%) > Child 3 (30%)
+      const sortedUnderP4 = sortSiblingEntities(siblings, multiParentEdges, 'ownership', 'p4');
+      expect(sortedUnderP4[0].id).toBe('2');
+      expect(sortedUnderP4[1].id).toBe('3');
+    });
   });
 
   describe('calculateSortedLayout', () => {
