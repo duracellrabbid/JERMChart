@@ -6,8 +6,12 @@ import {
   CARD_WIDTH,
   BASE_CARD_HEIGHT,
   DIRECTOR_ROW_HEIGHT,
-} from './layoutEngine';
-import { EntityNodeData, OwnershipEdgeData } from '../types/structure';
+  TRUST_CARD_WIDTH,
+  TRUST_CARD_HEIGHT,
+  SUBSIDIARY_CARD_SIZE,
+  getEntityDimensions,
+} from '../../utils/layoutEngine';
+import { EntityNodeData, OwnershipEdgeData } from '../../types/structure';
 
 describe('layoutEngine', () => {
   const mockEntities: EntityNodeData[] = [
@@ -54,6 +58,19 @@ describe('layoutEngine', () => {
     it('calculates height including director rows', () => {
       expect(calculateCardHeight(2)).toBe(BASE_CARD_HEIGHT + 2 * DIRECTOR_ROW_HEIGHT);
       expect(calculateCardHeight(5)).toBe(BASE_CARD_HEIGHT + 5 * DIRECTOR_ROW_HEIGHT);
+    });
+  });
+
+  describe('getEntityDimensions', () => {
+    it('returns triangular dimensions for Trust and Trust Company', () => {
+      expect(getEntityDimensions('Trust')).toEqual({ width: TRUST_CARD_WIDTH, height: TRUST_CARD_HEIGHT });
+      expect(getEntityDimensions('Trust Company')).toEqual({ width: TRUST_CARD_WIDTH, height: TRUST_CARD_HEIGHT });
+    });
+
+    it('returns square dimensions for subsidiary entity types', () => {
+      expect(getEntityDimensions('Holding Company')).toEqual({ width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_SIZE });
+      expect(getEntityDimensions('Operating Company')).toEqual({ width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_SIZE });
+      expect(getEntityDimensions('LLC')).toEqual({ width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_SIZE });
     });
   });
 
@@ -141,8 +158,10 @@ describe('layoutEngine', () => {
 
       // Node structure and computed height
       expect(parentNode?.type).toBe('entityNode');
-      expect(parentNode?.data.computedHeight).toBe(BASE_CARD_HEIGHT);
-      expect(childNode2?.data.computedHeight).toBe(BASE_CARD_HEIGHT + 2 * DIRECTOR_ROW_HEIGHT);
+      expect(parentNode?.data.computedHeight).toBe(TRUST_CARD_HEIGHT);
+      expect(parentNode?.data.computedWidth).toBe(TRUST_CARD_WIDTH);
+      expect(childNode2?.data.computedHeight).toBe(SUBSIDIARY_CARD_SIZE);
+      expect(childNode2?.data.computedWidth).toBe(SUBSIDIARY_CARD_SIZE);
 
       // Edge structure and data
       const edge1 = edges.find((e) => e.id === 'e1');

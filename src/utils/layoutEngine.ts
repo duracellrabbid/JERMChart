@@ -2,6 +2,7 @@ import dagre from '@dagrejs/dagre';
 import { Node, Edge } from '@xyflow/react';
 import {
   EntityNodeData,
+  EntityType,
   OwnershipEdgeData,
   SiblingSortCriteria,
 } from '../types/structure';
@@ -9,6 +10,17 @@ import {
 export const CARD_WIDTH = 280;
 export const BASE_CARD_HEIGHT = 160;
 export const DIRECTOR_ROW_HEIGHT = 24;
+
+export const TRUST_CARD_WIDTH = 260;
+export const TRUST_CARD_HEIGHT = 220;
+export const SUBSIDIARY_CARD_SIZE = 220;
+
+export function getEntityDimensions(type: EntityType): { width: number; height: number } {
+  if (type === 'Trust' || type === 'Trust Company') {
+    return { width: TRUST_CARD_WIDTH, height: TRUST_CARD_HEIGHT };
+  }
+  return { width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_SIZE };
+}
 
 export function calculateCardHeight(directorCount: number): number {
   return BASE_CARD_HEIGHT + Math.max(0, directorCount) * DIRECTOR_ROW_HEIGHT;
@@ -84,10 +96,10 @@ export function calculateSortedLayout(
 
   // Register nodes with dynamic dimensions
   entities.forEach((entity) => {
-    const height = calculateCardHeight(entity.directors.length);
+    const dims = getEntityDimensions(entity.type);
     dagreGraph.setNode(entity.id, {
-      width: CARD_WIDTH,
-      height,
+      width: dims.width,
+      height: dims.height,
     });
   });
 
@@ -117,18 +129,19 @@ export function calculateSortedLayout(
   // Map to React Flow Nodes
   const nodes: Node[] = entities.map((entity) => {
     const nodeWithPosition = dagreGraph.node(entity.id);
-    const height = calculateCardHeight(entity.directors.length);
+    const dims = getEntityDimensions(entity.type);
 
     return {
       id: entity.id,
       type: 'entityNode',
       position: {
-        x: nodeWithPosition.x - CARD_WIDTH / 2,
-        y: nodeWithPosition.y - height / 2,
+        x: nodeWithPosition.x - dims.width / 2,
+        y: nodeWithPosition.y - dims.height / 2,
       },
       data: {
         ...entity,
-        computedHeight: height,
+        computedHeight: dims.height,
+        computedWidth: dims.width,
       },
     };
   });

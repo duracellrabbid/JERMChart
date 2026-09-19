@@ -5,6 +5,7 @@ import { Trash2, UserPlus } from 'lucide-react';
 
 const ENTITY_TYPES: EntityType[] = [
   'Trust',
+  'Trust Company',
   'Holding Company',
   'Operating Company',
   'LLC',

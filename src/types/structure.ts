@@ -1,5 +1,6 @@
 export type EntityType = 
   | 'Trust' 
+  | 'Trust Company'
   | 'Holding Company' 
   | 'Operating Company' 
   | 'LLC' 
