@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { EntityCardNode } from './EntityCardNode';
+import { EntityCardNode } from '../../../components/nodes/EntityCardNode';
 import { ReactFlowProvider } from '@xyflow/react';
-import { useStructureStore } from '../../store/useStructureStore';
+import { useStructureStore } from '../../../store/useStructureStore';
 
 describe('EntityCardNode', () => {
   const baseEntityData = {
@@ -214,5 +214,31 @@ describe('EntityCardNode', () => {
 
     const card = container.firstElementChild as HTMLElement;
     expect(card.className).toContain('opacity-40 grayscale-[20%]');
+  });
+
+  it('renders triangular shape styling for Trust and Trust Company entities', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <EntityCardNode {...(createProps({ data: { ...baseEntityData, type: 'Trust' } }) as any)} />
+      </ReactFlowProvider>
+    );
+    expect(container.querySelector('svg.triangle-shape-bg')).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="trust-triangle-card-node"]')).toBeInTheDocument();
+  });
+
+  it('renders square 220px styling for subsidiary entities', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: { ...baseEntityData, type: 'Holding Company', name: 'HoldCo 1' },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+    const cardElement = container.querySelector('[data-testid="subsidiary-card-node"]');
+    expect(cardElement).toBeInTheDocument();
+    expect(cardElement?.className).toContain('w-[220px]');
+    expect(cardElement?.className).toContain('h-[220px]');
   });
 });

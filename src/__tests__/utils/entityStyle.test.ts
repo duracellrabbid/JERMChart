@@ -1,15 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { getEntityTypeColor, getStatusDotClass } from './entityStyle';
-import { EntityType, EntityStatus } from '../types/structure';
+import { getEntityTypeColor, getStatusDotClass } from '../../utils/entityStyle';
+import { EntityType, EntityStatus } from '../../types/structure';
 
 describe('entityStyle utils', () => {
   describe('getEntityTypeColor', () => {
-    it('returns amber colors for Trust', () => {
+    it('returns amber colors for Trust and Trust Company', () => {
       const colors = getEntityTypeColor('Trust');
       expect(colors.border).toBe('border-amber-400');
       expect(colors.badgeBg).toBe('bg-amber-100');
       expect(colors.badgeText).toBe('text-amber-800');
       expect(colors.accentBar).toBe('bg-amber-500');
+
+      const tcColors = getEntityTypeColor('Trust Company');
+      expect(tcColors.border).toBe('border-amber-400');
+      expect(tcColors.badgeBg).toBe('bg-amber-100');
     });
 
     it('returns sky colors for Holding Company', () => {

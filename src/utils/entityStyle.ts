@@ -8,6 +8,7 @@ export function getEntityTypeColor(type: EntityType): {
 } {
   switch (type) {
     case 'Trust':
+    case 'Trust Company':
       return {
         border: 'border-amber-400',
         badgeBg: 'bg-amber-100',
