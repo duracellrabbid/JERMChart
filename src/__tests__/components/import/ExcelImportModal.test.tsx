@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ExcelImportModal } from './ExcelImportModal';
-import { useStructureStore } from '../../store/useStructureStore';
-import * as excelParser from '../../utils/excelParser';
-import { TrustStructureChart } from '../../types/structure';
+import { ExcelImportModal } from '../../../components/import/ExcelImportModal';
+import { useStructureStore } from '../../../store/useStructureStore';
+import * as excelParser from '../../../utils/excelParser';
+import { TrustStructureChart } from '../../../types/structure';
 
-vi.mock('../../utils/excelParser', () => ({
+vi.mock('../../../utils/excelParser', () => ({
   parseExcelWorkbook: vi.fn(),
   generateExcelTemplate: vi.fn(() => new Uint8Array([1, 2, 3])),
 }));

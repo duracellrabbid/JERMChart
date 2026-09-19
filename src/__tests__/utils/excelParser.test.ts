@@ -4,7 +4,7 @@ import {
   normalizeColumnHeader,
   parseExcelWorkbook,
   generateExcelTemplate,
-} from './excelParser';
+} from '../../utils/excelParser';
 import * as XLSX from 'xlsx';
 
 describe('excelParser', () => {

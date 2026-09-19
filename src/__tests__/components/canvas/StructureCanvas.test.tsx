@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
-import { StructureCanvas } from './StructureCanvas';
-import { useStructureStore } from '../../store/useStructureStore';
+import { StructureCanvas } from '../../../components/canvas/StructureCanvas';
+import { useStructureStore } from '../../../store/useStructureStore';
 
 let capturedOnConnect: ((connection: any) => void) | undefined;
 

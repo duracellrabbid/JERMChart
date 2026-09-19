@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { OwnershipEdge } from './OwnershipEdge';
+import { OwnershipEdge } from '../../../components/edges/OwnershipEdge';
 import { Position } from '@xyflow/react';
 
 vi.mock('@xyflow/react', async (importOriginal) => {

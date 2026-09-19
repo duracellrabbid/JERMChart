@@ -7,7 +7,9 @@
   "files": [
     "dist/**/*",
     "electron/**/*",
-    "package.json"
+    "package.json",
+    "!**/__tests__/**",
+    "!**/*.test.*"
   ],
   "win": {
     "target": [

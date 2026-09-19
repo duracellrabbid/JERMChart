@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useStructureStore } from './useStructureStore';
-import { sampleTrustStructure } from '../data/sampleStructure';
-import { TrustStructureChart } from '../types/structure';
+import { useStructureStore } from '../../store/useStructureStore';
+import { sampleTrustStructure } from '../../data/sampleStructure';
+import { TrustStructureChart } from '../../types/structure';
 
 describe('useStructureStore', () => {
   beforeEach(() => {

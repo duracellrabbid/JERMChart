@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { SidebarInspector } from './SidebarInspector';
-import { useStructureStore } from '../../store/useStructureStore';
+import { SidebarInspector } from '../../../components/sidebar/SidebarInspector';
+import { useStructureStore } from '../../../store/useStructureStore';
 
 describe('SidebarInspector', () => {
   beforeEach(() => {

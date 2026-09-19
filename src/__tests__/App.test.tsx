@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import App from './App';
-import { useStructureStore } from './store/useStructureStore';
+import App from '../App';
+import { useStructureStore } from '../store/useStructureStore';
 
 describe('App Integration', () => {
   beforeEach(() => {

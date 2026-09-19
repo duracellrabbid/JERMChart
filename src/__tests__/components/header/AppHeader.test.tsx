@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { AppHeader } from './AppHeader';
-import { useStructureStore } from '../../store/useStructureStore';
+import { AppHeader } from '../../../components/header/AppHeader';
+import { useStructureStore } from '../../../store/useStructureStore';
 
 describe('AppHeader', () => {
   const onOpenExportMock = vi.fn();
