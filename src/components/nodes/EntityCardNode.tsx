@@ -81,7 +81,7 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
     <div
       data-testid="trust-triangle-card-node"
       onClick={onSelect}
-      className={`relative w-[280px] h-[250px] transition-all duration-150 cursor-pointer flex flex-col items-center justify-between text-center ${
+      className={`relative w-[340px] h-[280px] transition-all duration-150 cursor-pointer flex flex-col items-center justify-between text-center select-none ${
         isSelected ? 'ring-4 ring-sky-400 ring-offset-1 shadow-lg' : ''
       } ${
         containsHighlightedDirector ? 'ring-4 ring-amber-500 shadow-xl scale-[1.02]' : ''
@@ -89,17 +89,17 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
     >
       <svg
         className="triangle-shape-bg absolute inset-0 w-full h-full pointer-events-none drop-shadow-md overflow-visible -z-10"
-        viewBox="0 0 280 250"
+        viewBox="0 0 340 280"
         preserveAspectRatio="none"
       >
         <polygon
-          points="140,6 274,244 6,244"
+          points="170,6 332,274 8,274"
           fill="#ffffff"
           stroke={isSelected ? '#38bdf8' : containsHighlightedDirector ? '#f59e0b' : '#f59e0b'}
           strokeWidth={isSelected || containsHighlightedDirector ? '3' : '2'}
           strokeLinejoin="round"
         />
-        <polygon points="140,6 155,30 125,30" fill="#fef3c7" opacity="0.7" />
+        <polygon points="170,6 188,34 152,34" fill="#fef3c7" opacity="0.75" />
       </svg>
 
       <Handle
@@ -109,14 +109,14 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
         style={{ top: 0, left: '50%' }}
       />
 
-      {/* Internal Content strictly fitted inside triangle */}
-      <div className="absolute inset-0 flex flex-col items-center justify-between pt-6 pb-3 px-3 text-center overflow-hidden [clip-path:polygon(50%_0%,100%_100%,0%_100%)]">
+      {/* Internal Content formatted with positive clearance from diagonal borders */}
+      <div className="absolute inset-0 flex flex-col items-center justify-between pt-6 pb-3 px-4 text-center">
         {/* Top: Icon & Type Badge */}
         <div className="flex flex-col items-center mt-1">
           <div className="w-6 h-6 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 mb-1 shadow-xs">
             <Landmark className="w-3.5 h-3.5" />
           </div>
-          <div className="flex items-center justify-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/90 border border-amber-200 text-amber-900 max-w-[95px]">
+          <div className="flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100/90 border border-amber-200 text-amber-900 max-w-[105px]">
             <span className="text-[8px] font-bold tracking-wider uppercase">
               {entity.type}
             </span>
@@ -125,36 +125,36 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
           </div>
         </div>
 
-        {/* Middle: Name & Jurisdiction */}
-        <div className="max-w-[130px] my-auto">
+        {/* Middle: Full Name & Jurisdiction */}
+        <div className="max-w-[155px] my-auto">
           <h3
-            className="font-bold text-slate-900 text-xs leading-snug break-words line-clamp-2"
+            className="font-bold text-slate-900 text-xs sm:text-[13px] leading-snug break-words line-clamp-3"
             title={entity.name}
           >
             {entity.name}
           </h3>
 
-          <div className="mt-0.5 text-[9px] text-slate-600 font-medium truncate max-w-[125px]">
+          <div className="mt-1 text-[10px] text-slate-600 font-medium truncate max-w-[145px] mx-auto">
             {entity.jurisdiction}
           </div>
           {entity.registrationNumber && (
-            <div className="font-mono text-[8px] text-slate-400">
+            <div className="font-mono text-[8px] text-slate-400 mt-0.5">
               {entity.registrationNumber}
             </div>
           )}
         </div>
 
-        {/* Bottom Base: Directors & Beneficiaries */}
-        <div className="w-[185px] max-w-[195px] flex flex-col items-center pt-1 border-t border-amber-200/60 mb-1">
+        {/* Bottom Base: Directors & Beneficiaries in Wide Area */}
+        <div className="w-[230px] max-w-[240px] flex flex-col items-center pt-1.5 border-t border-amber-200/70 mb-1">
           <div className="flex items-center justify-between w-full mb-1 px-1">
             <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1">
               <Building2 className="w-2.5 h-2.5" /> Directors ({entity.directors?.length ?? 0})
             </span>
           </div>
 
-          <div className="w-full space-y-0.5 max-h-[46px] overflow-y-auto px-0.5">
+          <div className="w-full space-y-0.5 max-h-[56px] overflow-y-auto px-0.5">
             {(entity.directors?.length ?? 0) === 0 ? (
-              <div className="text-[9px] italic text-slate-400 text-center">
+              <div className="text-[9px] italic text-slate-400 text-center py-0.5">
                 No directors recorded
               </div>
             ) : (
@@ -170,7 +170,7 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
           </div>
 
           {entity.ubosOrBeneficiaries && entity.ubosOrBeneficiaries.length > 0 && (
-            <div className="mt-1 pt-0.5 border-t border-amber-200/40 text-[9px] text-slate-600 flex items-center justify-center gap-1 max-w-[180px] truncate">
+            <div className="mt-1 pt-0.5 border-t border-amber-200/40 text-[9px] text-slate-600 flex items-center justify-center gap-1 max-w-[210px] truncate">
               <ShieldCheck className="w-2.5 h-2.5 text-amber-600 flex-shrink-0" />
               <span className="truncate font-medium">
                 {entity.ubosOrBeneficiaries[0]}
