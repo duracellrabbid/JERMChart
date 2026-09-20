@@ -68,6 +68,16 @@ function splitTopLevel(raw: string): string[] {
   return parts;
 }
 
+function generateSecureId(prefix: string, index?: number): string {
+  const suffix =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID().slice(0, 8)
+      : Date.now().toString(36);
+  return index !== undefined
+    ? `${prefix}-${index}-${Date.now()}-${suffix}`
+    : `${prefix}-${Date.now()}-${suffix}`;
+}
+
 export function parseDirectorString(raw: string): Director[] {
   if (!raw || typeof raw !== 'string') return [];
 
@@ -75,18 +85,18 @@ export function parseDirectorString(raw: string): Director[] {
   const directors: Director[] = [];
 
   items.forEach((item, index) => {
-    const isCorporate = /[([][^()\[\]]*\b(corp|corporate)\b[^()\[\]]*[)\]]/i.test(item);
-    const isResident = /[([][^()\[\]]*\b(res|resident)\b[^()\[\]]*[)\]]/i.test(item);
+    const isCorporate = /[([][^()[\]]*\b(corp|corporate)\b[^()[\]]*[)\]]/i.test(item);
+    const isResident = /[([][^()[\]]*\b(res|resident)\b[^()[\]]*[)\]]/i.test(item);
 
     // Clean name by stripping tag annotations like (Corp, Res), [Corporate], (Resident), etc.
     const cleanName = item
-      .replace(/[([][^()\[\]]*\b(corp|corporate|res|resident)\b[^()\[\]]*[)\]]/gi, '')
+      .replace(/[([][^()[\]]*\b(corp|corporate|res|resident)\b[^()[\]]*[)\]]/gi, '')
       .replace(/\s+/g, ' ')
       .trim();
 
     if (cleanName) {
       directors.push({
-        id: `dir-parsed-${index}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        id: generateSecureId('dir-parsed', index),
         name: cleanName,
         isCorporate,
         isResident,
@@ -140,8 +150,8 @@ export function parseExcelWorkbook(
     if (!entityName) return; // Skip empty rows
 
     const parentName = String(mapped.parent || '').trim();
-    let ownershipPct = parseFloat(String(mapped.ownership));
-    if (isNaN(ownershipPct)) ownershipPct = 100;
+    let ownershipPct = Number.parseFloat(String(mapped.ownership));
+    if (Number.isNaN(ownershipPct)) ownershipPct = 100;
 
     const directors = parseDirectorString(String(mapped.directors || ''));
     const ubos = String(mapped.ubos || '')
@@ -178,7 +188,7 @@ export function parseExcelWorkbook(
       }
     } else {
       const newEntity: EntityNodeData = {
-        id: `entity-${idx + 1}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        id: generateSecureId('entity', idx + 1),
         name: entityName,
         type: matchedType,
         jurisdiction: String(mapped.jurisdiction || 'Unknown Jurisdiction').trim(),

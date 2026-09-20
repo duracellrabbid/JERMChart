@@ -159,9 +159,9 @@ describe('ExportModal Component', () => {
       }),
       onload: vi.fn(),
     };
-    vi.spyOn(window, 'FileReader').mockImplementation(
-      () => mockFileReaderInstance as unknown as FileReader
-    );
+    vi.spyOn(window, 'FileReader').mockImplementation(function (this: any) {
+      return mockFileReaderInstance as unknown as FileReader;
+    } as any);
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
@@ -190,9 +190,9 @@ describe('ExportModal Component', () => {
       }),
       onload: vi.fn(),
     };
-    vi.spyOn(window, 'FileReader').mockImplementation(
-      () => mockFileReaderInstance as unknown as FileReader
-    );
+    vi.spyOn(window, 'FileReader').mockImplementation(function (this: any) {
+      return mockFileReaderInstance as unknown as FileReader;
+    } as any);
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
