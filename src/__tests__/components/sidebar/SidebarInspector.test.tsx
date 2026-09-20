@@ -49,6 +49,10 @@ describe('SidebarInspector', () => {
     fireEvent.click(screen.getByRole('button', { name: /Directors/i }));
     expect(screen.getByText(/Click any director below to highlight/i)).toBeInTheDocument();
     expect(screen.getByText('Julian Vance')).toBeInTheDocument();
+
+    // Switch back to Tree
+    fireEvent.click(screen.getByRole('button', { name: /Tree/i }));
+    expect(screen.getByText(/Entities \(\d+\)/i)).toBeInTheDocument();
   });
 
   describe('TreeOutlineTab', () => {
@@ -230,6 +234,29 @@ describe('SidebarInspector', () => {
 
       const entity = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
       expect(entity?.directors.length).toBe(2);
+    });
+
+    it('renders entity details form with empty fallbacks for missing registration, taxId, notes, and non-resident director', () => {
+      const minimalEntity = {
+        id: 'minimal-1',
+        name: 'Minimal Ltd',
+        type: 'Operating Company' as const,
+        jurisdiction: 'BVI',
+        status: 'Active' as const,
+        directors: [{ id: 'd-min', name: 'Non Resident Dir', isCorporate: false, isResident: false }],
+      };
+      const created = useStructureStore.getState().addEntity(minimalEntity);
+      useStructureStore.getState().setSelectedEntityId(created.id);
+
+      render(<SidebarInspector />);
+      fireEvent.click(screen.getByRole('button', { name: /Details/i }));
+
+      expect(screen.getByDisplayValue('Minimal Ltd')).toBeInTheDocument();
+      expect(screen.getByText(/Non Resident Dir/)).toBeInTheDocument();
+      expect(screen.getByText(/\(Individual\)/)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('e.g. BVI-BC-123')).toHaveValue('');
+      expect(screen.getByPlaceholderText('Optional')).toHaveValue('');
+      expect(screen.getByPlaceholderText(/Settlor, protector/i)).toHaveValue('');
     });
   });
 

@@ -215,4 +215,50 @@ describe('ExportModal Component', () => {
       expect(alertSpy).toHaveBeenCalledWith('Export failed: PDF generation failed');
     });
   });
+
+  it('handles PNG, SVG, and PPTX export errors, including non-Error rejections', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    vi.mocked(exportService.exportToImage).mockRejectedValueOnce(new Error('PNG failed'));
+
+    render(<ExportModal onClose={mockOnClose} />);
+
+    // PNG failure
+    fireEvent.click(screen.getByRole('button', { name: /High-Resolution PNG/i }));
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Export failed: PNG failed');
+    });
+
+    // SVG failure with non-Error string
+    vi.mocked(exportService.exportToImage).mockRejectedValueOnce('SVG failed string' as any);
+    fireEvent.click(screen.getByRole('button', { name: /Vector SVG/i }));
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Export failed: Unknown error');
+    });
+
+    // PPTX failure
+    vi.mocked(exportService.exportToPptx).mockRejectedValueOnce(new Error('PPTX failed'));
+    fireEvent.click(screen.getByRole('button', { name: /PowerPoint \(\.pptx\)/i }));
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Export failed: PPTX failed');
+    });
+  });
+
+  it('ignores file upload change event when no file is selected', () => {
+    render(<ExportModal onClose={mockOnClose} />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(fileInput, { target: { files: [] } });
+    expect(exportService.parseJsonBackup).not.toHaveBeenCalled();
+  });
+
+  it('triggers file input click when Load JSON File button is clicked', () => {
+    render(<ExportModal onClose={mockOnClose} />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const clickSpy = vi.spyOn(fileInput, 'click');
+
+    const loadBtn = screen.getByRole('button', { name: /Load JSON File/i });
+    fireEvent.click(loadBtn);
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+  });
 });

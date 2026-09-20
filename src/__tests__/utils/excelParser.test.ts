@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   parseDirectorString,
   normalizeColumnHeader,
@@ -6,6 +6,39 @@ import {
   generateExcelTemplate,
 } from '../../utils/excelParser';
 import * as XLSX from 'xlsx';
+
+const { setMockEmptySheets } = vi.hoisted(() => {
+  let mockEmptySheets = false;
+  return {
+    setMockEmptySheets: (val: boolean) => {
+      mockEmptySheets = val;
+    },
+    getMockEmptySheets: () => mockEmptySheets,
+  };
+});
+
+vi.mock('xlsx', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('xlsx')>();
+  const { getMockEmptySheets } = await import('vitest').then(() => ({
+    getMockEmptySheets: () => {
+      try {
+        return (globalThis as any).__mockEmptySheets;
+      } catch {
+        return false;
+      }
+    },
+  }));
+
+  return {
+    ...actual,
+    read: (...args: [any, any?]) => {
+      if ((globalThis as any).__mockEmptySheets) {
+        return { SheetNames: [], Sheets: {} };
+      }
+      return actual.read(args[0], args[1]);
+    },
+  };
+});
 
 describe('excelParser', () => {
   it('parses director string with corporate and resident tags', () => {
@@ -172,5 +205,90 @@ describe('excelParser', () => {
     expect(parseDirectorString('')).toEqual([]);
     expect(parseDirectorString(null as any)).toEqual([]);
     expect(parseDirectorString(undefined as any)).toEqual([]);
+  });
+
+  it('splits comma-delimited director strings while respecting nested parentheses and empty segments', () => {
+    // Tests comma splitting at depth 0, empty segments, and stripping of standalone tag annotations
+    const input = 'Alice Smith (Director, Res), , Bob Jones [Corp], (Resident)';
+    const parsed = parseDirectorString(input);
+    expect(parsed.length).toBe(2);
+    expect(parsed[0].name).toBe('Alice Smith');
+    expect(parsed[0].isResident).toBe(true);
+    expect(parsed[1].name).toBe('Bob Jones');
+    expect(parsed[1].isCorporate).toBe(true);
+  });
+
+  it('throws an error when workbook has no sheets', () => {
+    (globalThis as any).__mockEmptySheets = true;
+    try {
+      expect(() => parseExcelWorkbook(new Uint8Array())).toThrow('Excel workbook contains no sheets.');
+    } finally {
+      (globalThis as any).__mockEmptySheets = false;
+    }
+  });
+
+  it('handles empty rows, invalid ownership, fallback types, and fallback titles', () => {
+    const rows = [
+      {
+        'Entity Name': '', // Should be skipped
+        'Parent Entity': 'Something',
+      },
+      {
+        'Entity Name': '   ', // Should also be skipped
+      },
+      {
+        'Entity Name': 'Alpha Sub',
+        'Parent Entity': '',
+        'Ownership %': 'not-a-number', // NaN -> 100
+        'Entity Type': 'Custom Unrecognized Type', // -> Holding Company
+        'Status': 'Custom Status', // -> Active
+        'Share Class': '',
+      },
+      {
+        'Entity Name': 'Alpha Sub', // duplicate row without parent
+        'Parent Entity': '',
+      },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+    const { chart, warnings } = parseExcelWorkbook(buffer);
+    expect(warnings).toEqual([]);
+    expect(chart.entities.length).toBe(1);
+    expect(chart.entities[0].type).toBe('Holding Company');
+    expect(chart.entities[0].status).toBe('Active');
+    expect(chart.metadata.chartTitle).toBe('Imported Structure Chart');
+  });
+
+  it('falls back to default jurisdiction and default shareClass when omitted', () => {
+    const rows = [
+      {
+        'Entity Name': 'Parent Co',
+        'Jurisdiction': '', // Fallback to 'Unknown Jurisdiction'
+      },
+      {
+        'Entity Name': 'Child Co',
+        'Parent Entity': 'Parent Co',
+        'Share Class': '', // Fallback to 'Ordinary Shares'
+      },
+      {
+        'Entity Name': 'Child Co', // Merged row with empty shareClass
+        'Parent Entity': 'Parent Co',
+        'Share Class': '',
+      },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+    const { chart } = parseExcelWorkbook(buffer);
+    expect(chart.entities[0].jurisdiction).toBe('Unknown Jurisdiction');
+    expect(chart.relationships[0].shareClass).toBe('Ordinary Shares');
+    expect(chart.relationships[1].shareClass).toBe('Ordinary Shares');
   });
 });

@@ -103,8 +103,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose }) =
   };
 
   const handleApplyToCanvas = () => {
-    if (!parsedData) return;
-    loadStructure(parsedData.chart);
+    loadStructure(parsedData!.chart);
     onClose();
   };
 

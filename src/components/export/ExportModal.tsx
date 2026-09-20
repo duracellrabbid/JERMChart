@@ -13,6 +13,10 @@ interface ExportModalProps {
   onClose: () => void;
 }
 
+function formatExportError(err: unknown): string {
+  return err instanceof Error ? err.message : 'Unknown error';
+}
+
 export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
   const metadata = useStructureStore((state) => state.metadata);
   const entities = useStructureStore((state) => state.entities);
@@ -29,7 +33,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
       await exportToImage('trust-structure-canvas', 'png', metadata.chartTitle);
       setSuccessMsg('High-Res PNG downloaded successfully.');
     } catch (err) {
-      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      alert(`Export failed: ${formatExportError(err)}`);
     } finally {
       setIsExporting(false);
     }
@@ -41,7 +45,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
       await exportToImage('trust-structure-canvas', 'svg', metadata.chartTitle);
       setSuccessMsg('Vector SVG downloaded successfully.');
     } catch (err) {
-      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      alert(`Export failed: ${formatExportError(err)}`);
     } finally {
       setIsExporting(false);
     }
@@ -53,7 +57,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
       await exportToPdf('trust-structure-canvas', metadata);
       setSuccessMsg('A4 Landscape PDF generated successfully.');
     } catch (err) {
-      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      alert(`Export failed: ${formatExportError(err)}`);
     } finally {
       setIsExporting(false);
     }
@@ -65,7 +69,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
       await exportToPptx('trust-structure-canvas', metadata);
       setSuccessMsg('PowerPoint presentation generated successfully.');
     } catch (err) {
-      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      alert(`Export failed: ${formatExportError(err)}`);
     } finally {
       setIsExporting(false);
     }

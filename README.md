@@ -2,6 +2,8 @@
 
 A 100% client-side web application designed for trust officers, fiduciary specialists, and corporate administrators to quickly prepare, organize, interactively sort, and export corporate and trust structure charts.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 ---
 
 ## Overview & Key Challenges Solved
@@ -224,4 +226,5 @@ trust-management-utility/
 
 ## License
 
-Internal Enterprise / Proprietary Use.
+This project is licensed under the [MIT License](LICENSE).
+See the [`LICENSE`](LICENSE) file for the full license text.

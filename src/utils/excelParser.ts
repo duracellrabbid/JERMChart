@@ -216,7 +216,7 @@ export function parseExcelWorkbook(
           source: parentRecord.entity.id,
           target: childEntity.id,
           ownershipPercentage: pct,
-          shareClass: shareClass || 'Ordinary Shares',
+          shareClass,
         });
       } else {
         warnings.push(

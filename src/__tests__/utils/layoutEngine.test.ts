@@ -196,6 +196,28 @@ describe('layoutEngine', () => {
       expect(crossEdge?.data?.isCrossLink).toBe(true);
     });
 
+    it('adds edges when relationship source or target is not in the parentToChildren list', () => {
+      const extraEdge: OwnershipEdgeData = {
+        id: 'e-orphan',
+        source: 'external-parent',
+        target: 'external-child',
+      };
+      const { edges } = calculateSortedLayout(mockEntities, [...mockEdges, extraEdge]);
+      expect(edges.find((e) => e.id === 'e-orphan')).toBeDefined();
+    });
+
+    it('uses default alphabetical sort when sortCriteria is omitted', () => {
+      const { nodes } = calculateSortedLayout(mockEntities, mockEdges);
+      expect(nodes.length).toBe(3);
+    });
+
+    it('falls back to preserving order when criteria is unrecognized in sortSiblingEntities', () => {
+      const siblings = [mockEntities[1], mockEntities[2]];
+      const sorted = sortSiblingEntities(siblings, mockEdges, 'other' as any);
+      expect(sorted[0].id).toBe('2');
+      expect(sorted[1].id).toBe('3');
+    });
+
     it('positions nodes in correct vertical hierarchy across multi-tier structures', () => {
       const grandchild: EntityNodeData = {
         id: '4',

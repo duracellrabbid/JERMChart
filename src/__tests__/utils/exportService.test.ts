@@ -25,6 +25,7 @@ const {
   mockAddImage,
   mockGetImageProperties,
   MockJsPDF,
+  setHasGetImageProperties,
 } = vi.hoisted(() => {
   const mockConstructor = vi.fn();
   const mockSave = vi.fn();
@@ -37,10 +38,16 @@ const {
   const mockAddImage = vi.fn();
   const mockGetImageProperties = vi.fn().mockReturnValue({ width: 1000, height: 600 });
 
+  let hasGetImageProperties = true;
+
   class MockJsPDF {
     constructor(...args: any[]) {
       mockConstructor(...args);
+      if (hasGetImageProperties) {
+        this.getImageProperties = mockGetImageProperties;
+      }
     }
+    getImageProperties?: any;
     save = mockSave;
     setFont = mockSetFont;
     setFontSize = mockSetFontSize;
@@ -49,7 +56,6 @@ const {
     text = mockText;
     line = mockLine;
     addImage = mockAddImage;
-    getImageProperties = mockGetImageProperties;
   }
 
   return {
@@ -64,6 +70,9 @@ const {
     mockAddImage,
     mockGetImageProperties,
     MockJsPDF,
+    setHasGetImageProperties: (val: boolean) => {
+      hasGetImageProperties = val;
+    },
   };
 });
 
@@ -173,6 +182,24 @@ describe('exportService', () => {
       expect(clickSpy).toHaveBeenCalled();
       expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url');
     });
+
+    it('falls back to default title "Trust" when chartTitle is missing or undefined', () => {
+      const chartNoTitle = {
+        metadata: { chartTitle: '', effectiveDate: '2026-01-01', confidentialityNotice: '' },
+        entities: [],
+        relationships: [],
+      };
+      downloadJsonBackup(chartNoTitle as any);
+      expect(createObjectURLSpy).toHaveBeenCalled();
+
+      const chartNoMeta = {
+        metadata: undefined,
+        entities: [],
+        relationships: [],
+      };
+      downloadJsonBackup(chartNoMeta as any);
+      expect(createObjectURLSpy).toHaveBeenCalled();
+    });
   });
 
   describe('exportToImage', () => {
@@ -219,6 +246,13 @@ describe('exportService', () => {
         expect.objectContaining({ backgroundColor: '#ffffff' })
       );
     });
+
+    it('targets root element directly if viewport does not exist', async () => {
+      container.innerHTML = ''; // Remove viewport
+      const { toPng } = await import('html-to-image');
+      await exportToImage('test-canvas', 'png', 'no_viewport');
+      expect(toPng).toHaveBeenCalledWith(container, expect.anything());
+    });
   });
 
   describe('exportToPdf', () => {
@@ -262,6 +296,41 @@ describe('exportService', () => {
       expect(mockLine).toHaveBeenCalledWith(15, 22, 297 - 15, 22);
       expect(mockAddImage).toHaveBeenCalled();
       expect(mockSave).toHaveBeenCalledWith(expect.stringMatching(/_Structure\.pdf$/));
+    });
+
+    it('handles fallback metadata (missing clientReference, confidentialityNotice, chartTitle) and missing viewport', async () => {
+      container.innerHTML = ''; // Remove viewport
+      mockGetImageProperties.mockReturnValue(null); // Fallback image width/height
+
+      await exportToPdf('test-canvas', {
+        chartTitle: '',
+        clientReference: '',
+        effectiveDate: '2026-09-20',
+        confidentialityNotice: '',
+      });
+
+      expect(mockText).toHaveBeenCalledWith('', 15, 14);
+      expect(mockText).toHaveBeenCalledWith(
+        'Matter Ref: N/A  |  Effective Date: 2026-09-20',
+        15,
+        19
+      );
+      expect(mockText).toHaveBeenCalledWith(
+        'STRICTLY CONFIDENTIAL - PREPARED FOR CLIENT REVIEW ONLY',
+        expect.any(Number),
+        expect.any(Number),
+        expect.anything()
+      );
+      expect(mockSave).toHaveBeenCalledWith('Trust_Structure.pdf');
+    });
+
+    it('handles pdf instance when getImageProperties is undefined', async () => {
+      setHasGetImageProperties(false);
+
+      await exportToPdf('test-canvas', sampleTrustStructure.metadata);
+      expect(mockAddImage).toHaveBeenCalled();
+
+      setHasGetImageProperties(true);
     });
   });
 
@@ -311,6 +380,33 @@ describe('exportService', () => {
         expect.objectContaining({
           fileName: expect.stringMatching(/_Structure\.pptx$/),
         })
+      );
+    });
+
+    it('handles fallback metadata (missing clientReference, confidentialityNotice, chartTitle) and missing viewport', async () => {
+      container.innerHTML = ''; // No viewport
+
+      await exportToPptx('test-canvas', {
+        chartTitle: '',
+        clientReference: '',
+        effectiveDate: '2026-09-20',
+        confidentialityNotice: '',
+      });
+
+      expect(mockSlideAddText).toHaveBeenCalledWith(
+        'Trust Structure Chart',
+        expect.objectContaining({ fontSize: 16 })
+      );
+      expect(mockSlideAddText).toHaveBeenCalledWith(
+        'Matter Ref: N/A  |  Effective Date: 2026-09-20',
+        expect.objectContaining({ fontSize: 9 })
+      );
+      expect(mockSlideAddText).toHaveBeenCalledWith(
+        'STRICTLY CONFIDENTIAL - PREPARED FOR CLIENT REVIEW ONLY',
+        expect.objectContaining({ fontSize: 8 })
+      );
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        expect.objectContaining({ fileName: 'Trust_Structure.pptx' })
       );
     });
   });

@@ -9,5 +9,22 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**', 'electron/**'],
+      exclude: [
+        'src/**/__tests__/**',
+        'src/test/**',
+        'src/types/**',
+        '**/*.d.ts',
+      ],
+      thresholds: {
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100,
+      },
+    },
   },
 });

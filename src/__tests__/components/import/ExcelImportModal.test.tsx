@@ -351,5 +351,47 @@ describe('ExcelImportModal Component', () => {
     fireEvent.dragLeave(dropzone, { relatedTarget: document.body });
     expect(dropzone.className).toContain('border-slate-300');
     expect(dropzone.className).not.toContain('ring-2');
+
+    // DragLeave when relatedTarget is a child inside dropzone (should keep highlight)
+    fireEvent.dragEnter(dropzone);
+    const childElement = dropzone.querySelector('input');
+    fireEvent.dragLeave(dropzone, { relatedTarget: childElement });
+    expect(dropzone.className).toContain('border-sky-500');
   });
+
+  it('triggers file input click when dropzone is clicked', () => {
+    render(<ExcelImportModal onClose={mockOnClose} />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const clickSpy = vi.spyOn(fileInput, 'click');
+
+    const dropzone = screen.getByTestId('excel-dropzone');
+    fireEvent.click(dropzone);
+
+    expect(clickSpy).toHaveBeenCalled();
+  });
+
+  it('ignores file change and drop events when no file is present', () => {
+    render(<ExcelImportModal onClose={mockOnClose} />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [] } });
+    expect(excelParser.parseExcelWorkbook).not.toHaveBeenCalled();
+
+    const dropzone = screen.getByTestId('excel-dropzone');
+    fireEvent.drop(dropzone, { dataTransfer: { files: [] } });
+    expect(excelParser.parseExcelWorkbook).not.toHaveBeenCalled();
+  });
+
+  it('handles parse error when error object has no message property', async () => {
+    render(<ExcelImportModal onClose={mockOnClose} />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['corrupted'], 'corrupt.xlsx');
+    file.arrayBuffer = vi.fn().mockRejectedValue({}); // No message property
+
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to parse file. Please upload a valid .xlsx or .csv.')).toBeInTheDocument();
+    });
+  });
+
 });

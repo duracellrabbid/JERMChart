@@ -227,5 +227,25 @@ describe('useStructureStore', () => {
     expect(cleared.highlightedDirector).toBeNull();
     expect(cleared.metadata.chartTitle).toBe('New Trust Structure');
   });
+
+  it('handles addEntity without directors or ubos by defaulting to empty arrays', () => {
+    const newEnt = useStructureStore.getState().addEntity({
+      name: 'Minimal Entity Ltd',
+      type: 'Operating Company',
+      jurisdiction: 'BVI',
+      status: 'Active',
+    } as any);
+
+    expect(newEnt.directors).toEqual([]);
+    expect(newEnt.ubosOrBeneficiaries).toEqual([]);
+  });
+
+  it('preserves selectedEntityId when deleting a different unselected entity', () => {
+    useStructureStore.getState().setSelectedEntityId('entity-1');
+    expect(useStructureStore.getState().selectedEntityId).toBe('entity-1');
+
+    useStructureStore.getState().deleteEntity('entity-2');
+    expect(useStructureStore.getState().selectedEntityId).toBe('entity-1');
+  });
 });
 

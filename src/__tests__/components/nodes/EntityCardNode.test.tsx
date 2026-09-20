@@ -241,4 +241,139 @@ describe('EntityCardNode', () => {
     expect(cardElement?.className).toContain('w-[220px]');
     expect(cardElement?.className).toContain('h-[220px]');
   });
+
+  it('renders subsidiary card without directors, registration number, or multiple ubos', () => {
+    act(() => {
+      useStructureStore.setState({ selectedEntityId: 'sub-empty' });
+    });
+
+    const { container } = render(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            id: 'sub-empty',
+            data: {
+              id: 'sub-empty',
+              name: 'Bare Subsidiary LLC',
+              type: 'LLC',
+              jurisdiction: 'Delaware',
+              status: 'Dormant',
+              registrationNumber: undefined,
+              directors: [],
+              ubosOrBeneficiaries: ['Sole Beneficiary'],
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByText('No directors recorded')).toBeInTheDocument();
+    expect(screen.getByText('Sole Beneficiary')).toBeInTheDocument();
+    expect(screen.queryByText(/\+/)).not.toBeInTheDocument();
+    const cardElement = container.querySelector('[data-testid="subsidiary-card-node"]');
+    expect(cardElement?.className).toContain('ring-4 ring-sky-400');
+  });
+
+  it('renders subsidiary card with highlighted director and dimmed states', () => {
+    act(() => {
+      useStructureStore.setState({ highlightedDirector: 'Target Director' });
+    });
+
+    const { container, rerender } = render(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Operating Company',
+              directors: [{ id: 'd-sub', name: 'Target Director', isCorporate: false, isResident: false }],
+              ubosOrBeneficiaries: undefined,
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+
+    const card = container.querySelector('[data-testid="subsidiary-card-node"]') as HTMLElement;
+    expect(card.className).toContain('ring-4 ring-amber-500');
+
+    // Dimmed state for subsidiary
+    act(() => {
+      useStructureStore.setState({ highlightedDirector: 'Other Director' });
+    });
+    rerender(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Operating Company',
+              directors: [{ id: 'd-sub', name: 'Target Director', isCorporate: false, isResident: false }],
+              ubosOrBeneficiaries: undefined,
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+    expect(card.className).toContain('opacity-40');
+  });
+
+  it('renders Trust card without registration number and without ubos, and with exactly 1 UBO', () => {
+    const { rerender } = render(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Trust Company',
+              status: 'In Liquidation',
+              registrationNumber: undefined,
+              ubosOrBeneficiaries: [],
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByText('Trust Company')).toBeInTheDocument();
+    expect(screen.getByText('In Liquidation')).toBeInTheDocument();
+
+    // With exactly 1 UBO on triangular card
+    rerender(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Trust',
+              ubosOrBeneficiaries: ['Single Beneficiary Only'],
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+    expect(screen.getByText('Single Beneficiary Only')).toBeInTheDocument();
+    expect(screen.queryByText(/\+/)).not.toBeInTheDocument();
+  });
+
+  it('renders subsidiary card with undefined directors and multiple ubos', () => {
+    render(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Operating Company',
+              directors: undefined,
+              ubosOrBeneficiaries: ['UBO Alpha', 'UBO Beta'],
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByText(/UBO Alpha/)).toBeInTheDocument();
+    expect(screen.getByText(/\+1/)).toBeInTheDocument();
+    expect(screen.getByText('Directors (0)')).toBeInTheDocument();
+  });
 });
