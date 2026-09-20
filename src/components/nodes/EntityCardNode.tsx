@@ -75,14 +75,13 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
   onSelect,
   onToggleDirector,
 }) => {
-  const colors = getEntityTypeColor(entity.type);
   const statusDot = getStatusDotClass(entity.status);
 
   return (
     <div
       data-testid="trust-triangle-card-node"
       onClick={onSelect}
-      className={`relative w-[260px] h-[220px] transition-all duration-150 cursor-pointer flex flex-col items-center justify-between p-2 pt-3 text-center ${
+      className={`relative w-[280px] h-[250px] transition-all duration-150 cursor-pointer flex flex-col items-center justify-between text-center ${
         isSelected ? 'ring-4 ring-sky-400 ring-offset-1 shadow-lg' : ''
       } ${
         containsHighlightedDirector ? 'ring-4 ring-amber-500 shadow-xl scale-[1.02]' : ''
@@ -90,16 +89,17 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
     >
       <svg
         className="triangle-shape-bg absolute inset-0 w-full h-full pointer-events-none drop-shadow-md overflow-visible -z-10"
-        viewBox="0 0 260 220"
+        viewBox="0 0 280 250"
         preserveAspectRatio="none"
       >
         <polygon
-          points="130,4 256,216 4,216"
+          points="140,6 274,244 6,244"
           fill="#ffffff"
-          stroke={isSelected ? '#38bdf8' : containsHighlightedDirector ? '#f59e0b' : '#fbbf24'}
+          stroke={isSelected ? '#38bdf8' : containsHighlightedDirector ? '#f59e0b' : '#f59e0b'}
           strokeWidth={isSelected || containsHighlightedDirector ? '3' : '2'}
           strokeLinejoin="round"
         />
+        <polygon points="140,6 155,30 125,30" fill="#fef3c7" opacity="0.7" />
       </svg>
 
       <Handle
@@ -109,66 +109,76 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
         style={{ top: 0, left: '50%' }}
       />
 
-      <div className="flex flex-col items-center w-full max-w-[200px] mt-2">
-        <div className="flex items-center justify-center gap-1.5 mb-1">
-          <span
-            className={`text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full ${colors.badgeBg} ${colors.badgeText}`}
+      {/* Internal Content strictly fitted inside triangle */}
+      <div className="absolute inset-0 flex flex-col items-center justify-between pt-6 pb-3 px-3 text-center overflow-hidden [clip-path:polygon(50%_0%,100%_100%,0%_100%)]">
+        {/* Top: Icon & Type Badge */}
+        <div className="flex flex-col items-center mt-1">
+          <div className="w-6 h-6 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 mb-1 shadow-xs">
+            <Landmark className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex items-center justify-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/90 border border-amber-200 text-amber-900 max-w-[95px]">
+            <span className="text-[8px] font-bold tracking-wider uppercase">
+              {entity.type}
+            </span>
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${statusDot}`} />
+            <span className="text-[9px] font-medium text-slate-600">{entity.status}</span>
+          </div>
+        </div>
+
+        {/* Middle: Name & Jurisdiction */}
+        <div className="max-w-[130px] my-auto">
+          <h3
+            className="font-bold text-slate-900 text-xs leading-snug break-words line-clamp-2"
+            title={entity.name}
           >
-            {entity.type}
-          </span>
-          <div className="flex items-center gap-1 text-[10px] text-slate-500">
-            <span className={`inline-block w-2 h-2 rounded-full ${statusDot}`} />
-            <span className="font-medium">{entity.status}</span>
-          </div>
-        </div>
+            {entity.name}
+          </h3>
 
-        <h3 className="font-semibold text-slate-900 text-xs leading-tight break-words line-clamp-2">
-          {entity.name}
-        </h3>
-
-        <div className="mt-0.5 flex items-center justify-center gap-2 text-[10px] text-slate-500">
-          <span className="font-medium text-slate-600 truncate max-w-[120px]">
+          <div className="mt-0.5 text-[9px] text-slate-600 font-medium truncate max-w-[125px]">
             {entity.jurisdiction}
-          </span>
+          </div>
           {entity.registrationNumber && (
-            <span className="font-mono text-[9px] text-slate-400">
+            <div className="font-mono text-[8px] text-slate-400">
               {entity.registrationNumber}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="w-[210px] bg-slate-50/90 rounded p-1.5 text-left border border-slate-200/60 mb-2">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-            <Building2 className="w-2.5 h-2.5" /> Directors ({entity.directors?.length ?? 0})
-          </span>
-        </div>
-
-        <div className="space-y-0.5 max-h-[50px] overflow-y-auto">
-          {(entity.directors?.length ?? 0) === 0 ? (
-            <div className="text-[10px] italic text-slate-400 text-center">No directors recorded</div>
-          ) : (
-            entity.directors?.map((dir) => (
-              <DirectorItemRow
-                key={dir.id}
-                dir={dir}
-                isTargeted={highlightedDirector === dir.name}
-                onToggle={onToggleDirector}
-              />
-            ))
+            </div>
           )}
         </div>
 
-        {entity.ubosOrBeneficiaries && entity.ubosOrBeneficiaries.length > 0 && (
-          <div className="mt-1 pt-1 border-t border-slate-200/60 text-[9px] text-slate-500 flex items-center gap-1">
-            <ShieldCheck className="w-2.5 h-2.5 text-amber-600 flex-shrink-0" />
-            <span className="truncate font-medium">
-              {entity.ubosOrBeneficiaries[0]}
-              {entity.ubosOrBeneficiaries.length > 1 ? ` +${entity.ubosOrBeneficiaries.length - 1}` : ''}
+        {/* Bottom Base: Directors & Beneficiaries */}
+        <div className="w-[185px] max-w-[195px] flex flex-col items-center pt-1 border-t border-amber-200/60 mb-1">
+          <div className="flex items-center justify-between w-full mb-1 px-1">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+              <Building2 className="w-2.5 h-2.5" /> Directors ({entity.directors?.length ?? 0})
             </span>
           </div>
-        )}
+
+          <div className="w-full space-y-0.5 max-h-[46px] overflow-y-auto px-0.5">
+            {(entity.directors?.length ?? 0) === 0 ? (
+              <div className="text-[9px] italic text-slate-400 text-center">
+                No directors recorded
+              </div>
+            ) : (
+              entity.directors?.map((dir) => (
+                <DirectorItemRow
+                  key={dir.id}
+                  dir={dir}
+                  isTargeted={highlightedDirector === dir.name}
+                  onToggle={onToggleDirector}
+                />
+              ))
+            )}
+          </div>
+
+          {entity.ubosOrBeneficiaries && entity.ubosOrBeneficiaries.length > 0 && (
+            <div className="mt-1 pt-0.5 border-t border-amber-200/40 text-[9px] text-slate-600 flex items-center justify-center gap-1 max-w-[180px] truncate">
+              <ShieldCheck className="w-2.5 h-2.5 text-amber-600 flex-shrink-0" />
+              <span className="truncate font-medium">
+                {entity.ubosOrBeneficiaries[0]}
+                {entity.ubosOrBeneficiaries.length > 1 ? ` +${entity.ubosOrBeneficiaries.length - 1}` : ''}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       <Handle

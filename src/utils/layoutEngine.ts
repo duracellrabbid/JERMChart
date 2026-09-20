@@ -11,8 +11,8 @@ export const CARD_WIDTH = 280;
 export const BASE_CARD_HEIGHT = 160;
 export const DIRECTOR_ROW_HEIGHT = 24;
 
-export const TRUST_CARD_WIDTH = 260;
-export const TRUST_CARD_HEIGHT = 220;
+export const TRUST_CARD_WIDTH = 280;
+export const TRUST_CARD_HEIGHT = 250;
 export const SUBSIDIARY_CARD_SIZE = 220;
 
 export function getEntityDimensions(type: EntityType): { width: number; height: number } {
