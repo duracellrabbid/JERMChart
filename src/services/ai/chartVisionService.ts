@@ -57,18 +57,19 @@ function sanitizeEntityStatus(rawStatus: any): EntityStatus {
 
 function sanitizeDirectors(rawDirectors: any[]): Director[] {
   if (!Array.isArray(rawDirectors)) return [];
-  return rawDirectors
-    .map((d, idx) => {
-      const name = String(d?.name || '').trim();
-      if (!name) return null;
-      return {
+  const directors: Director[] = [];
+  rawDirectors.forEach((d, idx) => {
+    const name = String(d?.name || '').trim();
+    if (name) {
+      directors.push({
         id: generateSecureId('dir', idx + 1),
         name,
         isCorporate: Boolean(d.isCorporate),
         isResident: Boolean(d.isResident),
-      };
-    })
-    .filter((d): d is Director => d !== null);
+      });
+    }
+  });
+  return directors;
 }
 
 export function parseRawAiResponse(jsonText: string): { chart: TrustStructureChart; warnings: string[] } {
