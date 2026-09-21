@@ -74,7 +74,7 @@ describe('App Integration', () => {
     expect(screen.queryByRole('heading', { name: /Import Structure from Excel/i })).not.toBeInTheDocument();
   });
 
-  it('opens and closes photo import modal via Import dropdown', () => {
+  it('opens photo import modal and navigates to settings via Configure API Key', () => {
     render(<App />);
 
     const importDropdown = screen.getByRole('button', { name: /^Import$/i });
@@ -85,10 +85,12 @@ describe('App Integration', () => {
 
     expect(screen.getByText(/Import from Photo \/ Hand-drawn Chart/i)).toBeInTheDocument();
 
-    const cancelBtn = screen.getByRole('button', { name: /Cancel|Close/i });
-    fireEvent.click(cancelBtn);
+    const configureBtn = screen.getByRole('button', { name: /Configure API Key/i });
+    fireEvent.click(configureBtn);
 
+    // Photo import modal is closed, Settings modal is opened
     expect(screen.queryByText(/Import from Photo \/ Hand-drawn Chart/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/AI Provider & API Keys/i)).toBeInTheDocument();
   });
 
   it('opens and closes settings modal via Settings button', () => {

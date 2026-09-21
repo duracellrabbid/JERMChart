@@ -22,14 +22,12 @@ const VALID_ENTITY_TYPES: EntityType[] = [
 
 const VALID_STATUSES: EntityStatus[] = ['Active', 'Dormant', 'In Liquidation', 'Nominee'];
 
-function generateSecureId(prefix: string, index?: number): string {
+function generateSecureId(prefix: string, index = 1): string {
   const suffix =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID().slice(0, 8)
       : Date.now().toString(36);
-  return index !== undefined
-    ? `${prefix}-${index}-${Date.now()}-${suffix}`
-    : `${prefix}-${Date.now()}-${suffix}`;
+  return `${prefix}-${index}-${Date.now()}-${suffix}`;
 }
 
 export function extractJsonFromText(text: string): string {
@@ -162,7 +160,7 @@ async function callGeminiVision(
   mimeType: string,
   config: AIConfig
 ): Promise<string> {
-  const model = config.model || 'gemini-2.5-flash';
+  const model = config.model || 'gemini-3.5-flash';
   const ai = new GoogleGenAI({ apiKey: config.apiKey.trim() });
 
   const response = await ai.models.generateContent({

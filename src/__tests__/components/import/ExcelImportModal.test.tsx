@@ -328,12 +328,31 @@ describe('ExcelImportModal Component', () => {
     });
   });
 
-  it('closes modal when Escape key is pressed on window', () => {
+  it('closes modal when Escape key is pressed on window, ignores other keys', () => {
     render(<ExcelImportModal onClose={mockOnClose} />);
 
-    fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    fireEvent.keyDown(window, { key: 'Enter', code: 'Enter' });
+    expect(mockOnClose).not.toHaveBeenCalled();
 
+    fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
     expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles finally block when component is unmounted while processing file', async () => {
+    let resolveBuffer: (val: ArrayBuffer) => void;
+    const bufferPromise = new Promise<ArrayBuffer>((res) => {
+      resolveBuffer = res;
+    });
+
+    const { unmount } = render(<ExcelImportModal onClose={mockOnClose} />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['data'], 'test.xlsx');
+    file.arrayBuffer = vi.fn().mockReturnValue(bufferPromise);
+
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    unmount();
+    resolveBuffer!(new ArrayBuffer(8));
   });
 
   it('highlights dropzone on dragEnter and removes highlight on dragLeave', () => {
@@ -354,8 +373,13 @@ describe('ExcelImportModal Component', () => {
 
     // DragLeave when relatedTarget is a child inside dropzone (should keep highlight)
     fireEvent.dragEnter(dropzone);
-    const childElement = dropzone.querySelector('input');
-    fireEvent.dragLeave(dropzone, { relatedTarget: childElement });
+    const childElement = dropzone.querySelector('input')!;
+    const dragLeaveEvent = new MouseEvent('dragleave', {
+      bubbles: true,
+      cancelable: true,
+      relatedTarget: childElement,
+    });
+    fireEvent(dropzone, dragLeaveEvent);
     expect(dropzone.className).toContain('border-sky-500');
   });
 

@@ -87,8 +87,6 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   };
 
   const executeAnalysis = async () => {
-    if (!file) return;
-
     setIsProcessing(true);
     setErrorMsg(null);
 
@@ -99,7 +97,7 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
       }
 
       setProgressStep('Optimizing photo & converting formats...');
-      const preprocessed = await preprocessImageFile(file);
+      const preprocessed = await preprocessImageFile(file!);
 
       setProgressStep('Analyzing structure, entities & relationships with AI...');
       const config = getAIConfig();

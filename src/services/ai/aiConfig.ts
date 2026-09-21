@@ -48,7 +48,7 @@ export function getAIConfig(): AIConfig {
     if (!raw) return { ...DEFAULT_CONFIG };
     const parsed = JSON.parse(raw);
     const provider: AIProvider = parsed.provider === 'openai' ? 'openai' : 'gemini';
-    const defaultModel = provider === 'openai' ? 'gpt-4o' : 'gemini-2.5-flash';
+    const defaultModel = provider === 'openai' ? 'gpt-4o' : 'gemini-3.5-flash';
     return {
       provider,
       apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '',

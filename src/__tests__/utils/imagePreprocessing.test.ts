@@ -163,4 +163,64 @@ describe('imagePreprocessing', () => {
     global.Image = originalImage;
     vi.restoreAllMocks();
   });
+
+  it('rejects when canvas 2d context cannot be acquired', async () => {
+    const originalCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      if (tagName.toLowerCase() === 'canvas') {
+        return {
+          width: 0,
+          height: 0,
+          getContext: vi.fn().mockReturnValue(null),
+        } as any;
+      }
+      return originalCreateElement(tagName);
+    });
+
+    const originalImage = global.Image;
+    (global as any).Image = class MockImage {
+      width = 800;
+      height = 600;
+      onload: any = null;
+      onerror: any = null;
+      set src(_val: string) {
+        setTimeout(() => {
+          if (this.onload) this.onload();
+        }, 5);
+      }
+    };
+
+    window.URL.createObjectURL = vi.fn().mockReturnValue('blob:null-ctx');
+    window.URL.revokeObjectURL = vi.fn();
+
+    const blob = new Blob(['data'], { type: 'image/jpeg' });
+    await expect(resizeImageToJpegBase64(blob)).rejects.toThrow('Failed to get canvas 2d context');
+
+    global.Image = originalImage;
+    vi.restoreAllMocks();
+  });
+
+  it('rejects when image fails to decode (onerror triggered)', async () => {
+    const originalImage = global.Image;
+    (global as any).Image = class MockImage {
+      onload: any = null;
+      onerror: any = null;
+      set src(_val: string) {
+        setTimeout(() => {
+          if (this.onerror) this.onerror();
+        }, 5);
+      }
+    };
+
+    window.URL.createObjectURL = vi.fn().mockReturnValue('blob:broken-image');
+    const revokeSpy = vi.fn();
+    window.URL.revokeObjectURL = revokeSpy;
+
+    const blob = new Blob(['broken-data'], { type: 'image/jpeg' });
+    await expect(resizeImageToJpegBase64(blob)).rejects.toThrow('Could not decode image');
+    expect(revokeSpy).toHaveBeenCalledWith('blob:broken-image');
+
+    global.Image = originalImage;
+    vi.restoreAllMocks();
+  });
 });

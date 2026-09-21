@@ -68,14 +68,12 @@ function splitTopLevel(raw: string): string[] {
   return parts;
 }
 
-function generateSecureId(prefix: string, index?: number): string {
+function generateSecureId(prefix: string, index = 1): string {
   const suffix =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID().slice(0, 8)
       : Date.now().toString(36);
-  return index !== undefined
-    ? `${prefix}-${index}-${Date.now()}-${suffix}`
-    : `${prefix}-${Date.now()}-${suffix}`;
+  return `${prefix}-${index}-${Date.now()}-${suffix}`;
 }
 
 export function parseDirectorString(raw: string): Director[] {

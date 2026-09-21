@@ -217,4 +217,114 @@ describe('chartVisionService', () => {
       /ai request failed \(400\): Quota exceeded/i
     );
   });
+
+  it('throws error when JSON is missing entities array', () => {
+    expect(() => parseRawAiResponse(JSON.stringify({ chartTitle: 'No entities' }))).toThrow(
+      /missing entities array/i
+    );
+    expect(() => parseRawAiResponse(JSON.stringify({ entities: 'not-an-array' }))).toThrow(
+      /missing entities array/i
+    );
+  });
+
+  it('handles entities with missing fields and sanitizes directors and relationships', () => {
+    const raw = JSON.stringify({
+      chartTitle: ' ',
+      clientReference: 'REF-123',
+      entities: [
+        {
+          // tempId and name missing
+          type: null,
+          directors: [null, { name: '  ' }, { name: 'Valid Dir', isCorporate: true }],
+          ubosOrBeneficiaries: ['Beneficiary 1', ''],
+        },
+      ],
+      relationships: [
+        {
+          // unknown or empty tempIds
+          sourceTempId: '',
+          targetTempId: '',
+          ownershipPercentage: 'not-a-number',
+        },
+        {
+          sourceTempId: 'temp-1',
+          targetTempId: 'temp-1',
+          ownershipPercentage: 'invalid',
+          shareClass: '',
+        },
+      ],
+      warnings: null,
+    });
+
+    const result = parseRawAiResponse(raw);
+    expect(result.chart.metadata.chartTitle).toBe('Inferred Trust Structure');
+    expect(result.chart.metadata.clientReference).toBe('REF-123');
+    expect(result.chart.entities[0].name).toBe('Entity 1');
+    expect(result.chart.entities[0].type).toBe('Holding Company');
+    expect(result.chart.entities[0].directors).toHaveLength(1);
+    expect(result.chart.entities[0].directors[0].name).toBe('Valid Dir');
+    expect(result.chart.relationships).toHaveLength(1);
+    expect(result.chart.relationships[0].ownershipPercentage).toBe(100);
+    expect(result.chart.relationships[0].shareClass).toBe('Ordinary Shares');
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('handles markdown fence without valid newline or closing backticks', () => {
+    const raw = '```json { "entities": [] }';
+    expect(() => parseRawAiResponse(raw)).toThrow();
+  });
+
+  it('throws error when Gemini returns empty response text', async () => {
+    mockGenerateContent.mockResolvedValueOnce({ text: '' });
+    const config: AIConfig = {
+      provider: 'gemini',
+      apiKey: 'test-key',
+      model: '',
+    };
+
+    await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
+      /ai returned an empty response/i
+    );
+  });
+
+  it('throws error when OpenAI returns empty response text', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '' } }] }),
+    });
+
+    const config: AIConfig = {
+      provider: 'openai',
+      apiKey: 'test-key',
+      model: '',
+      customEndpoint: 'https://custom-api.example.com/v1///',
+    };
+
+    await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
+      /ai returned an empty response/i
+    );
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://custom-api.example.com/v1/chat/completions',
+      expect.anything()
+    );
+  });
+
+  it('falls back when crypto is undefined or randomUUID is missing', () => {
+    const originalCrypto = globalThis.crypto;
+    Object.defineProperty(globalThis, 'crypto', {
+      value: undefined,
+      configurable: true,
+    });
+
+    const raw = JSON.stringify({
+      entities: [{ name: 'Test' }],
+    });
+    const result = parseRawAiResponse(raw);
+    expect(result.chart.entities).toHaveLength(1);
+
+    Object.defineProperty(globalThis, 'crypto', {
+      value: originalCrypto,
+      configurable: true,
+    });
+  });
 });

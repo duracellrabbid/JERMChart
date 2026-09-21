@@ -285,10 +285,39 @@ describe('excelParser', () => {
     const ws = XLSX.utils.json_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, 'Data');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-
     const { chart } = parseExcelWorkbook(buffer);
     expect(chart.entities[0].jurisdiction).toBe('Unknown Jurisdiction');
     expect(chart.relationships[0].shareClass).toBe('Ordinary Shares');
     expect(chart.relationships[1].shareClass).toBe('Ordinary Shares');
+  });
+
+  it('handles director string with empty parts or trailing commas', () => {
+    const raw = 'Alice Smith, , Bob Jones, ';
+    const directors = parseDirectorString(raw);
+    expect(directors).toHaveLength(2);
+    expect(directors[0].name).toBe('Alice Smith');
+    expect(directors[1].name).toBe('Bob Jones');
+  });
+
+  it('falls back when crypto is undefined during excel parsing', () => {
+    const originalCrypto = globalThis.crypto;
+    Object.defineProperty(globalThis, 'crypto', {
+      value: undefined,
+      configurable: true,
+    });
+
+    const rows = [{ 'Entity Name': 'Crypto Fallback Co' }];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+    const { chart } = parseExcelWorkbook(buffer);
+    expect(chart.entities).toHaveLength(1);
+
+    Object.defineProperty(globalThis, 'crypto', {
+      value: originalCrypto,
+      configurable: true,
+    });
   });
 });

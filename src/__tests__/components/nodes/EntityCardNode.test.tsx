@@ -183,6 +183,10 @@ describe('EntityCardNode', () => {
     // Press Space to toggle highlight off
     fireEvent.keyDown(directorBtn, { key: ' ', code: 'Space' });
     expect(useStructureStore.getState().highlightedDirector).toBeNull();
+
+    // Press non-Enter / non-Space key (should not toggle)
+    fireEvent.keyDown(directorBtn, { key: 'Tab', code: 'Tab' });
+    expect(useStructureStore.getState().highlightedDirector).toBeNull();
   });
 
   it('applies spotlight ring when entity contains highlighted director', () => {

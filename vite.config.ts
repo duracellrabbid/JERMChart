@@ -18,6 +18,7 @@ export default defineConfig({
         'src/test/**',
         'src/types/**',
         '**/*.d.ts',
+        '**/*.css',
       ],
       thresholds: {
         lines: 100,

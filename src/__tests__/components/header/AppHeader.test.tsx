@@ -83,17 +83,25 @@ describe('AppHeader', () => {
     // Test Space key
     renderHeader();
     const heading2 = screen.getByRole('heading', { level: 1 });
+    // Non-Enter / non-Space key should not open edit mode
+    fireEvent.keyDown(heading2, { key: 'Tab', code: 'Tab' });
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+
     fireEvent.keyDown(heading2, { key: ' ', code: 'Space' });
     expect(screen.getByRole('textbox')).toBeInTheDocument();
   });
 
-  it('reverts title to initial value and closes edit mode on Escape key press', () => {
+  it('reverts title to initial value and closes edit mode on Escape key press, ignores other keys', () => {
     renderHeader();
 
     const titleElement = screen.getByText(/The Aurelius Dynasty Trust Structure/i);
     fireEvent.click(titleElement);
 
     const input = screen.getByDisplayValue('The Aurelius Dynasty Trust Structure');
+    // Test key other than Enter / Escape
+    fireEvent.keyDown(input, { key: 'Tab', code: 'Tab' });
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+
     fireEvent.change(input, { target: { value: 'Draft Trust Name That Will Be Cancelled' } });
     expect(useStructureStore.getState().metadata.chartTitle).toBe('Draft Trust Name That Will Be Cancelled');
 
@@ -231,6 +239,10 @@ describe('AppHeader', () => {
 
     expect(screen.getByRole('button', { name: /Clear Canvas \(Blank\)/i })).toBeInTheDocument();
 
+    // Clicking inside the reset menu should not close it
+    fireEvent.mouseDown(resetTrigger);
+    expect(screen.getByRole('button', { name: /Clear Canvas \(Blank\)/i })).toBeInTheDocument();
+
     fireEvent.mouseDown(screen.getByTestId('outside'));
 
     expect(screen.queryByRole('button', { name: /Clear Canvas \(Blank\)/i })).not.toBeInTheDocument();
@@ -278,7 +290,7 @@ describe('AppHeader', () => {
     expect(screen.queryByRole('button', { name: /import from photo/i })).not.toBeInTheDocument();
   });
 
-  it('closes import dropdown when clicking outside', () => {
+  it('closes import dropdown when clicking outside, keeps open when clicking inside', () => {
     render(
       <div>
         <div data-testid="outside-import">Outside</div>
@@ -294,6 +306,10 @@ describe('AppHeader', () => {
     const importTrigger = screen.getByRole('button', { name: /^Import$/i });
     fireEvent.click(importTrigger);
 
+    expect(screen.getByRole('button', { name: /import excel/i })).toBeInTheDocument();
+
+    // Clicking inside the import menu should not close it
+    fireEvent.mouseDown(importTrigger);
     expect(screen.getByRole('button', { name: /import excel/i })).toBeInTheDocument();
 
     fireEvent.mouseDown(screen.getByTestId('outside-import'));

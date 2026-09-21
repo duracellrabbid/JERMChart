@@ -222,6 +222,28 @@ describe('ExportModal Component', () => {
     });
   });
 
+  it('handles finally block when file input ref is null (modal unmounted during read)', async () => {
+    const { unmount } = render(<ExportModal onClose={mockOnClose} />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['{}'], 'data.json', { type: 'application/json' });
+
+    let onLoadHandler: any;
+    const mockFileReaderInstance = {
+      readAsText: vi.fn(function (this: any) {
+        onLoadHandler = this.onload;
+      }),
+      onload: vi.fn(),
+    };
+    vi.spyOn(window, 'FileReader').mockImplementation(function (this: any) {
+      return mockFileReaderInstance as unknown as FileReader;
+    } as any);
+
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    unmount();
+    onLoadHandler({ target: { result: '{}' } });
+  });
+
   it('displays alert dialog when export throws an error', async () => {
     vi.mocked(exportService.exportToPdf).mockRejectedValueOnce(new Error('PDF generation failed'));
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});

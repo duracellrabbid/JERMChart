@@ -129,4 +129,37 @@ describe('excelExporter', () => {
     expect(parsedChart.relationships).toHaveLength(1);
     expect(parsedChart.relationships[0].ownershipPercentage).toBe(100);
   });
+
+  it('handles entities with undefined directors, unknown source entity, and undefined ownership %', () => {
+    const chart: TrustStructureChart = {
+      metadata: { chartTitle: 'Edge Case Chart' },
+      entities: [
+        {
+          id: 'child-1',
+          name: 'Orphan Corp',
+          type: 'Operating Company',
+          jurisdiction: 'BVI',
+          status: 'Active',
+          directors: undefined as any,
+          ubosOrBeneficiaries: undefined,
+        },
+      ],
+      relationships: [
+        {
+          id: 'edge-orphan',
+          source: 'non-existent-parent',
+          target: 'child-1',
+          ownershipPercentage: undefined as any,
+          shareClass: '',
+        },
+      ],
+    };
+
+    const rows = buildExcelRowsFromChart(chart);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]['Directors']).toBe('');
+    expect(rows[0]['Parent Entity']).toBe('');
+    expect(rows[0]['Ownership %']).toBe(100);
+    expect(rows[0]['Share Class']).toBe('Ordinary Shares');
+  });
 });
