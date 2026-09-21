@@ -247,5 +247,43 @@ describe('useStructureStore', () => {
     useStructureStore.getState().deleteEntity('entity-2');
     expect(useStructureStore.getState().selectedEntityId).toBe('entity-1');
   });
+
+  it('manages undo snapshots and restores previous structure state', () => {
+    const store = useStructureStore.getState();
+    const originalCount = store.entities.length;
+
+    store.setUndoSnapshot({
+      metadata: store.metadata,
+      entities: store.entities,
+      relationships: store.relationships,
+    });
+
+    store.clearCanvas();
+    expect(useStructureStore.getState().entities).toHaveLength(0);
+
+    const restored = useStructureStore.getState().restoreUndoSnapshot();
+    expect(restored).toBe(true);
+    expect(useStructureStore.getState().entities).toHaveLength(originalCount);
+    expect(useStructureStore.getState().undoSnapshot).toBeNull();
+
+    // Calling restore again when null should return false
+    expect(useStructureStore.getState().restoreUndoSnapshot()).toBe(false);
+  });
+
+  it('handles ocr review state and dismissal', () => {
+    const store = useStructureStore.getState();
+    store.setOcrReviewState({
+      summary: 'Inferred 4 entities and 3 relationships',
+      warnings: ['Illegible jurisdiction'],
+    });
+
+    expect(useStructureStore.getState().ocrReviewState?.summary).toBe(
+      'Inferred 4 entities and 3 relationships'
+    );
+    expect(useStructureStore.getState().ocrReviewState?.warnings).toContain('Illegible jurisdiction');
+
+    useStructureStore.getState().dismissOcrReview();
+    expect(useStructureStore.getState().ocrReviewState).toBeNull();
+  });
 });
 

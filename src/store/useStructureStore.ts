@@ -9,6 +9,11 @@ import {
 } from '../types/structure';
 import { sampleTrustStructure } from '../data/sampleStructure';
 
+export interface OcrReviewState {
+  summary: string;
+  warnings: string[];
+}
+
 export interface StructureState {
   metadata: ChartMetadata;
   entities: EntityNodeData[];
@@ -16,12 +21,18 @@ export interface StructureState {
   selectedEntityId: string | null;
   highlightedDirector: string | null;
   sortCriteria: SiblingSortCriteria;
+  undoSnapshot: TrustStructureChart | null;
+  ocrReviewState: OcrReviewState | null;
 
   // Actions
   setMetadata: (meta: Partial<ChartMetadata>) => void;
   setSelectedEntityId: (id: string | null) => void;
   setHighlightedDirector: (directorName: string | null) => void;
   setSortCriteria: (criteria: SiblingSortCriteria) => void;
+  setUndoSnapshot: (snapshot: TrustStructureChart | null) => void;
+  restoreUndoSnapshot: () => boolean;
+  setOcrReviewState: (state: OcrReviewState | null) => void;
+  dismissOcrReview: () => void;
 
   // Entity mutations
   addEntity: (entity: Omit<EntityNodeData, 'id'>, parentId?: string, ownershipPct?: number) => EntityNodeData;
@@ -52,6 +63,8 @@ export const useStructureStore = create<StructureState>((set) => ({
   selectedEntityId: null,
   highlightedDirector: null,
   sortCriteria: 'alphabetical',
+  undoSnapshot: null,
+  ocrReviewState: null,
 
   setMetadata: (meta) =>
     set((state) => ({ metadata: { ...state.metadata, ...meta } })),
@@ -59,6 +72,26 @@ export const useStructureStore = create<StructureState>((set) => ({
   setSelectedEntityId: (id) => set({ selectedEntityId: id }),
   setHighlightedDirector: (directorName) => set({ highlightedDirector: directorName }),
   setSortCriteria: (criteria) => set({ sortCriteria: criteria }),
+
+  setUndoSnapshot: (snapshot) => set({ undoSnapshot: snapshot }),
+
+  restoreUndoSnapshot: () => {
+    const snapshot = useStructureStore.getState().undoSnapshot;
+    if (!snapshot) return false;
+    set({
+      metadata: { ...snapshot.metadata },
+      entities: [...snapshot.entities],
+      relationships: [...snapshot.relationships],
+      undoSnapshot: null,
+      ocrReviewState: null,
+      selectedEntityId: null,
+      highlightedDirector: null,
+    });
+    return true;
+  },
+
+  setOcrReviewState: (state) => set({ ocrReviewState: state }),
+  dismissOcrReview: () => set({ ocrReviewState: null }),
 
   addEntity: (entityData, parentId, ownershipPct = 100) => {
     const newId = `entity-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
