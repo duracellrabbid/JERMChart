@@ -5,9 +5,10 @@ import {
   exportToPdf,
   exportToPptx,
   downloadJsonBackup,
+  downloadExcelStructure,
   parseJsonBackup,
 } from '../../utils/exportService';
-import { FileDown, Image, FileText, Upload, Check, X, Presentation } from 'lucide-react';
+import { FileDown, Image, FileText, Upload, Check, X, Presentation, FileSpreadsheet } from 'lucide-react';
 
 interface ExportModalProps {
   onClose: () => void;
@@ -73,6 +74,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleExportExcel = () => {
+    downloadExcelStructure({ metadata, entities, relationships });
+    setSuccessMsg('Excel workbook (.xlsx) downloaded successfully.');
   };
 
   const handleDownloadBackup = () => {
@@ -178,6 +184,29 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
             </div>
             <span className="text-xs font-semibold text-sky-600 group-hover:underline">
               {isExporting ? 'Exporting...' : 'Download'}
+            </span>
+          </button>
+
+          <button
+            onClick={handleExportExcel}
+            disabled={isExporting}
+            className="w-full p-3 rounded-lg border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded bg-emerald-100 text-emerald-700">
+                <FileSpreadsheet className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-semibold text-xs text-slate-900">
+                  Excel Spreadsheet (.xlsx)
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Editable structure table matching import template
+                </div>
+              </div>
+            </div>
+            <span className="text-xs font-semibold text-sky-600 group-hover:underline">
+              Download
             </span>
           </button>
 

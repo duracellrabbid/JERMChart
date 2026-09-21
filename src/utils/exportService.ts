@@ -2,6 +2,7 @@ import { toPng, toSvg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import pptxgen from 'pptxgenjs';
 import { ChartMetadata, TrustStructureChart } from '../types/structure';
+import { exportStructureToExcel } from './excelExporter';
 
 export function parseJsonBackup(jsonString: string): TrustStructureChart | null {
   try {
@@ -28,6 +29,20 @@ export function downloadJsonBackup(chart: TrustStructureChart): void {
   const link = document.createElement('a');
   const safeTitle = (chart.metadata?.chartTitle || 'Trust').replace(/[^a-zA-Z0-9]/g, '_');
   link.download = `${safeTitle}_Structure.json`;
+  link.href = url;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export function downloadExcelStructure(chart: TrustStructureChart): void {
+  const bytes = exportStructureToExcel(chart);
+  const blob = new Blob([bytes.buffer as ArrayBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const safeTitle = (chart.metadata?.chartTitle || 'Trust').replace(/[^a-zA-Z0-9]/g, '_');
+  link.download = `${safeTitle}_Structure.xlsx`;
   link.href = url;
   link.click();
   URL.revokeObjectURL(url);

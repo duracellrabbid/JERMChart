@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   downloadJsonBackup,
+  downloadExcelStructure,
   parseJsonBackup,
   exportToImage,
   exportToPdf,
@@ -198,6 +199,42 @@ describe('exportService', () => {
         relationships: [],
       };
       downloadJsonBackup(chartNoMeta as any);
+      expect(createObjectURLSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('downloadExcelStructure', () => {
+    let createObjectURLSpy: any;
+    let revokeObjectURLSpy: any;
+    let clickSpy: any;
+
+    beforeEach(() => {
+      window.URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-excel-url');
+      window.URL.revokeObjectURL = vi.fn();
+      createObjectURLSpy = vi.spyOn(window.URL, 'createObjectURL');
+      revokeObjectURLSpy = vi.spyOn(window.URL, 'revokeObjectURL');
+      clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('triggers Excel file download with correct filename and cleans up object URL', () => {
+      downloadExcelStructure(sampleTrustStructure);
+
+      expect(createObjectURLSpy).toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalled();
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-excel-url');
+    });
+
+    it('falls back to default title "Trust" when chartTitle is missing', () => {
+      const chartNoTitle = {
+        metadata: { chartTitle: '', effectiveDate: '2026-01-01', confidentialityNotice: '' },
+        entities: [],
+        relationships: [],
+      };
+      downloadExcelStructure(chartNoTitle as any);
       expect(createObjectURLSpy).toHaveBeenCalled();
     });
   });

@@ -9,6 +9,7 @@ vi.mock('../../../utils/exportService', () => ({
   exportToPdf: vi.fn().mockResolvedValue(undefined),
   exportToPptx: vi.fn().mockResolvedValue(undefined),
   downloadJsonBackup: vi.fn(),
+  downloadExcelStructure: vi.fn(),
   parseJsonBackup: vi.fn(),
 }));
 
@@ -30,6 +31,7 @@ describe('ExportModal Component', () => {
     expect(screen.getByText(/High-Resolution PNG/i)).toBeInTheDocument();
     expect(screen.getByText(/Vector SVG/i)).toBeInTheDocument();
     expect(screen.getByText(/PowerPoint \(\.pptx\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Excel Spreadsheet \(\.xlsx\)/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Save JSON File/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Load JSON File/i })).toBeInTheDocument();
   });
@@ -70,6 +72,24 @@ describe('ExportModal Component', () => {
         expect.objectContaining({ chartTitle: expect.any(String) })
       );
       expect(screen.getByText(/PowerPoint presentation generated successfully/i)).toBeInTheDocument();
+    });
+  });
+
+  it('triggers Excel export and displays success feedback', async () => {
+    render(<ExportModal onClose={mockOnClose} />);
+
+    const excelBtn = screen.getByRole('button', { name: /Excel Spreadsheet \(\.xlsx\)/i });
+    fireEvent.click(excelBtn);
+
+    await waitFor(() => {
+      expect(exportService.downloadExcelStructure).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expect.any(Object),
+          entities: expect.any(Array),
+          relationships: expect.any(Array),
+        })
+      );
+      expect(screen.getByText(/Excel workbook \(\.xlsx\) downloaded successfully/i)).toBeInTheDocument();
     });
   });
 
