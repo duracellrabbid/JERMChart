@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.4",
+    "@google/genai": "^2.23.0",
     "@xyflow/react": "^12.4.2",
     "clsx": "^2.1.1",
     "heic2any": "^0.0.4",

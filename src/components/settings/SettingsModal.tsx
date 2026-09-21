@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { GoogleGenAI } from '@google/genai';
 import {
   AIConfig,
   AIProvider,
@@ -66,19 +67,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     try {
       if (config.provider === 'gemini') {
         const model = config.model || 'gemini-2.5-flash';
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.apiKey.trim()}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: 'Ping' }] }],
-          }),
+        const ai = new GoogleGenAI({ apiKey: config.apiKey.trim() });
+        await ai.models.generateContent({
+          model,
+          contents: 'Ping',
         });
-
-        if (!res.ok) {
-          const err = await res.text();
-          throw new Error(`HTTP ${res.status}: ${err}`);
-        }
       } else {
         const baseUrl = config.customEndpoint || 'https://api.openai.com/v1';
         const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;

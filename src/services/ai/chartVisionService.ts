@@ -1,3 +1,4 @@
+import { GoogleGenAI } from '@google/genai';
 import { AIConfig } from './aiConfig';
 import {
   Director,
@@ -162,40 +163,25 @@ async function callGeminiVision(
   config: AIConfig
 ): Promise<string> {
   const model = config.model || 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.apiKey}`;
+  const ai = new GoogleGenAI({ apiKey: config.apiKey.trim() });
 
-  const requestBody = {
+  const response = await ai.models.generateContent({
+    model,
     contents: [
       {
-        parts: [
-          { text: SYSTEM_INSTRUCTION },
-          {
-            inlineData: {
-              mimeType,
-              data: base64Image,
-            },
-          },
-        ],
+        inlineData: {
+          mimeType,
+          data: base64Image,
+        },
       },
+      { text: SYSTEM_INSTRUCTION },
     ],
-    generationConfig: {
+    config: {
       responseMimeType: 'application/json',
     },
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`AI request failed (${response.status}): ${errorText}`);
-  }
-
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = response.text;
   if (!text) throw new Error('AI returned an empty response.');
   return text;
 }

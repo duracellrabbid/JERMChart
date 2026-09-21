@@ -3,9 +3,19 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SettingsModal } from '../../../components/settings/SettingsModal';
 import * as aiConfig from '../../../services/ai/aiConfig';
 
+const mockGenerateContent = vi.fn();
+vi.mock('@google/genai', () => ({
+  GoogleGenAI: class MockGoogleGenAI {
+    models = {
+      generateContent: mockGenerateContent,
+    };
+  },
+}));
+
 describe('SettingsModal', () => {
   beforeEach(() => {
     aiConfig.clearAIConfig();
+    vi.clearAllMocks();
   });
 
   it('renders provider selection, api key input, and model fields', () => {
@@ -60,10 +70,7 @@ describe('SettingsModal', () => {
   });
 
   it('tests connection successfully when ping passes', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ candidates: [{ content: { parts: [{ text: 'pong' }] } }] }),
-    });
+    mockGenerateContent.mockResolvedValueOnce({ text: 'pong' });
 
     render(<SettingsModal onClose={vi.fn()} />);
 
@@ -74,16 +81,17 @@ describe('SettingsModal', () => {
     fireEvent.click(testBtn);
 
     await waitFor(() => {
+      expect(mockGenerateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contents: 'Ping',
+        })
+      );
       expect(screen.getByText(/connection verified successfully/i)).toBeInTheDocument();
     });
   });
 
   it('displays error when testing connection with invalid key or network error', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 403,
-      text: async () => 'Permission denied',
-    });
+    mockGenerateContent.mockRejectedValueOnce(new Error('Permission denied'));
 
     render(<SettingsModal onClose={vi.fn()} />);
 
@@ -94,7 +102,7 @@ describe('SettingsModal', () => {
     fireEvent.click(testBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/connection test failed/i)).toBeInTheDocument();
+      expect(screen.getByText(/connection test failed: Permission denied/i)).toBeInTheDocument();
     });
   });
 

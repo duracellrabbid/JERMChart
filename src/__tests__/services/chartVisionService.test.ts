@@ -5,6 +5,15 @@ import {
 } from '../../services/ai/chartVisionService';
 import { AIConfig } from '../../services/ai/aiConfig';
 
+const mockGenerateContent = vi.fn();
+vi.mock('@google/genai', () => ({
+  GoogleGenAI: class MockGoogleGenAI {
+    models = {
+      generateContent: mockGenerateContent,
+    };
+  },
+}));
+
 describe('chartVisionService', () => {
   const originalFetch = global.fetch;
 
@@ -92,31 +101,16 @@ describe('chartVisionService', () => {
     );
   });
 
-  it('calls Google Gemini API and returns parsed chart', async () => {
-    const mockGeminiResponse = {
-      candidates: [
-        {
-          content: {
-            parts: [
-              {
-                text: JSON.stringify({
-                  chartTitle: 'Gemini Structure',
-                  entities: [
-                    { tempId: 'g1', name: 'Gemini Trust', type: 'Trust', jurisdiction: 'Cayman Islands' },
-                  ],
-                  relationships: [],
-                  warnings: [],
-                }),
-              },
-            ],
-          },
-        },
-      ],
-    };
-
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockGeminiResponse,
+  it('calls Google Gemini API via official SDK and returns parsed chart', async () => {
+    mockGenerateContent.mockResolvedValueOnce({
+      text: JSON.stringify({
+        chartTitle: 'Gemini Structure',
+        entities: [
+          { tempId: 'g1', name: 'Gemini Trust', type: 'Trust', jurisdiction: 'Cayman Islands' },
+        ],
+        relationships: [],
+        warnings: [],
+      }),
     });
 
     const config: AIConfig = {
@@ -126,10 +120,14 @@ describe('chartVisionService', () => {
     };
 
     const result = await analyzeChartImage('base64imgdata', 'image/jpeg', config);
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('gemini-2.5-flash:generateContent?key=test-gemini-key'),
+    expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
-        method: 'POST',
+        model: 'gemini-2.5-flash',
+        contents: expect.arrayContaining([
+          expect.objectContaining({
+            inlineData: { mimeType: 'image/jpeg', data: 'base64imgdata' },
+          }),
+        ]),
       })
     );
     expect(result.chart.metadata.chartTitle).toBe('Gemini Structure');
@@ -187,13 +185,8 @@ describe('chartVisionService', () => {
     );
   });
 
-  it('throws error on API HTTP failure with details', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-      statusText: 'Bad Request',
-      text: async () => 'API key not valid',
-    });
+  it('throws error on Gemini API failure with details', async () => {
+    mockGenerateContent.mockRejectedValueOnce(new Error('API key not valid'));
 
     const config: AIConfig = {
       provider: 'gemini',
@@ -202,7 +195,26 @@ describe('chartVisionService', () => {
     };
 
     await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
-      /ai request failed \(400\): API key not valid/i
+      /API key not valid/i
+    );
+  });
+
+  it('throws error on OpenAI HTTP failure with details', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      text: async () => 'Quota exceeded',
+    });
+
+    const config: AIConfig = {
+      provider: 'openai',
+      apiKey: 'invalid-key',
+      model: 'gpt-4o',
+    };
+
+    await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
+      /ai request failed \(400\): Quota exceeded/i
     );
   });
 });
