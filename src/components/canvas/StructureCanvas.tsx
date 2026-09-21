@@ -16,6 +16,7 @@ import { useStructureStore } from '../../store/useStructureStore';
 import { EntityCardNode } from '../nodes/EntityCardNode';
 import { OwnershipEdge } from '../edges/OwnershipEdge';
 import { calculateSortedLayout } from '../../utils/layoutEngine';
+import { OcrReviewBanner } from './OcrReviewBanner';
 
 const nodeTypes = {
   entityNode: EntityCardNode,
@@ -70,6 +71,7 @@ export const StructureCanvas: React.FC = () => {
 
   return (
     <div className="relative w-full h-full bg-slate-100" id="trust-structure-canvas">
+      <OcrReviewBanner />
       <ReactFlow
         nodes={nodes}
         edges={edges}
