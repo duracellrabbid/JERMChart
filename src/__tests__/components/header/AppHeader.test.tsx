@@ -6,6 +6,20 @@ import { useStructureStore } from '../../../store/useStructureStore';
 describe('AppHeader', () => {
   const onOpenExportMock = vi.fn();
   const onOpenExcelImportMock = vi.fn();
+  const onOpenPhotoImportMock = vi.fn();
+  const onOpenSettingsMock = vi.fn();
+
+  const renderHeader = (customWrapper?: (ui: React.ReactElement) => React.ReactElement) => {
+    const ui = (
+      <AppHeader
+        onOpenExport={onOpenExportMock}
+        onOpenExcelImport={onOpenExcelImportMock}
+        onOpenPhotoImport={onOpenPhotoImportMock}
+        onOpenSettings={onOpenSettingsMock}
+      />
+    );
+    return customWrapper ? render(customWrapper(ui)) : render(ui);
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -15,7 +29,7 @@ describe('AppHeader', () => {
   });
 
   it('renders default chart title, client reference, effective date, and fiduciary badge', () => {
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     expect(screen.getByText(/The Aurelius Dynasty Trust Structure/i)).toBeInTheDocument();
     expect(screen.getByText(/\(TRUST-2026-088\)/i)).toBeInTheDocument();
@@ -24,7 +38,7 @@ describe('AppHeader', () => {
   });
 
   it('allows editing chart title inline and updates store', () => {
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const titleElement = screen.getByText(/The Aurelius Dynasty Trust Structure/i);
     fireEvent.click(titleElement);
@@ -42,7 +56,7 @@ describe('AppHeader', () => {
   });
 
   it('closes title edit mode on Enter key press', () => {
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const titleElement = screen.getByText(/The Aurelius Dynasty Trust Structure/i);
     fireEvent.click(titleElement);
@@ -56,7 +70,7 @@ describe('AppHeader', () => {
   });
 
   it('enters title edit mode when pressing Enter or Space on title heading', () => {
-    const { unmount } = render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    const { unmount } = renderHeader();
 
     const heading = screen.getByRole('heading', { level: 1 });
     expect(heading).toHaveAttribute('tabIndex', '0');
@@ -67,14 +81,14 @@ describe('AppHeader', () => {
     unmount();
 
     // Test Space key
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
     const heading2 = screen.getByRole('heading', { level: 1 });
     fireEvent.keyDown(heading2, { key: ' ', code: 'Space' });
     expect(screen.getByRole('textbox')).toBeInTheDocument();
   });
 
   it('reverts title to initial value and closes edit mode on Escape key press', () => {
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const titleElement = screen.getByText(/The Aurelius Dynasty Trust Structure/i);
     fireEvent.click(titleElement);
@@ -91,7 +105,7 @@ describe('AppHeader', () => {
   });
 
   it('displays sibling sort criteria and updates store on selection change', () => {
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const select = screen.getByRole('combobox');
     expect(select).toHaveValue('alphabetical');
@@ -109,7 +123,7 @@ describe('AppHeader', () => {
   it('triggers layout refresh on clicking Auto-Tidy button', () => {
     const setStateSpy = vi.spyOn(useStructureStore, 'setState');
 
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const autoTidyBtn = screen.getByRole('button', { name: /Auto-Tidy/i });
     fireEvent.click(autoTidyBtn);
@@ -125,7 +139,7 @@ describe('AppHeader', () => {
     });
     expect(useStructureStore.getState().metadata.chartTitle).toBe('Modified Title');
 
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const resetTrigger = screen.getByRole('button', { name: /Reset \/ New/i });
     fireEvent.click(resetTrigger);
@@ -147,7 +161,7 @@ describe('AppHeader', () => {
       useStructureStore.getState().setMetadata({ chartTitle: 'Custom Unsaved Trust' });
     });
 
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const resetTrigger = screen.getByRole('button', { name: /Reset \/ New/i });
     fireEvent.click(resetTrigger);
@@ -164,7 +178,7 @@ describe('AppHeader', () => {
 
     expect(useStructureStore.getState().entities.length).toBeGreaterThan(0);
 
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const resetTrigger = screen.getByRole('button', { name: /Reset \/ New/i });
     fireEvent.click(resetTrigger);
@@ -187,7 +201,7 @@ describe('AppHeader', () => {
     const initialCount = useStructureStore.getState().entities.length;
     expect(initialCount).toBeGreaterThan(0);
 
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const resetTrigger = screen.getByRole('button', { name: /Reset \/ New/i });
     fireEvent.click(resetTrigger);
@@ -203,7 +217,12 @@ describe('AppHeader', () => {
     render(
       <div>
         <div data-testid="outside">Outside Element</div>
-        <AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />
+        <AppHeader
+          onOpenExport={onOpenExportMock}
+          onOpenExcelImport={onOpenExcelImportMock}
+          onOpenPhotoImport={onOpenPhotoImportMock}
+          onOpenSettings={onOpenSettingsMock}
+        />
       </div>
     );
 
@@ -218,7 +237,7 @@ describe('AppHeader', () => {
   });
 
   it('closes reset menu when Escape key is pressed', () => {
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const resetTrigger = screen.getByRole('button', { name: /Reset \/ New/i });
     fireEvent.click(resetTrigger);
@@ -230,18 +249,69 @@ describe('AppHeader', () => {
     expect(screen.queryByRole('button', { name: /Clear Canvas \(Blank\)/i })).not.toBeInTheDocument();
   });
 
-  it('calls onOpenExcelImport callback when Import Excel button is clicked', () => {
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+  it('opens import dropdown and triggers Excel import', () => {
+    renderHeader();
 
-    const importBtn = screen.getByRole('button', { name: /Import Excel/i });
-    expect(importBtn).toBeInTheDocument();
-    fireEvent.click(importBtn);
+    const importTrigger = screen.getByRole('button', { name: /^Import$/i });
+    expect(importTrigger).toBeInTheDocument();
+    fireEvent.click(importTrigger);
+
+    const excelOption = screen.getByRole('button', { name: /import excel \(\.xlsx\)/i });
+    expect(excelOption).toBeInTheDocument();
+    fireEvent.click(excelOption);
 
     expect(onOpenExcelImportMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /import excel \(\.xlsx\)/i })).not.toBeInTheDocument();
+  });
+
+  it('opens import dropdown and triggers Photo import', () => {
+    renderHeader();
+
+    const importTrigger = screen.getByRole('button', { name: /^Import$/i });
+    fireEvent.click(importTrigger);
+
+    const photoOption = screen.getByRole('button', { name: /import from photo/i });
+    expect(photoOption).toBeInTheDocument();
+    fireEvent.click(photoOption);
+
+    expect(onOpenPhotoImportMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /import from photo/i })).not.toBeInTheDocument();
+  });
+
+  it('closes import dropdown when clicking outside', () => {
+    render(
+      <div>
+        <div data-testid="outside-import">Outside</div>
+        <AppHeader
+          onOpenExport={onOpenExportMock}
+          onOpenExcelImport={onOpenExcelImportMock}
+          onOpenPhotoImport={onOpenPhotoImportMock}
+          onOpenSettings={onOpenSettingsMock}
+        />
+      </div>
+    );
+
+    const importTrigger = screen.getByRole('button', { name: /^Import$/i });
+    fireEvent.click(importTrigger);
+
+    expect(screen.getByRole('button', { name: /import excel/i })).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByTestId('outside-import'));
+    expect(screen.queryByRole('button', { name: /import excel/i })).not.toBeInTheDocument();
+  });
+
+  it('calls onOpenSettings when Settings button is clicked', () => {
+    renderHeader();
+
+    const settingsBtn = screen.getByRole('button', { name: /ai settings/i });
+    expect(settingsBtn).toBeInTheDocument();
+    fireEvent.click(settingsBtn);
+
+    expect(onOpenSettingsMock).toHaveBeenCalledTimes(1);
   });
 
   it('calls onOpenExport callback when Export Chart button is clicked', () => {
-    render(<AppHeader onOpenExport={onOpenExportMock} onOpenExcelImport={onOpenExcelImportMock} />);
+    renderHeader();
 
     const exportBtn = screen.getByRole('button', { name: /Export Chart/i });
     fireEvent.click(exportBtn);

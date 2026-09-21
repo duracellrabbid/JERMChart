@@ -9,14 +9,24 @@ import {
   ChevronDown,
   FileSpreadsheet,
   Trash2,
+  Upload,
+  Camera,
+  Settings,
 } from 'lucide-react';
 
 interface AppHeaderProps {
   onOpenExport: () => void;
   onOpenExcelImport: () => void;
+  onOpenPhotoImport: () => void;
+  onOpenSettings: () => void;
 }
 
-export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport, onOpenExcelImport }) => {
+export const AppHeader: React.FC<AppHeaderProps> = ({
+  onOpenExport,
+  onOpenExcelImport,
+  onOpenPhotoImport,
+  onOpenSettings,
+}) => {
   const metadata = useStructureStore((state) => state.metadata);
   const setMetadata = useStructureStore((state) => state.setMetadata);
   const sortCriteria = useStructureStore((state) => state.sortCriteria);
@@ -27,27 +37,36 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport, onOpenExcelI
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [initialTitle, setInitialTitle] = useState('');
   const [isResetMenuOpen, setIsResetMenuOpen] = useState(false);
+  const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
+
   const resetMenuRef = useRef<HTMLDivElement>(null);
+  const importMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isResetMenuOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (resetMenuRef.current && !resetMenuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (resetMenuRef.current && !resetMenuRef.current.contains(target)) {
         setIsResetMenuOpen(false);
       }
+      if (importMenuRef.current && !importMenuRef.current.contains(target)) {
+        setIsImportMenuOpen(false);
+      }
     };
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsResetMenuOpen(false);
+        setIsImportMenuOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isResetMenuOpen]);
+  }, []);
 
   const handleStartEditing = () => {
     setInitialTitle(metadata.chartTitle);
@@ -101,32 +120,34 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport, onOpenExcelI
           <div className="text-[10px] text-slate-400 flex items-center gap-2">
             <span>Effective: {metadata.effectiveDate}</span>
             <span>•</span>
-            <span className="text-amber-400 font-medium flex items-center gap-1">
-              <ShieldAlert className="w-3 h-3" />
-              Confidential Fiduciary Document
+            <span className="text-amber-400/90 flex items-center gap-1 font-medium">
+              <ShieldAlert className="w-3 h-3 inline" /> Confidential Fiduciary Document
             </span>
           </div>
         </div>
       </div>
 
-      {/* Sorting Controls & Actions */}
+      {/* Action Toolbar */}
       <div className="flex items-center gap-2">
-        {/* Sibling Sort Dropdown */}
-        <div className="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700 text-xs">
-          <span className="text-slate-400 font-medium">Sort Siblings:</span>
+        {/* Sibling Sorting Controls */}
+        <div className="flex items-center gap-1.5 mr-2">
+          <label htmlFor="sibling-sort-select" className="text-xs text-slate-400 font-medium">
+            Sort Siblings:
+          </label>
           <select
+            id="sibling-sort-select"
             value={sortCriteria}
             onChange={(e) => setSortCriteria(e.target.value as SiblingSortCriteria)}
-            className="bg-transparent text-sky-400 font-semibold focus:outline-none cursor-pointer"
+            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-sky-500 cursor-pointer"
           >
             <option value="alphabetical" className="bg-slate-800 text-white">
               Alphabetical (A-Z)
             </option>
             <option value="ownership" className="bg-slate-800 text-white">
-              Ownership % (High → Low)
+              Ownership % (High-Low)
             </option>
             <option value="jurisdiction" className="bg-slate-800 text-white">
-              Jurisdiction Group
+              Jurisdiction / Domicile
             </option>
             <option value="manual" className="bg-slate-800 text-white">
               Manual Ordering
@@ -137,7 +158,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport, onOpenExcelI
         {/* Auto-Tidy Layout Trigger */}
         <button
           onClick={() => {
-            // Re-trigger layout engine
             useStructureStore.setState((state) => ({
               sortCriteria: state.sortCriteria,
               entities: [...state.entities],
@@ -193,14 +213,56 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport, onOpenExcelI
           )}
         </div>
 
-        {/* Import Excel Trigger */}
-        <button
-          onClick={onOpenExcelImport}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-md border border-slate-700 shadow transition cursor-pointer"
-          title="Import structure from Excel workbook"
-        >
-          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" /> Import Excel
-        </button>
+        {/* Import Dropdown */}
+        <div className="relative" ref={importMenuRef}>
+          <button
+            onClick={() => setIsImportMenuOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-md border border-slate-700 shadow transition cursor-pointer"
+            title="Import structure into canvas"
+            aria-expanded={isImportMenuOpen}
+            aria-haspopup="true"
+          >
+            <Upload className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Import</span>
+            <ChevronDown className="w-3 h-3 text-slate-400" />
+          </button>
+
+          {isImportMenuOpen && (
+            <div className="absolute right-0 mt-1 w-64 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-30 animate-in fade-in duration-100">
+              <button
+                onClick={() => {
+                  setIsImportMenuOpen(false);
+                  onOpenExcelImport();
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold text-slate-100">Import Excel (.xlsx)</div>
+                  <div className="text-[10px] text-slate-400">Load structured table template</div>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  setIsImportMenuOpen(false);
+                  onOpenPhotoImport();
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition cursor-pointer border-t border-slate-700/60"
+              >
+                <Camera className="w-4 h-4 text-sky-400 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold text-slate-100 flex items-center gap-1.5">
+                    <span>Import from Photo</span>
+                    <span className="px-1.5 py-0.2 bg-sky-500/20 text-sky-300 text-[9px] font-bold rounded">
+                      AI OCR
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400">Transcribe hand-drawn chart photo</div>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Export Trigger */}
         <button
@@ -208,6 +270,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenExport, onOpenExcelI
           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-md shadow transition cursor-pointer"
         >
           <FileDown className="w-3.5 h-3.5" /> Export Chart
+        </button>
+
+        {/* Settings Trigger */}
+        <button
+          onClick={onOpenSettings}
+          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-md border border-slate-700 shadow transition cursor-pointer"
+          title="AI Provider & Settings"
+          aria-label="AI Settings"
+        >
+          <Settings className="w-4 h-4 text-slate-400 hover:text-sky-400" />
         </button>
       </div>
     </header>

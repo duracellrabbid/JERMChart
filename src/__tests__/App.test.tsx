@@ -2,11 +2,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import App from '../App';
 import { useStructureStore } from '../store/useStructureStore';
+import * as aiConfig from '../services/ai/aiConfig';
 
 describe('App Integration', () => {
   beforeEach(() => {
     act(() => {
       useStructureStore.getState().resetToSample();
+      aiConfig.clearAIConfig();
     });
   });
 
@@ -48,14 +50,18 @@ describe('App Integration', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('opens and closes excel import modal when import excel button is clicked and closed', () => {
+  it('opens and closes excel import modal via Import dropdown', () => {
     render(<App />);
 
     expect(screen.queryByRole('heading', { name: /Import Structure from Excel/i })).not.toBeInTheDocument();
 
-    // Click Import Excel button
-    const importBtn = screen.getByRole('button', { name: /Import Excel/i });
-    fireEvent.click(importBtn);
+    // Click Import dropdown trigger
+    const importDropdown = screen.getByRole('button', { name: /^Import$/i });
+    fireEvent.click(importDropdown);
+
+    // Click Import Excel (.xlsx) option
+    const excelOption = screen.getByRole('button', { name: /Import Excel \(\.xlsx\)/i });
+    fireEvent.click(excelOption);
 
     // Modal is opened
     expect(screen.getByRole('heading', { name: /Import Structure from Excel/i })).toBeInTheDocument();
@@ -67,5 +73,35 @@ describe('App Integration', () => {
     // Modal is closed
     expect(screen.queryByRole('heading', { name: /Import Structure from Excel/i })).not.toBeInTheDocument();
   });
-});
 
+  it('opens and closes photo import modal via Import dropdown', () => {
+    render(<App />);
+
+    const importDropdown = screen.getByRole('button', { name: /^Import$/i });
+    fireEvent.click(importDropdown);
+
+    const photoOption = screen.getByRole('button', { name: /Import from Photo/i });
+    fireEvent.click(photoOption);
+
+    expect(screen.getByText(/Import from Photo \/ Hand-drawn Chart/i)).toBeInTheDocument();
+
+    const cancelBtn = screen.getByRole('button', { name: /Cancel|Close/i });
+    fireEvent.click(cancelBtn);
+
+    expect(screen.queryByText(/Import from Photo \/ Hand-drawn Chart/i)).not.toBeInTheDocument();
+  });
+
+  it('opens and closes settings modal via Settings button', () => {
+    render(<App />);
+
+    const settingsBtn = screen.getByRole('button', { name: /AI Settings/i });
+    fireEvent.click(settingsBtn);
+
+    expect(screen.getByText(/AI Provider & API Keys/i)).toBeInTheDocument();
+
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+
+    expect(screen.queryByText(/AI Provider & API Keys/i)).not.toBeInTheDocument();
+  });
+});
