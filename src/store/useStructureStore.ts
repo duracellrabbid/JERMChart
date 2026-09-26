@@ -23,12 +23,16 @@ export interface StructureState {
   sortCriteria: SiblingSortCriteria;
   undoSnapshot: TrustStructureChart | null;
   ocrReviewState: OcrReviewState | null;
+  directorCap: number | 'all';
+  isExportMode: boolean;
 
   // Actions
   setMetadata: (meta: Partial<ChartMetadata>) => void;
   setSelectedEntityId: (id: string | null) => void;
   setHighlightedDirector: (directorName: string | null) => void;
   setSortCriteria: (criteria: SiblingSortCriteria) => void;
+  setDirectorCap: (cap: number | 'all') => void;
+  setExportMode: (isExport: boolean) => void;
   setUndoSnapshot: (snapshot: TrustStructureChart | null) => void;
   restoreUndoSnapshot: () => boolean;
   setOcrReviewState: (state: OcrReviewState | null) => void;
@@ -65,6 +69,8 @@ export const useStructureStore = create<StructureState>((set) => ({
   sortCriteria: 'alphabetical',
   undoSnapshot: null,
   ocrReviewState: null,
+  directorCap: 3,
+  isExportMode: false,
 
   setMetadata: (meta) =>
     set((state) => ({ metadata: { ...state.metadata, ...meta } })),
@@ -72,6 +78,8 @@ export const useStructureStore = create<StructureState>((set) => ({
   setSelectedEntityId: (id) => set({ selectedEntityId: id }),
   setHighlightedDirector: (directorName) => set({ highlightedDirector: directorName }),
   setSortCriteria: (criteria) => set({ sortCriteria: criteria }),
+  setDirectorCap: (cap) => set({ directorCap: cap }),
+  setExportMode: (isExport) => set({ isExportMode: isExport }),
 
   setUndoSnapshot: (snapshot) => set({ undoSnapshot: snapshot }),
 
@@ -86,6 +94,7 @@ export const useStructureStore = create<StructureState>((set) => ({
       ocrReviewState: null,
       selectedEntityId: null,
       highlightedDirector: null,
+      isExportMode: false,
     });
     return true;
   },

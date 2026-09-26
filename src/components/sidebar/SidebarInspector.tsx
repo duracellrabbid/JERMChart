@@ -48,6 +48,7 @@ export const SidebarInspector: React.FC = () => {
             <FileEdit className="w-3.5 h-3.5" /> Details
           </button>
           <button
+            data-testid="tab-directors"
             onClick={() => setActiveTab('directors')}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-md border-b-2 transition ${
               activeTab === 'directors'

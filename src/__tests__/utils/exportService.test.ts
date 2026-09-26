@@ -6,6 +6,10 @@ import {
   exportToImage,
   exportToPdf,
   exportToPptx,
+  parseTranslateCoordinates,
+  getNodeDimensions,
+  calculateViewportExportBounds,
+  getViewportExportConfig,
 } from '../../utils/exportService';
 import { sampleTrustStructure } from '../../data/sampleStructure';
 
@@ -447,4 +451,210 @@ describe('exportService', () => {
       );
     });
   });
+
+  describe('viewport export bounds and helpers', () => {
+    describe('parseTranslateCoordinates', () => {
+      it('parses standard translate(x px, y px) correctly', () => {
+        expect(parseTranslateCoordinates('translate(120px, 450px)')).toEqual({ x: 120, y: 450 });
+        expect(parseTranslateCoordinates('translate(-50.5px, -100.25px)')).toEqual({
+          x: -50.5,
+          y: -100.25,
+        });
+      });
+
+      it('parses translate3d(x px, y px, z px) correctly', () => {
+        expect(parseTranslateCoordinates('translate3d(300px, 200px, 0px)')).toEqual({
+          x: 300,
+          y: 200,
+        });
+      });
+
+      it('returns null for non-matching or empty transform strings', () => {
+        expect(parseTranslateCoordinates('')).toBeNull();
+        expect(parseTranslateCoordinates('none')).toBeNull();
+        expect(parseTranslateCoordinates('scale(1.5)')).toBeNull();
+      });
+    });
+
+    describe('getNodeDimensions', () => {
+      it('extracts dimensions from element inline style width and height', () => {
+        const el = document.createElement('div');
+        el.style.width = '350px';
+        el.style.height = '280px';
+        expect(getNodeDimensions(el)).toEqual({ width: 350, height: 280 });
+      });
+
+      it('extracts dimensions from offsetWidth and offsetHeight if style is unset', () => {
+        const el = document.createElement('div');
+        Object.defineProperty(el, 'offsetWidth', { value: 300, configurable: true });
+        Object.defineProperty(el, 'offsetHeight', { value: 250, configurable: true });
+        expect(getNodeDimensions(el)).toEqual({ width: 300, height: 250 });
+      });
+
+      it('extracts dimensions from first child element if parent lacks size', () => {
+        const parent = document.createElement('div');
+        const child = document.createElement('div');
+        child.style.width = '240px';
+        child.style.height = '220px';
+        parent.appendChild(child);
+        expect(getNodeDimensions(parent)).toEqual({ width: 240, height: 220 });
+      });
+
+      it('falls back to default 220x220 when no size is discoverable', () => {
+        const el = document.createElement('div');
+        expect(getNodeDimensions(el)).toEqual({ width: 220, height: 220 });
+      });
+
+      it('falls back to default 220x220 when child exists but has zero size', () => {
+        const parent = document.createElement('div');
+        const child = document.createElement('div');
+        parent.appendChild(child);
+        expect(getNodeDimensions(parent)).toEqual({ width: 220, height: 220 });
+      });
+    });
+
+    describe('calculateViewportExportBounds', () => {
+      it('returns null when viewport has no nodes', () => {
+        const viewport = document.createElement('div');
+        expect(calculateViewportExportBounds(viewport)).toBeNull();
+      });
+
+      it('calculates bounding box enclosing all node elements', () => {
+        const viewport = document.createElement('div');
+        const node1 = document.createElement('div');
+        node1.className = 'react-flow__node';
+        node1.style.transform = 'translate(100px, 50px)';
+        node1.style.width = '300px';
+        node1.style.height = '200px';
+
+        const node2 = document.createElement('div');
+        node2.className = 'react-flow__node';
+        node2.style.transform = 'translate(500px, 400px)';
+        node2.style.width = '200px';
+        node2.style.height = '150px';
+
+        viewport.appendChild(node1);
+        viewport.appendChild(node2);
+
+        const bounds = calculateViewportExportBounds(viewport);
+        expect(bounds).toEqual({
+          x: 100,
+          y: 50,
+          width: 600, // maxX (700) - minX (100)
+          height: 500, // maxY (550) - minY (50)
+        });
+      });
+
+      it('falls back to offsetLeft and offsetTop when transform is missing', () => {
+        const viewport = document.createElement('div');
+        const node = document.createElement('div');
+        node.className = 'react-flow__node';
+        Object.defineProperty(node, 'offsetLeft', { value: 80, configurable: true });
+        Object.defineProperty(node, 'offsetTop', { value: 60, configurable: true });
+        node.style.width = '200px';
+        node.style.height = '180px';
+        viewport.appendChild(node);
+
+        const bounds = calculateViewportExportBounds(viewport);
+        expect(bounds).toEqual({
+          x: 80,
+          y: 60,
+          width: 200,
+          height: 180,
+        });
+      });
+    });
+
+    describe('getViewportExportConfig and full diagram export execution', () => {
+      it('configures custom dimensions and centering transform when nodes exist', () => {
+        const container = document.createElement('div');
+        const viewport = document.createElement('div');
+        viewport.className = 'react-flow__viewport';
+
+        const node = document.createElement('div');
+        node.className = 'react-flow__node';
+        node.style.transform = 'translate(150px, 100px)';
+        node.style.width = '400px';
+        node.style.height = '300px';
+        viewport.appendChild(node);
+        container.appendChild(viewport);
+
+        const config = getViewportExportConfig(container, 50);
+        expect(config.target).toBe(viewport);
+        expect(config.width).toBe(500); // 400 + 100 padding
+        expect(config.height).toBe(400); // 300 + 100 padding
+        expect(config.style?.transform).toBe('translate(-100px, -50px) scale(1)');
+      });
+
+      it('passes custom bounds to toPng and toSvg when exporting image with nodes', async () => {
+        const { toPng, toSvg } = await import('html-to-image');
+        const container = document.createElement('div');
+        container.id = 'full-chart-canvas';
+        const viewport = document.createElement('div');
+        viewport.className = 'react-flow__viewport';
+
+        const node = document.createElement('div');
+        node.className = 'react-flow__node';
+        node.style.transform = 'translate(100px, 100px)';
+        node.style.width = '200px';
+        node.style.height = '200px';
+        viewport.appendChild(node);
+        container.appendChild(viewport);
+        document.body.appendChild(container);
+
+        try {
+          await exportToImage('full-chart-canvas', 'png', 'full_chart');
+          expect(toPng).toHaveBeenCalledWith(
+            viewport,
+            expect.objectContaining({
+              width: 300,
+              height: 300,
+              style: expect.objectContaining({
+                transform: 'translate(-50px, -50px) scale(1)',
+              }),
+            })
+          );
+
+          await exportToImage('full-chart-canvas', 'svg', 'full_chart_svg');
+          expect(toSvg).toHaveBeenCalledWith(
+            viewport,
+            expect.objectContaining({
+              width: 300,
+              height: 300,
+              style: expect.objectContaining({
+                transform: 'translate(-50px, -50px) scale(1)',
+              }),
+            })
+          );
+
+          await exportToPdf('full-chart-canvas', sampleTrustStructure.metadata);
+          expect(toPng).toHaveBeenCalledWith(
+            viewport,
+            expect.objectContaining({
+              width: 300,
+              height: 300,
+              style: expect.objectContaining({
+                transform: 'translate(-50px, -50px) scale(1)',
+              }),
+            })
+          );
+
+          await exportToPptx('full-chart-canvas', sampleTrustStructure.metadata);
+          expect(toPng).toHaveBeenCalledWith(
+            viewport,
+            expect.objectContaining({
+              width: 300,
+              height: 300,
+              style: expect.objectContaining({
+                transform: 'translate(-50px, -50px) scale(1)',
+              }),
+            })
+          );
+        } finally {
+          container.remove();
+        }
+      });
+    });
+  });
 });
+

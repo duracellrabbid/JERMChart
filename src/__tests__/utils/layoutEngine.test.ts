@@ -3,6 +3,8 @@ import {
   calculateSortedLayout,
   sortSiblingEntities,
   calculateCardHeight,
+  calculateTrustDimensions,
+  calculateSubsidiaryDimensions,
   BASE_CARD_HEIGHT,
   DIRECTOR_ROW_HEIGHT,
   TRUST_CARD_WIDTH,
@@ -246,5 +248,102 @@ describe('layoutEngine', () => {
       expect(parent.position.y).toBeLessThan(child.position.y);
       expect(child.position.y).toBeLessThan(gc.position.y);
     });
+
+    it('populates directorCap and isExportMode on node data and dynamically sizes trust card with high content', () => {
+      const denseTrust: EntityNodeData = {
+        id: '1',
+        name: 'The Ultra Comprehensive Global Discretionary Trust With Extremely Long Name',
+        type: 'Trust',
+        jurisdiction: 'Cook Islands',
+        registrationNumber: 'REG-99999',
+        status: 'Active',
+        directors: [
+          { id: 'd1', name: 'Director One', isCorporate: false },
+          { id: 'd2', name: 'Director Two', isCorporate: true },
+          { id: 'd3', name: 'Director Three', isCorporate: false },
+          { id: 'd4', name: 'Director Four', isCorporate: true },
+          { id: 'd5', name: 'Director Five', isCorporate: false },
+        ],
+        ubosOrBeneficiaries: ['Beneficiary One', 'Beneficiary Two'],
+      };
+
+      const cappedLayout = calculateSortedLayout([denseTrust], [], 'alphabetical', 3, false);
+      const cappedNode = cappedLayout.nodes[0];
+      expect(cappedNode.data.directorCap).toBe(3);
+      expect(cappedNode.data.isExportMode).toBe(false);
+      expect(cappedNode.data.computedHeight).toBeGreaterThanOrEqual(280);
+      expect(cappedNode.data.computedWidth).toBe(Math.round(cappedNode.data.computedHeight * 1.25));
+
+      const uncappedLayout = calculateSortedLayout([denseTrust], [], 'alphabetical', 3, true);
+      const uncappedNode = uncappedLayout.nodes[0];
+      expect(uncappedNode.data.directorCap).toBe('all');
+      expect(uncappedNode.data.isExportMode).toBe(true);
+      expect(uncappedNode.data.computedHeight).toBeGreaterThan(cappedNode.data.computedHeight);
+    });
+
+    it('expands subsidiary cards vertically in export mode when director count exceeds 3', () => {
+      const denseSub: EntityNodeData = {
+        id: '2',
+        name: 'Sub With Many Directors',
+        type: 'Operating Company',
+        jurisdiction: 'Singapore',
+        status: 'Active',
+        directors: [
+          { id: 'd1', name: 'D1', isCorporate: false },
+          { id: 'd2', name: 'D2', isCorporate: false },
+          { id: 'd3', name: 'D3', isCorporate: false },
+          { id: 'd4', name: 'D4', isCorporate: false },
+          { id: 'd5', name: 'D5', isCorporate: false },
+        ],
+      };
+
+      const normalLayout = calculateSortedLayout([denseSub], [], 'alphabetical', 3, false);
+      expect(normalLayout.nodes[0].data.computedHeight).toBe(SUBSIDIARY_CARD_SIZE);
+
+      const exportLayout = calculateSortedLayout([denseSub], [], 'alphabetical', 3, true);
+      expect(exportLayout.nodes[0].data.computedHeight).toBe(SUBSIDIARY_CARD_SIZE + 2 * 22);
+    });
+
+    it('handles undefined or minimal entities and edge cases across dimension helpers', () => {
+      // Minimal trust entity with falsy name and undefined directors/UBOs
+      const minimalTrust = {
+        id: 'min-trust',
+        name: '',
+        type: 'Trust' as const,
+        jurisdiction: 'Jersey',
+        status: 'Active' as const,
+      };
+      const trustDims = calculateTrustDimensions(minimalTrust, 3);
+      expect(trustDims.width).toBe(TRUST_CARD_WIDTH);
+      expect(trustDims.height).toBe(TRUST_CARD_HEIGHT);
+
+      // Minimal subsidiary entity with undefined directors
+      const minimalSub = {
+        id: 'min-sub',
+        name: '',
+        type: 'Operating Company' as const,
+        jurisdiction: 'UK',
+        status: 'Active' as const,
+      };
+      const subDims = calculateSubsidiaryDimensions(minimalSub, 3, false);
+      expect(subDims.width).toBe(SUBSIDIARY_CARD_SIZE);
+      expect(subDims.height).toBe(SUBSIDIARY_CARD_SIZE);
+
+      // calculateSubsidiaryDimensions with undefined entity
+      const undefSubDims = calculateSubsidiaryDimensions(undefined);
+      expect(undefSubDims.width).toBe(SUBSIDIARY_CARD_SIZE);
+      expect(undefSubDims.height).toBe(SUBSIDIARY_CARD_SIZE);
+
+      // getEntityDimensions with undefined entity for Trust
+      const undefTrustDims = getEntityDimensions('Trust', undefined);
+      expect(undefTrustDims.width).toBe(TRUST_CARD_WIDTH);
+      expect(undefTrustDims.height).toBe(TRUST_CARD_HEIGHT);
+
+      // getEntityDimensions with undefined entity for subsidiary
+      const undefSubDims2 = getEntityDimensions('Operating Company', undefined);
+      expect(undefSubDims2.width).toBe(SUBSIDIARY_CARD_SIZE);
+      expect(undefSubDims2.height).toBe(SUBSIDIARY_CARD_SIZE);
+    });
   });
 });
+

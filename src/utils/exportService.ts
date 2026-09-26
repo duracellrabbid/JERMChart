@@ -48,6 +48,107 @@ export function downloadExcelStructure(chart: TrustStructureChart): void {
   URL.revokeObjectURL(url);
 }
 
+export interface ExportBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export function parseTranslateCoordinates(transform: string): { x: number; y: number } | null {
+  const match = /translate(?:3d)?\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px/i.exec(transform);
+  if (!match) return null;
+  return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+}
+
+export function getNodeDimensions(el: HTMLElement): { width: number; height: number } {
+  const styleW = parseFloat(el.style.width);
+  const styleH = parseFloat(el.style.height);
+  if (styleW > 0 && styleH > 0) {
+    return { width: styleW, height: styleH };
+  }
+  const offsetW = el.offsetWidth;
+  const offsetH = el.offsetHeight;
+  if (offsetW > 0 && offsetH > 0) {
+    return { width: offsetW, height: offsetH };
+  }
+  const firstChild = el.firstElementChild as HTMLElement | null;
+  if (firstChild) {
+    const childW = parseFloat(firstChild.style.width) || firstChild.offsetWidth;
+    const childH = parseFloat(firstChild.style.height) || firstChild.offsetHeight;
+    if (childW > 0 && childH > 0) {
+      return { width: childW, height: childH };
+    }
+  }
+  return { width: 220, height: 220 };
+}
+
+export function calculateViewportExportBounds(viewport: HTMLElement): ExportBounds | null {
+  const nodeEls = viewport.querySelectorAll('.react-flow__node');
+  if (nodeEls.length === 0) {
+    return null;
+  }
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  nodeEls.forEach((node) => {
+    const el = node as HTMLElement;
+    const coords = parseTranslateCoordinates(el.style.transform);
+    const x = coords ? coords.x : el.offsetLeft;
+    const y = coords ? coords.y : el.offsetTop;
+    const dims = getNodeDimensions(el);
+
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + dims.width);
+    maxY = Math.max(maxY, y + dims.height);
+  });
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
+}
+
+export interface ViewportExportConfig {
+  target: HTMLElement;
+  width?: number;
+  height?: number;
+  style?: Record<string, string>;
+}
+
+export function getViewportExportConfig(element: HTMLElement, padding = 50): ViewportExportConfig {
+  const viewport = element.querySelector('.react-flow__viewport') as HTMLElement | null;
+  const target = viewport || element;
+  const bounds = calculateViewportExportBounds(target);
+
+  if (!bounds) {
+    return { target };
+  }
+
+  const width = Math.round(bounds.width + padding * 2);
+  const height = Math.round(bounds.height + padding * 2);
+  const translateX = Math.round(-bounds.x + padding);
+  const translateY = Math.round(-bounds.y + padding);
+
+  return {
+    target,
+    width,
+    height,
+    style: {
+      width: `${width}px`,
+      height: `${height}px`,
+      transform: `translate(${translateX}px, ${translateY}px) scale(1)`,
+      transformOrigin: '0 0',
+    },
+  };
+}
+
 export async function exportToImage(
   elementId: string,
   format: 'png' | 'svg',
@@ -56,17 +157,19 @@ export async function exportToImage(
   const element = document.getElementById(elementId);
   if (!element) throw new Error(`Element #${elementId} not found`);
 
-  // Target the React Flow viewport
-  const viewport = element.querySelector('.react-flow__viewport') as HTMLElement;
-  const target = viewport || element;
+  const { target, width, height, style } = getViewportExportConfig(element);
 
   let dataUrl: string;
   if (format === 'svg') {
-    dataUrl = await toSvg(target, { backgroundColor: '#ffffff' });
+    dataUrl = await toSvg(target, {
+      backgroundColor: '#ffffff',
+      ...(width && height ? { width, height, style } : {}),
+    });
   } else {
     dataUrl = await toPng(target, {
       pixelRatio: 2.5,
       backgroundColor: '#ffffff',
+      ...(width && height ? { width, height, style } : {}),
     });
   }
 
@@ -83,12 +186,12 @@ export async function exportToPdf(
   const element = document.getElementById(elementId);
   if (!element) throw new Error(`Element #${elementId} not found`);
 
-  const viewport = element.querySelector('.react-flow__viewport') as HTMLElement;
-  const target = viewport || element;
+  const { target, width, height, style } = getViewportExportConfig(element);
 
   const dataUrl = await toPng(target, {
     pixelRatio: 2,
     backgroundColor: '#ffffff',
+    ...(width && height ? { width, height, style } : {}),
   });
 
   // Create A4 Landscape PDF (297 x 210 mm)
@@ -155,12 +258,12 @@ export async function exportToPptx(
   const element = document.getElementById(elementId);
   if (!element) throw new Error(`Element #${elementId} not found`);
 
-  const viewport = element.querySelector('.react-flow__viewport') as HTMLElement;
-  const target = viewport || element;
+  const { target, width, height, style } = getViewportExportConfig(element);
 
   const dataUrl = await toPng(target, {
     pixelRatio: 2.5,
     backgroundColor: '#ffffff',
+    ...(width && height ? { width, height, style } : {}),
   });
 
   const pptx = new pptxgen();

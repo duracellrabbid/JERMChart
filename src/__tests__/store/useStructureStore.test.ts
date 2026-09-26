@@ -285,5 +285,23 @@ describe('useStructureStore', () => {
     useStructureStore.getState().dismissOcrReview();
     expect(useStructureStore.getState().ocrReviewState).toBeNull();
   });
+
+  it('manages directorCap and isExportMode state and mutations', () => {
+    const store = useStructureStore.getState();
+    expect(store.directorCap).toBe(3);
+    expect(store.isExportMode).toBe(false);
+
+    store.setDirectorCap(5);
+    expect(useStructureStore.getState().directorCap).toBe(5);
+
+    store.setDirectorCap('all');
+    expect(useStructureStore.getState().directorCap).toBe('all');
+
+    store.setExportMode(true);
+    expect(useStructureStore.getState().isExportMode).toBe(true);
+
+    store.setExportMode(false);
+    expect(useStructureStore.getState().isExportMode).toBe(false);
+  });
 });
 

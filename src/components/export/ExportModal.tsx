@@ -23,57 +23,53 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
   const entities = useStructureStore((state) => state.entities);
   const relationships = useStructureStore((state) => state.relationships);
   const loadStructure = useStructureStore((state) => state.loadStructure);
+  const setExportMode = useStructureStore((state) => state.setExportMode);
 
   const [isExporting, setIsExporting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleExportPng = async () => {
+  const runExportWithMode = async (exportFn: () => Promise<void>, successMessage: string) => {
     setIsExporting(true);
+    setExportMode(true);
     try {
-      await exportToImage('trust-structure-canvas', 'png', metadata.chartTitle);
-      setSuccessMsg('High-Res PNG downloaded successfully.');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await exportFn();
+      setSuccessMsg(successMessage);
     } catch (err) {
       alert(`Export failed: ${formatExportError(err)}`);
     } finally {
+      setExportMode(false);
       setIsExporting(false);
     }
+  };
+
+  const handleExportPng = async () => {
+    await runExportWithMode(
+      () => exportToImage('trust-structure-canvas', 'png', metadata.chartTitle),
+      'High-Res PNG downloaded successfully.'
+    );
   };
 
   const handleExportSvg = async () => {
-    setIsExporting(true);
-    try {
-      await exportToImage('trust-structure-canvas', 'svg', metadata.chartTitle);
-      setSuccessMsg('Vector SVG downloaded successfully.');
-    } catch (err) {
-      alert(`Export failed: ${formatExportError(err)}`);
-    } finally {
-      setIsExporting(false);
-    }
+    await runExportWithMode(
+      () => exportToImage('trust-structure-canvas', 'svg', metadata.chartTitle),
+      'Vector SVG downloaded successfully.'
+    );
   };
 
   const handleExportPdf = async () => {
-    setIsExporting(true);
-    try {
-      await exportToPdf('trust-structure-canvas', metadata);
-      setSuccessMsg('A4 Landscape PDF generated successfully.');
-    } catch (err) {
-      alert(`Export failed: ${formatExportError(err)}`);
-    } finally {
-      setIsExporting(false);
-    }
+    await runExportWithMode(
+      () => exportToPdf('trust-structure-canvas', metadata),
+      'A4 Landscape PDF generated successfully.'
+    );
   };
 
   const handleExportPptx = async () => {
-    setIsExporting(true);
-    try {
-      await exportToPptx('trust-structure-canvas', metadata);
-      setSuccessMsg('PowerPoint presentation generated successfully.');
-    } catch (err) {
-      alert(`Export failed: ${formatExportError(err)}`);
-    } finally {
-      setIsExporting(false);
-    }
+    await runExportWithMode(
+      () => exportToPptx('trust-structure-canvas', metadata),
+      'PowerPoint presentation generated successfully.'
+    );
   };
 
   const handleExportExcel = () => {

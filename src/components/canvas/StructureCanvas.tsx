@@ -30,18 +30,26 @@ export const StructureCanvas: React.FC = () => {
   const entities = useStructureStore((state) => state.entities);
   const relationships = useStructureStore((state) => state.relationships);
   const sortCriteria = useStructureStore((state) => state.sortCriteria);
+  const directorCap = useStructureStore((state) => state.directorCap);
+  const isExportMode = useStructureStore((state) => state.isExportMode);
   const addRelationship = useStructureStore((state) => state.addRelationship);
   const setSelectedEntityId = useStructureStore((state) => state.setSelectedEntityId);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  // Calculate layout on structure or sort criteria change
+  // Calculate layout on structure, sort criteria, director cap, or export mode change
   const refreshLayout = useCallback(() => {
-    const layout = calculateSortedLayout(entities, relationships, sortCriteria);
+    const layout = calculateSortedLayout(
+      entities,
+      relationships,
+      sortCriteria,
+      directorCap,
+      isExportMode
+    );
     setNodes(layout.nodes);
     setEdges(layout.edges);
-  }, [entities, relationships, sortCriteria, setNodes, setEdges]);
+  }, [entities, relationships, sortCriteria, directorCap, isExportMode, setNodes, setEdges]);
 
   useEffect(() => {
     refreshLayout();

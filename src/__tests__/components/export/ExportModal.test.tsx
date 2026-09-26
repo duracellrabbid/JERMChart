@@ -303,4 +303,19 @@ describe('ExportModal Component', () => {
 
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('toggles setExportMode true during export and false after completion', async () => {
+    const setExportModeSpy = vi.spyOn(useStructureStore.getState(), 'setExportMode');
+    render(<ExportModal onClose={mockOnClose} />);
+
+    const pngBtn = screen.getByRole('button', { name: /High-Resolution PNG/i });
+    fireEvent.click(pngBtn);
+
+    await waitFor(() => {
+      expect(exportService.exportToImage).toHaveBeenCalled();
+    });
+
+    expect(setExportModeSpy).toHaveBeenCalledWith(true);
+    expect(setExportModeSpy).toHaveBeenCalledWith(false);
+  });
 });

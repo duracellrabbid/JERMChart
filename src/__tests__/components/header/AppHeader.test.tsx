@@ -115,7 +115,7 @@ describe('AppHeader', () => {
   it('displays sibling sort criteria and updates store on selection change', () => {
     renderHeader();
 
-    const select = screen.getByRole('combobox');
+    const select = screen.getByLabelText(/Sort Siblings:/i);
     expect(select).toHaveValue('alphabetical');
 
     fireEvent.change(select, { target: { value: 'ownership' } });
@@ -126,6 +126,19 @@ describe('AppHeader', () => {
 
     fireEvent.change(select, { target: { value: 'manual' } });
     expect(useStructureStore.getState().sortCriteria).toBe('manual');
+  });
+
+  it('displays director cap selector and updates store on selection change', () => {
+    renderHeader();
+
+    const select = screen.getByLabelText(/Directors:/i);
+    expect(select).toHaveValue('3');
+
+    fireEvent.change(select, { target: { value: '5' } });
+    expect(useStructureStore.getState().directorCap).toBe(5);
+
+    fireEvent.change(select, { target: { value: 'all' } });
+    expect(useStructureStore.getState().directorCap).toBe('all');
   });
 
   it('triggers layout refresh on clicking Auto-Tidy button', () => {

@@ -31,6 +31,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const setMetadata = useStructureStore((state) => state.setMetadata);
   const sortCriteria = useStructureStore((state) => state.sortCriteria);
   const setSortCriteria = useStructureStore((state) => state.setSortCriteria);
+  const directorCap = useStructureStore((state) => state.directorCap);
+  const setDirectorCap = useStructureStore((state) => state.setDirectorCap);
   const resetToSample = useStructureStore((state) => state.resetToSample);
   const clearCanvas = useStructureStore((state) => state.clearCanvas);
 
@@ -152,6 +154,29 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <option value="manual" className="bg-slate-800 text-white">
               Manual Ordering
             </option>
+          </select>
+        </div>
+
+        {/* Visible Directors Cap Selector */}
+        <div className="flex items-center gap-1.5 text-xs text-slate-300">
+          <label htmlFor="director-cap-select" className="text-slate-400 font-medium">
+            Directors:
+          </label>
+          <select
+            id="director-cap-select"
+            data-testid="director-cap-select"
+            value={directorCap}
+            onChange={(e) => {
+              const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+              setDirectorCap(val);
+            }}
+            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-sky-500 cursor-pointer"
+          >
+            <option value={2} className="bg-slate-800 text-white">2</option>
+            <option value={3} className="bg-slate-800 text-white">3 (Default)</option>
+            <option value={4} className="bg-slate-800 text-white">4</option>
+            <option value={5} className="bg-slate-800 text-white">5</option>
+            <option value="all" className="bg-slate-800 text-white">All (No Cap)</option>
           </select>
         </div>
 

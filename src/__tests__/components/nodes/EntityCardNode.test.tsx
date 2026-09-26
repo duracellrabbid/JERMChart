@@ -380,4 +380,163 @@ describe('EntityCardNode', () => {
     expect(screen.getByText(/\+1/)).toBeInTheDocument();
     expect(screen.getByText('Directors (0)')).toBeInTheDocument();
   });
+
+  it('renders dynamic SVG polygon points based on computedWidth and computedHeight', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Trust',
+              computedWidth: 400,
+              computedHeight: 320,
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+
+    const triangle = container.querySelector('[data-testid="trust-triangle-card-node"]');
+    expect(triangle).toBeInTheDocument();
+    expect(triangle).toHaveStyle({ width: '400px', height: '320px' });
+
+    const polygon = container.querySelector('svg.triangle-shape-bg polygon');
+    expect(polygon).toBeInTheDocument();
+    expect(polygon?.getAttribute('points')).toBe('200,6 394,314 6,314');
+  });
+
+  it('renders overflow directors badge on Trust card when director count exceeds directorCap', () => {
+    const manyDirectors = [
+      { id: 'd1', name: 'Director One', isCorporate: false },
+      { id: 'd2', name: 'Director Two', isCorporate: true },
+      { id: 'd3', name: 'Director Three', isCorporate: false, isResident: true },
+      { id: 'd4', name: 'Director Four', isCorporate: true },
+      { id: 'd5', name: 'Director Five', isCorporate: false },
+    ];
+
+    const { getByTestId, queryByText, getByText } = render(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Trust',
+              directors: manyDirectors,
+              directorCap: 2,
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(getByText('+3 more directors...')).toBeInTheDocument();
+    const badge = getByTestId('overflow-directors-badge');
+    expect(badge).toBeInTheDocument();
+    expect(getByText('Res')).toBeInTheDocument();
+    expect(getByText('Corp')).toBeInTheDocument();
+
+    // Clicking when tab button does not exist in DOM safely does not crash
+    fireEvent.click(badge);
+
+    // Clicking overflow badge selects entity and targets directors tab when present
+    const mockTab = document.createElement('button');
+    mockTab.setAttribute('data-testid', 'tab-directors');
+    const clickSpy = vi.fn();
+    mockTab.addEventListener('click', clickSpy);
+    document.body.appendChild(mockTab);
+
+    fireEvent.click(badge);
+    expect(clickSpy).toHaveBeenCalled();
+    document.body.removeChild(mockTab);
+  });
+
+  it('renders subsidiary card with custom computedHeight without fixed h-[220px] class', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Holding Company',
+              computedHeight: 280,
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+    const cardElement = container.querySelector('[data-testid="subsidiary-card-node"]');
+    expect(cardElement).toBeInTheDocument();
+    expect(cardElement?.className).not.toContain('h-[220px]');
+    expect(cardElement).toHaveStyle({ height: '280px' });
+  });
+
+  it('renders overflow directors badge on Subsidiary card when director count exceeds directorCap', () => {
+    const manyDirectors = [
+      { id: 'd1', name: 'Director One', isCorporate: false },
+      { id: 'd2', name: 'Director Two', isCorporate: true },
+      { id: 'd3', name: 'Director Three', isCorporate: false },
+      { id: 'd4', name: 'Director Four', isCorporate: true },
+    ];
+
+    render(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Holding Company',
+              directors: manyDirectors,
+              directorCap: 2,
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByText('+2 more directors...')).toBeInTheDocument();
+  });
+
+  it('renders all directors without overflow badge when directorCap is all or in export mode', () => {
+    const manyDirectors = [
+      { id: 'd1', name: 'Director One', isCorporate: false },
+      { id: 'd2', name: 'Director Two', isCorporate: true },
+      { id: 'd3', name: 'Director Three', isCorporate: false },
+    ];
+
+    const { rerender } = render(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Trust',
+              directors: manyDirectors,
+              directorCap: 'all',
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.queryByTestId('overflow-directors-badge')).not.toBeInTheDocument();
+
+    rerender(
+      <ReactFlowProvider>
+        <EntityCardNode
+          {...(createProps({
+            data: {
+              ...baseEntityData,
+              type: 'Trust',
+              directors: manyDirectors,
+              directorCap: 2,
+              isExportMode: true,
+            },
+          }) as any)}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.queryByTestId('overflow-directors-badge')).not.toBeInTheDocument();
+  });
 });
