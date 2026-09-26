@@ -1,6 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-trust-50: #f8fafc;
+  --color-trust-100: #f1f5f9;
+  --color-trust-500: #0f172a;
+  --color-trust-600: #0284c7;
+  --color-trust-700: #0369a1;
+  --color-trust-gold: #d97706;
+  --color-trust-navy: #0f172a;
+  --color-trust-teal: #0d9488;
+}
 
 html, body, #root {
   height: 100%;

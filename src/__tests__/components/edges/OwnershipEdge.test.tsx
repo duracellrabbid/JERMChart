@@ -41,7 +41,7 @@ describe('OwnershipEdge', () => {
 
     const path = container.querySelector('path.react-flow__edge-path');
     expect(path).toBeInTheDocument();
-    expect(path?.getAttribute('style')).toContain('stroke: #475569');
+    expect(path?.getAttribute('style')).toMatch(/stroke:\s*(#475569|rgb\(71,\s*85,\s*105\))/);
   });
 
   it('renders fallback "Owns" when ownership percentage is undefined and no share class', () => {

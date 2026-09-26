@@ -1,0 +1,72 @@
+schema: spec-driven
+
+# Project context
+# Injected into AI prompts when creating OpenSpec artifacts (proposal, specs, design, tasks).
+context: |
+  Project: JERMChart (Fiduciary Structure Chart Utility)
+  Domain: Corporate trust, wealth management, fiduciary administration, and entity governance.
+  Architecture: 100% client-side web application and standalone Electron desktop application. All client data remains strictly local in the browser / desktop runtime; no backend server or cloud database is required.
+
+  Core Functionality:
+  - Algorithmic hierarchical layout engine using @dagrejs/dagre and @xyflow/react (React Flow) with stepped orthogonal ownership connectors.
+  - Sibling sorting strategies: Alphabetical (A-Z), Ownership % (High -> Low), Jurisdiction Grouping, and Manual Drag Mode.
+  - Dual-mode data entry: Hierarchical Tree Outliner and Entity Details Form.
+  - Entity types: Trust, Settlor, Holding Company (HoldCo), Operating Company (OpCo), LLC, Property SPV, Foundation, Partnership.
+  - Multi-parent ownership resolution, share classes, registration/tax numbers, and fiduciary metadata.
+  - Board of Directors directory with fiduciary status tags (e.g. resident director 'RES') and cross-structure spotlight mode.
+  - Excel spreadsheet import and roundtrip 12-column export (xlsx).
+  - AI photo and hand-drawn chart OCR using Google Gemini (@google/genai) and OpenAI Vision APIs.
+  - Fiduciary-grade exports: Print-ready A4 landscape PDF (jspdf), PowerPoint slides (pptxgenjs), high-resolution PNG (2.5x DPI) and vector SVG (html-to-image), and local JSON backup/restore.
+
+  Tech Stack:
+  - Runtime / Desktop: Electron 44+ (Node 22 / Chromium)
+  - Frontend: React 18, TypeScript 5.7, Vite 6, Tailwind CSS, Lucide React Icons
+  - State Management: Zustand 5 (central store in src/store/useStructureStore.ts with undo/redo snapshots)
+  - Diagram / Layout: @xyflow/react (React Flow), @dagrejs/dagre
+  - File I/O: xlsx, jspdf, pptxgenjs, html-to-image, heic2any
+  - AI Vision: @google/genai, OpenAI API
+  - Quality & Tooling: ESLint 10 (eslint-plugin-sonarjs, eslint-plugin-regexp), Vitest 4 (v8 coverage), Husky 9
+  - Token Optimization & Navigation: RTK (rtk), context-mode, codegraph
+
+  Mandatory Architectural Standards & Engineering Rules (AGENTS.md):
+  1. Token Optimization via context-mode: Use context-mode tools for large outputs, log analysis, directory scans, and targeted line ranges to avoid context saturation.
+  2. RTK for Shell Commands: All shell and CLI commands must be prefixed with `rtk` (e.g., `rtk npm test`, `rtk npm run verify:pre-commit`).
+  3. Structural Exploration via codegraph: Always explore codebase symbols, callers, and dependencies with codegraph first before opening files.
+  4. Cognitive Complexity < 15: Every function, hook, method, and callback must strictly maintain cognitive complexity < 15 (SonarSource metric via eslint-plugin-sonarjs). Flatten nesting, use early guard returns, decompose handlers into pure helpers, and use lookup tables instead of switch ladders.
+  5. ReDoS-Free Linear Regex: All regular expressions must run in guaranteed linear time O(n). Never use nested quantifiers or ambiguous repetitions. Prefer native string methods (includes, startsWith, endsWith, indexOf, slice) or src/utils/urlUtils.ts.
+  6. Dedicated __tests__ Directory Isolation: All unit, component, and integration tests must reside inside dedicated __tests__/ directories (e.g., src/**/__tests__/*.test.ts(x)) and be excluded from production builds and release installer binaries.
+  7. Superpower Workflows & Quality Gates: Follow Test-Driven Development (TDD: write failing tests in __tests__/ before writing code), systematic debugging, and mandatory gate verification:
+     - Pre-Commit Gate: `rtk npm run verify:pre-commit` (runs `npm run lint` enforcing Rules 4 & 5, then `npm run test:coverage` enforcing 100% test coverage across statements, branches, functions, and lines).
+     - Pre-Push Gate: `rtk npm run verify:pre-push` (runs `npm run build` validating production compilation, then `npm run audit:security` verifying zero moderate or higher vulnerabilities).
+
+# Per-artifact rules
+rules:
+  proposal:
+    - Clearly define user value for trust officers and fiduciary administrators.
+    - Specify domain impact, entity/director handling, and non-goals.
+    - Ensure proposed solutions maintain 100% client-side privacy without external backend dependencies.
+  specs:
+    - Use strict, unambiguous requirements and capability deltas.
+    - Define clear acceptance criteria and edge case scenarios (e.g., multi-parent cycles, missing data).
+  design:
+    - Address architectural impact on Zustand store (src/store/useStructureStore.ts) and React Flow canvas.
+    - Explicitly verify that cognitive complexity will stay below 15 for all new functions/hooks.
+    - Ensure any string parsing uses linear-time primitives or ReDoS-free linear regex.
+    - Document data flow, layout implications (@dagrejs/dagre), and export compatibility.
+  tasks:
+    - Follow Test-Driven Development (TDD): list failing test creation in dedicated __tests__/ before implementation.
+    - Require 100% test coverage (statements, branches, functions, lines) for new code.
+    - Include pre-commit verification (`rtk npm run verify:pre-commit`) and pre-push verification (`rtk npm run verify:pre-push`).
+
+# Per-operation guidance
+operations:
+  apply:
+    guidance:
+      - Prefix all shell and CLI execution commands with `rtk`.
+      - Write tests in dedicated `__tests__/` directories, never co-located in production source folders.
+      - Ensure all functions and callbacks maintain cognitive complexity strictly below 15.
+      - Verify 100% test coverage and zero lint errors with `rtk npm run verify:pre-commit` before completing.
+  archive:
+    guidance:
+      - Confirm all quality gates (`rtk npm run verify:pre-commit` and `rtk npm run verify:pre-push`) have passed.
+      - Summarize changes, capabilities added, and verification evidence.

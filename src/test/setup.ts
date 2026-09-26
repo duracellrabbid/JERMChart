@@ -48,3 +48,9 @@ Object.defineProperty(window, 'localStorage', {
   configurable: true,
   writable: true,
 });
+
+if (typeof URL.createObjectURL === 'undefined' || URL.createObjectURL) {
+  URL.createObjectURL = (blob: any) => `blob:mock-${blob?.name || 'file'}`;
+  URL.revokeObjectURL = () => {};
+}
+
