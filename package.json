@@ -1,9 +1,9 @@
 {
-  "name": "trust-management-utility",
+  "name": "jermchart",
   "private": true,
   "version": "1.0.0",
-  "description": "Desktop structure chart application for trust management and fiduciary governance",
-  "author": "Trust Management Utility",
+  "description": "JERMChart: Desktop and web structure chart application for corporate trust management and fiduciary governance",
+  "author": "duracellrabbid",
   "license": "MIT",
   "type": "module",
   "main": "electron/main.cjs",

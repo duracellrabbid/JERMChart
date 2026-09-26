@@ -1,6 +1,6 @@
 {
-  "appId": "com.trustmanagement.structurechart",
-  "productName": "Trust Structure Chart Utility",
+  "appId": "com.duracellrabbid.jermchart",
+  "productName": "JERMChart",
   "directories": {
     "output": "release"
   },

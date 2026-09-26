@@ -78,7 +78,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       {/* Title & Reference */}
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center font-black text-white text-sm shadow">
-          TM
+          JC
         </div>
         <div>
           {isEditingTitle ? (

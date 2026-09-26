@@ -9,7 +9,7 @@ function createWindow() {
     height: 900,
     minWidth: 1024,
     minHeight: 650,
-    title: 'Trust Management Structure Chart Utility',
+    title: 'JERMChart',
     backgroundColor: '#0f172a',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),

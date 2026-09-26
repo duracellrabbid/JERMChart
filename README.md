@@ -1,4 +1,4 @@
-# JERMChart: A Trust Management Structure Chart Utility
+# JERMChart: Fiduciary Structure Chart Utility
 
 A 100% client-side web application designed for trust officers, fiduciary specialists, and corporate administrators to quickly prepare, organize, interactively sort, and export corporate and trust structure charts.
 
@@ -88,8 +88,8 @@ This utility solves these challenges with an **algorithmic layout engine**, **cu
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
-   cd trust-management-utility
+   git clone https://github.com/duracellrabbid/JERMChart.git
+   cd JERMChart
    ```
 
 2. **Install dependencies**:
@@ -205,7 +205,7 @@ The project includes a ready-to-use **Electron** desktop wrapper that turns the 
    npm run electron:pack
    ```
    Users can immediately double-click:
-   `release/win-unpacked/Trust Structure Chart Utility.exe`
+   `release/win-unpacked/JERMChart.exe`
 
 3. **Build Distributable Installers (.exe / Portable)**:
    Compiles optimized production installers and standalone portable binaries into the `release/` directory:
@@ -213,15 +213,15 @@ The project includes a ready-to-use **Electron** desktop wrapper that turns the 
    npm run electron:build
    ```
    This generates:
-   - **`release/Trust Structure Chart Utility Setup 1.0.0.exe`**: Standard Windows installer with desktop and start-menu shortcuts.
-   - **`release/Trust Structure Chart Utility 1.0.0.exe`**: Zero-install standalone portable `.exe` that users can copy to a USB drive or local folder and run immediately.
+   - **`release/JERMChart Setup 1.0.0.exe`**: Standard Windows installer with desktop and start-menu shortcuts.
+   - **`release/JERMChart 1.0.0.exe`**: Zero-install standalone portable `.exe` that users can copy to a USB drive or local folder and run immediately.
 
 ---
 
 ## Project Structure
 
 ```
-trust-management-utility/
+JERMChart/
 ├── .husky/                      # Git hooks (pre-commit, pre-push)
 ├── docs/                        # Superpower implementation plans and specs
 ├── index.html                   # HTML shell

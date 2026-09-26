@@ -1,7 +1,7 @@
 # AGENTS.md
 
 > Operational Guidelines & Architectural Standards for Agentic Development
-> **Repository:** `trust-management-utility`
+> **Repository:** `JERMChart`
 
 ---
 

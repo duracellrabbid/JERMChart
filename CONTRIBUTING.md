@@ -1,6 +1,6 @@
-# Contributing to Trust Management Structure Chart Utility
+# Contributing to JERMChart
 
-Thank you for your interest in contributing to the Trust Management Structure Chart Utility! This project is open source under the [MIT License](LICENSE).
+Thank you for your interest in contributing to JERMChart! This project is open source under the [MIT License](LICENSE).
 
 We welcome bug reports, feature requests, documentation improvements, and code contributions.
 
@@ -20,8 +20,8 @@ All contributors and participants are expected to adhere to our [Code of Conduct
 
 ### Initial Setup
 ```bash
-git clone https://github.com/your-org/trust-management-utility.git
-cd trust-management-utility
+git clone https://github.com/duracellrabbid/JERMChart.git
+cd JERMChart
 npm install
 ```
 
