@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
 import {
   AIConfig,
   AIProvider,
   getAIConfig,
   saveAIConfig,
 } from '../../services/ai/aiConfig';
-import { joinUrl } from '../../utils/urlUtils';
+import {
+  CUSTOM_MODEL_VALUE,
+  getModelsForProvider,
+  getDefaultModelForProvider,
+  isCustomModel,
+} from '../../services/ai/modelCatalog';
+import { trimTrailingSlashes } from '../../utils/urlUtils';
 import {
   Settings,
   Eye,
@@ -23,6 +30,9 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [config, setConfig] = useState<AIConfig>(() => getAIConfig());
+  const [isCustom, setIsCustom] = useState<boolean>(() =>
+    isCustomModel(config.provider, config.model)
+  );
   const [showApiKey, setShowApiKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{
@@ -39,12 +49,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   }, [onClose]);
 
   const handleProviderChange = (newProvider: AIProvider) => {
-    const defaultModel = newProvider === 'openai' ? 'gpt-4o' : 'gemini-2.5-flash';
+    const defaultModel = getDefaultModelForProvider(newProvider);
     setConfig((prev) => ({
       ...prev,
       provider: newProvider,
       model: defaultModel,
     }));
+    setIsCustom(false);
+    setTestResult(null);
+  };
+
+  const handleModelChange = (selectedId: string) => {
+    if (selectedId === CUSTOM_MODEL_VALUE) {
+      setIsCustom(true);
+      setConfig((prev) => ({
+        ...prev,
+        model: isCustomModel(prev.provider, prev.model) ? prev.model : '',
+      }));
+    } else {
+      setIsCustom(false);
+      setConfig((prev) => ({
+        ...prev,
+        model: selectedId,
+      }));
+    }
+    setTestResult(null);
+  };
+
+  const handleCustomModelInputChange = (customId: string) => {
+    setConfig((prev) => ({ ...prev, model: customId }));
     setTestResult(null);
   };
 
@@ -67,32 +100,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
     try {
       if (config.provider === 'gemini') {
-        const model = config.model || 'gemini-2.5-flash';
+        const model = config.model || 'gemini-3.8-flash';
         const ai = new GoogleGenAI({ apiKey: config.apiKey.trim() });
         await ai.models.generateContent({
           model,
           contents: 'Ping',
         });
       } else {
-        const baseUrl = config.customEndpoint || 'https://api.openai.com/v1';
-        const url = joinUrl(baseUrl, 'chat/completions');
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${config.apiKey.trim()}`,
-          },
-          body: JSON.stringify({
-            model: config.model || 'gpt-4o',
-            messages: [{ role: 'user', content: 'Ping' }],
-            max_tokens: 5,
-          }),
+        const rawEndpoint = config.customEndpoint?.trim();
+        const baseURL = rawEndpoint ? trimTrailingSlashes(rawEndpoint) : undefined;
+        const client = new OpenAI({
+          apiKey: config.apiKey.trim(),
+          baseURL,
+          dangerouslyAllowBrowser: true,
         });
 
-        if (!res.ok) {
-          const err = await res.text();
-          throw new Error(`HTTP ${res.status}: ${err}`);
-        }
+        await client.chat.completions.create({
+          model: config.model || 'gpt-5.2',
+          messages: [{ role: 'user', content: 'Ping' }],
+          max_tokens: 5,
+        });
       }
 
       setTestResult({
@@ -108,6 +135,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       setIsTesting(false);
     }
   };
+
+  const availableModels = getModelsForProvider(config.provider);
+  const currentModelDescription = availableModels.find((m) => m.id === config.model)?.description;
 
   return (
     <div
@@ -149,6 +179,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </select>
           </div>
 
+          {/* Model Selection */}
+          <div>
+            <label htmlFor="ai-model" className="block font-semibold text-slate-800 mb-1">
+              Model
+            </label>
+            <select
+              id="ai-model"
+              value={isCustom ? CUSTOM_MODEL_VALUE : config.model}
+              onChange={(e) => handleModelChange(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            >
+              {availableModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.displayName}
+                </option>
+              ))}
+              <option value={CUSTOM_MODEL_VALUE}>Custom Model...</option>
+            </select>
+            <p className="text-[10px] text-slate-500 mt-1">
+              {isCustom
+                ? 'Specify a custom or fine-tuned model identifier for your provider deployment.'
+                : currentModelDescription}
+            </p>
+          </div>
+
+          {/* Custom Model Input */}
+          {isCustom && (
+            <div>
+              <label htmlFor="custom-ai-model" className="block font-semibold text-slate-800 mb-1">
+                Custom Model Identifier
+              </label>
+              <input
+                id="custom-ai-model"
+                type="text"
+                value={config.model}
+                onChange={(e) => handleCustomModelInputChange(e.target.value)}
+                placeholder={config.provider === 'gemini' ? 'e.g. gemini-3.8-flash' : 'e.g. gpt-5.2'}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
+              />
+            </div>
+          )}
+
           {/* API Key */}
           <div>
             <label htmlFor="ai-apikey" className="block font-semibold text-slate-800 mb-1">
@@ -178,21 +250,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             <p className="text-[10px] text-slate-500 mt-1">
               Stored locally on your device in your user profile. Never transmitted elsewhere.
             </p>
-          </div>
-
-          {/* Model Name */}
-          <div>
-            <label htmlFor="ai-model" className="block font-semibold text-slate-800 mb-1">
-              Model
-            </label>
-            <input
-              id="ai-model"
-              type="text"
-              value={config.model}
-              onChange={(e) => setConfig((prev) => ({ ...prev, model: e.target.value }))}
-              placeholder={config.provider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o'}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
-            />
           </div>
 
           {/* Custom Endpoint (OpenAI only) */}

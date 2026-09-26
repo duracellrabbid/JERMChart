@@ -1,3 +1,5 @@
+import { getDefaultModelForProvider } from './modelCatalog';
+
 export type AIProvider = 'gemini' | 'openai';
 
 export interface AIConfig {
@@ -12,9 +14,37 @@ const STORAGE_KEY = 'tmu_ai_config';
 const DEFAULT_CONFIG: AIConfig = {
   provider: 'gemini',
   apiKey: '',
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3.8-flash',
   customEndpoint: '',
 };
+
+const LEGACY_GEMINI_MODELS = new Set([
+  'gemini-1.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.5-flash',
+  'gemini-3.5-flash',
+]);
+
+const LEGACY_OPENAI_MODELS = new Set([
+  'gpt-4',
+  'gpt-4o',
+  'gpt-4o-mini',
+  'gpt-4-turbo',
+]);
+
+export function migrateLegacyModel(provider: AIProvider, storedModel: string): string {
+  const trimmed = storedModel.trim();
+  if (!trimmed) {
+    return getDefaultModelForProvider(provider);
+  }
+  if (provider === 'gemini' && LEGACY_GEMINI_MODELS.has(trimmed)) {
+    return 'gemini-3.8-flash';
+  }
+  if (provider === 'openai' && LEGACY_OPENAI_MODELS.has(trimmed)) {
+    return 'gpt-5.2';
+  }
+  return trimmed;
+}
 
 const memoryStore = new Map<string, string>();
 
@@ -48,11 +78,12 @@ export function getAIConfig(): AIConfig {
     if (!raw) return { ...DEFAULT_CONFIG };
     const parsed = JSON.parse(raw);
     const provider: AIProvider = parsed.provider === 'openai' ? 'openai' : 'gemini';
-    const defaultModel = provider === 'openai' ? 'gpt-4o' : 'gemini-3.5-flash';
+    const rawModel = typeof parsed.model === 'string' ? parsed.model : '';
+    const model = migrateLegacyModel(provider, rawModel);
     return {
       provider,
       apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '',
-      model: typeof parsed.model === 'string' && parsed.model.trim() ? parsed.model.trim() : defaultModel,
+      model,
       customEndpoint: typeof parsed.customEndpoint === 'string' ? parsed.customEndpoint.trim() : '',
     };
   } catch {

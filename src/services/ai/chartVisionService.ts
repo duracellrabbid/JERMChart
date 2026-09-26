@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
 import { AIConfig } from './aiConfig';
 import {
   Director,
@@ -160,7 +161,7 @@ async function callGeminiVision(
   mimeType: string,
   config: AIConfig
 ): Promise<string> {
-  const model = config.model || 'gemini-3.5-flash';
+  const model = config.model || 'gemini-3.8-flash';
   const ai = new GoogleGenAI({ apiKey: config.apiKey.trim() });
 
   const response = await ai.models.generateContent({
@@ -184,7 +185,7 @@ async function callGeminiVision(
   return text;
 }
 
-import { joinUrl, trimTrailingSlashes } from '../../utils/urlUtils';
+import { trimTrailingSlashes } from '../../utils/urlUtils';
 export { trimTrailingSlashes };
 
 async function callOpenAIVision(
@@ -192,11 +193,16 @@ async function callOpenAIVision(
   mimeType: string,
   config: AIConfig
 ): Promise<string> {
-  const baseUrl = config.customEndpoint || 'https://api.openai.com/v1';
-  const url = joinUrl(baseUrl, 'chat/completions');
-  const model = config.model || 'gpt-4o';
+  const model = config.model || 'gpt-5.2';
+  const rawEndpoint = config.customEndpoint?.trim();
+  const baseURL = rawEndpoint ? trimTrailingSlashes(rawEndpoint) : undefined;
+  const client = new OpenAI({
+    apiKey: config.apiKey.trim(),
+    baseURL,
+    dangerouslyAllowBrowser: true,
+  });
 
-  const requestBody = {
+  const response = await client.chat.completions.create({
     model,
     response_format: { type: 'json_object' },
     messages: [
@@ -212,24 +218,9 @@ async function callOpenAIVision(
         ],
       },
     ],
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`AI request failed (${response.status}): ${errorText}`);
-  }
-
-  const data = await response.json();
-  const text = data?.choices?.[0]?.message?.content;
+  const text = response?.choices?.[0]?.message?.content;
   if (!text) throw new Error('AI returned an empty response.');
   return text;
 }

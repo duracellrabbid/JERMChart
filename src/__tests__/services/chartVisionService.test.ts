@@ -15,6 +15,21 @@ vi.mock('@google/genai', () => ({
   },
 }));
 
+const mockChatCompletionsCreate = vi.fn();
+let capturedOpenAIOptions: any = null;
+vi.mock('openai', () => ({
+  default: class MockOpenAI {
+    chat = {
+      completions: {
+        create: mockChatCompletionsCreate,
+      },
+    };
+    constructor(public options: any) {
+      capturedOpenAIOptions = options;
+    }
+  },
+}));
+
 describe('chartVisionService', () => {
   const originalFetch = global.fetch;
 
@@ -135,7 +150,7 @@ describe('chartVisionService', () => {
     expect(result.chart.entities).toHaveLength(1);
   });
 
-  it('calls OpenAI API and returns parsed chart', async () => {
+  it('calls OpenAI API via official SDK and returns parsed chart', async () => {
     const mockOpenAIResponse = {
       choices: [
         {
@@ -153,22 +168,37 @@ describe('chartVisionService', () => {
       ],
     };
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockOpenAIResponse,
-    });
+    mockChatCompletionsCreate.mockResolvedValueOnce(mockOpenAIResponse);
 
     const config: AIConfig = {
       provider: 'openai',
       apiKey: 'sk-test-key',
-      model: 'gpt-4o',
+      model: 'gpt-5.2',
+      customEndpoint: 'https://custom-openai-proxy.internal/v1',
     };
 
     const result = await analyzeChartImage('base64imgdata', 'image/jpeg', config);
-    expect(global.fetch).toHaveBeenCalledWith(
-      'https://api.openai.com/v1/chat/completions',
+    expect(capturedOpenAIOptions).toEqual({
+      apiKey: 'sk-test-key',
+      baseURL: 'https://custom-openai-proxy.internal/v1',
+      dangerouslyAllowBrowser: true,
+    });
+    expect(mockChatCompletionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        method: 'POST',
+        model: 'gpt-5.2',
+        response_format: { type: 'json_object' },
+        messages: expect.arrayContaining([
+          expect.objectContaining({ role: 'system' }),
+          expect.objectContaining({
+            role: 'user',
+            content: expect.arrayContaining([
+              expect.objectContaining({
+                type: 'image_url',
+                image_url: { url: 'data:image/jpeg;base64,base64imgdata' },
+              }),
+            ]),
+          }),
+        ]),
       })
     );
     expect(result.chart.metadata.chartTitle).toBe('OpenAI Structure');
@@ -178,7 +208,7 @@ describe('chartVisionService', () => {
     const config: AIConfig = {
       provider: 'gemini',
       apiKey: '',
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
     };
 
     await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
@@ -192,7 +222,7 @@ describe('chartVisionService', () => {
     const config: AIConfig = {
       provider: 'gemini',
       apiKey: 'invalid-key',
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
     };
 
     await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
@@ -200,22 +230,33 @@ describe('chartVisionService', () => {
     );
   });
 
-  it('throws error on OpenAI HTTP failure with details', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-      statusText: 'Bad Request',
-      text: async () => 'Quota exceeded',
-    });
+  it('throws error on OpenAI SDK failure with details', async () => {
+    mockChatCompletionsCreate.mockRejectedValueOnce(new Error('Quota exceeded'));
 
     const config: AIConfig = {
       provider: 'openai',
       apiKey: 'invalid-key',
-      model: 'gpt-4o',
+      model: 'gpt-5.2',
     };
 
     await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
-      /ai request failed \(400\): Quota exceeded/i
+      /Quota exceeded/i
+    );
+  });
+
+  it('throws error when OpenAI returns empty content', async () => {
+    mockChatCompletionsCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: null } }],
+    });
+
+    const config: AIConfig = {
+      provider: 'openai',
+      apiKey: 'valid-key',
+      model: 'gpt-5.2',
+    };
+
+    await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
+      /AI returned an empty response/i
     );
   });
 
@@ -289,9 +330,8 @@ describe('chartVisionService', () => {
   });
 
   it('throws error when OpenAI returns empty response text', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ choices: [{ message: { content: '' } }] }),
+    mockChatCompletionsCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: '' } }],
     });
 
     const config: AIConfig = {
@@ -304,10 +344,7 @@ describe('chartVisionService', () => {
     await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
       /ai returned an empty response/i
     );
-    expect(global.fetch).toHaveBeenCalledWith(
-      'https://custom-api.example.com/v1/chat/completions',
-      expect.anything()
-    );
+    expect(capturedOpenAIOptions.baseURL).toBe('https://custom-api.example.com/v1');
   });
 
   it('falls back when crypto is undefined or randomUUID is missing', () => {

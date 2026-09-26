@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SettingsModal } from '../../../components/settings/SettingsModal';
 import * as aiConfig from '../../../services/ai/aiConfig';
+import { CUSTOM_MODEL_VALUE } from '../../../services/ai/modelCatalog';
 
 const mockGenerateContent = vi.fn();
 vi.mock('@google/genai', () => ({
@@ -12,20 +13,36 @@ vi.mock('@google/genai', () => ({
   },
 }));
 
+const mockChatCompletionsCreate = vi.fn();
+let capturedSettingsOpenAIOptions: any = null;
+vi.mock('openai', () => ({
+  default: class MockOpenAI {
+    chat = {
+      completions: {
+        create: mockChatCompletionsCreate,
+      },
+    };
+    constructor(public options: any) {
+      capturedSettingsOpenAIOptions = options;
+    }
+  },
+}));
+
 describe('SettingsModal', () => {
   beforeEach(() => {
     aiConfig.clearAIConfig();
     vi.clearAllMocks();
+    capturedSettingsOpenAIOptions = null;
   });
 
-  it('renders provider selection, api key input, and model fields', () => {
+  it('renders provider selection, api key input, and model dropdown fields', () => {
     const onClose = vi.fn();
     render(<SettingsModal onClose={onClose} />);
 
     expect(screen.getByText(/ai provider & api keys/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/provider/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/enter api key/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/model/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^model$/i)).toBeInTheDocument();
   });
 
   it('saves configuration when Save Settings clicked', () => {
@@ -39,6 +56,7 @@ describe('SettingsModal', () => {
     fireEvent.click(saveBtn);
 
     expect(aiConfig.getAIConfig().apiKey).toBe('AIzaSy12345Test');
+    expect(aiConfig.getAIConfig().model).toBe('gemini-3.8-flash');
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -48,11 +66,45 @@ describe('SettingsModal', () => {
     const providerSelect = screen.getByLabelText(/provider/i);
     fireEvent.change(providerSelect, { target: { value: 'openai' } });
 
-    const modelInput = screen.getByLabelText(/model/i) as HTMLInputElement;
-    expect(modelInput.value).toBe('gpt-4o');
+    const modelSelect = screen.getByLabelText(/^model$/i) as HTMLSelectElement;
+    expect(modelSelect.value).toBe('gpt-5.2');
 
     fireEvent.change(providerSelect, { target: { value: 'gemini' } });
-    expect(modelInput.value).toBe('gemini-2.5-flash');
+    expect(modelSelect.value).toBe('gemini-3.8-flash');
+  });
+
+  it('allows selecting custom model and entering custom identifier', () => {
+    const onClose = vi.fn();
+    render(<SettingsModal onClose={onClose} />);
+
+    const modelSelect = screen.getByLabelText(/^model$/i);
+    fireEvent.change(modelSelect, { target: { value: CUSTOM_MODEL_VALUE } });
+
+    const customInput = screen.getByLabelText(/custom model identifier/i);
+    expect(customInput).toBeInTheDocument();
+
+    fireEvent.change(customInput, { target: { value: 'gemini-custom-experiment' } });
+
+    const saveBtn = screen.getByRole('button', { name: /save settings/i });
+    fireEvent.click(saveBtn);
+
+    expect(aiConfig.getAIConfig().model).toBe('gemini-custom-experiment');
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('recognizes previously saved custom model on modal open', () => {
+    aiConfig.saveAIConfig({
+      provider: 'openai',
+      model: 'my-private-gpt-deployment',
+    });
+
+    render(<SettingsModal onClose={vi.fn()} />);
+
+    const modelSelect = screen.getByLabelText(/^model$/i) as HTMLSelectElement;
+    expect(modelSelect.value).toBe(CUSTOM_MODEL_VALUE);
+
+    const customInput = screen.getByLabelText(/custom model identifier/i) as HTMLInputElement;
+    expect(customInput.value).toBe('my-private-gpt-deployment');
   });
 
   it('toggles password visibility', () => {
@@ -69,7 +121,7 @@ describe('SettingsModal', () => {
     expect(keyInput.type).toBe('password');
   });
 
-  it('tests connection successfully when ping passes', async () => {
+  it('tests connection successfully when ping passes for Gemini', async () => {
     mockGenerateContent.mockResolvedValueOnce({ text: 'pong' });
 
     render(<SettingsModal onClose={vi.fn()} />);
@@ -84,6 +136,7 @@ describe('SettingsModal', () => {
       expect(mockGenerateContent).toHaveBeenCalledWith(
         expect.objectContaining({
           contents: 'Ping',
+          model: 'gemini-3.8-flash',
         })
       );
       expect(screen.getByText(/connection verified successfully/i)).toBeInTheDocument();
@@ -126,11 +179,9 @@ describe('SettingsModal', () => {
     expect(screen.getByText(/please enter an api key first/i)).toBeInTheDocument();
   });
 
-  it('tests connection for OpenAI provider successfully and handles failure', async () => {
-    const originalFetch = global.fetch;
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ choices: [{ message: { content: 'Pong' } }] }),
+  it('tests connection for OpenAI provider successfully via SDK and handles failure', async () => {
+    mockChatCompletionsCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: 'Pong' } }],
     });
 
     render(<SettingsModal onClose={vi.fn()} />);
@@ -144,75 +195,84 @@ describe('SettingsModal', () => {
     const endpointInput = screen.getByLabelText(/custom endpoint/i);
     fireEvent.change(endpointInput, { target: { value: 'https://my-openai-proxy.com/v1///' } });
 
-    const modelInput = screen.getByLabelText(/model/i);
-    fireEvent.change(modelInput, { target: { value: 'gpt-4o-mini' } });
+    const modelSelect = screen.getByLabelText(/^model$/i);
+    fireEvent.change(modelSelect, { target: { value: 'gpt-5.4' } });
 
     const testBtn = screen.getByRole('button', { name: /test connection/i });
     fireEvent.click(testBtn);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://my-openai-proxy.com/v1/chat/completions',
+      expect(capturedSettingsOpenAIOptions).toEqual({
+        apiKey: 'sk-test-key',
+        baseURL: 'https://my-openai-proxy.com/v1',
+        dangerouslyAllowBrowser: true,
+      });
+      expect(mockChatCompletionsCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
+          model: 'gpt-5.4',
+          messages: [{ role: 'user', content: 'Ping' }],
         })
       );
       expect(screen.getByText(/connection verified successfully/i)).toBeInTheDocument();
     });
 
     // Test failure path
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 401,
-      text: async () => 'Invalid API key',
-    });
-
+    mockChatCompletionsCreate.mockRejectedValueOnce(new Error('Invalid API key'));
     fireEvent.click(testBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/connection test failed: HTTP 401: Invalid API key/i)).toBeInTheDocument();
+      expect(screen.getByText(/connection test failed: Invalid API key/i)).toBeInTheDocument();
     });
 
     // Test non-error rejection
-    global.fetch = vi.fn().mockRejectedValue('String rejection');
+    mockChatCompletionsCreate.mockRejectedValueOnce('String rejection');
     fireEvent.click(testBtn);
 
     await waitFor(() => {
       expect(screen.getByText(/connection test failed: Network error/i)).toBeInTheDocument();
     });
 
-    // Test with empty custom endpoint and empty model to cover fallback branches
-    fireEvent.change(endpointInput, { target: { value: '' } });
-    fireEvent.change(modelInput, { target: { value: '' } });
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ choices: [{ message: { content: 'Pong' } }] }),
+    // Test with empty custom model and empty endpoint
+    fireEvent.change(endpointInput, { target: { value: '   ' } });
+    fireEvent.change(modelSelect, { target: { value: CUSTOM_MODEL_VALUE } });
+    const customInput = screen.getByLabelText(/custom model identifier/i);
+    fireEvent.change(customInput, { target: { value: 'my-custom-gpt' } });
+
+    // Selecting custom model again while it's already custom keeps existing value
+    fireEvent.change(modelSelect, { target: { value: CUSTOM_MODEL_VALUE } });
+    expect(customInput).toHaveValue('my-custom-gpt');
+
+    // Clear custom input and test OpenAI fallback model
+    fireEvent.change(customInput, { target: { value: '' } });
+    mockChatCompletionsCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: 'Pong' } }],
     });
     fireEvent.click(testBtn);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.openai.com/v1/chat/completions',
+      expect(capturedSettingsOpenAIOptions.baseURL).toBeUndefined();
+      expect(mockChatCompletionsCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          body: expect.stringContaining('"model":"gpt-4o"'),
+          model: 'gpt-5.2',
         })
       );
     });
 
-    // Switch to Gemini with empty model to cover Gemini model fallback
+    // Switch back to Gemini and test empty custom model fallback to gemini-3.8-flash
     fireEvent.change(providerSelect, { target: { value: 'gemini' } });
-    fireEvent.change(screen.getByLabelText(/model/i), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText(/^model$/i), { target: { value: CUSTOM_MODEL_VALUE } });
+    const geminiCustomInput = screen.getByLabelText(/custom model identifier/i);
+    fireEvent.change(geminiCustomInput, { target: { value: '' } });
+
     mockGenerateContent.mockResolvedValueOnce({ text: 'pong' });
     fireEvent.click(testBtn);
 
     await waitFor(() => {
       expect(mockGenerateContent).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
         })
       );
     });
-
-    global.fetch = originalFetch;
   });
 });
