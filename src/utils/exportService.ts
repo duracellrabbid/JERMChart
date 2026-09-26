@@ -27,7 +27,7 @@ export function downloadJsonBackup(chart: TrustStructureChart): void {
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  const safeTitle = (chart.metadata?.chartTitle || 'Trust').replace(/[^a-zA-Z0-9]/g, '_');
+  const safeTitle = (chart.metadata?.chartTitle || 'Trust').replace(/[^a-z0-9]/gi, '_');
   link.download = `${safeTitle}_Structure.json`;
   link.href = url;
   link.click();
@@ -41,7 +41,7 @@ export function downloadExcelStructure(chart: TrustStructureChart): void {
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  const safeTitle = (chart.metadata?.chartTitle || 'Trust').replace(/[^a-zA-Z0-9]/g, '_');
+  const safeTitle = (chart.metadata?.chartTitle || 'Trust').replace(/[^a-z0-9]/gi, '_');
   link.download = `${safeTitle}_Structure.xlsx`;
   link.href = url;
   link.click();
@@ -144,7 +144,7 @@ export async function exportToPdf(
     { align: 'center' }
   );
 
-  const safeTitle = (metadata.chartTitle || 'Trust').replace(/[^a-zA-Z0-9]/g, '_');
+  const safeTitle = (metadata.chartTitle || 'Trust').replace(/[^a-z0-9]/gi, '_');
   pdf.save(`${safeTitle}_Structure.pdf`);
 }
 
@@ -225,7 +225,7 @@ export async function exportToPptx(
     }
   );
 
-  const safeTitle = (metadata.chartTitle || 'Trust').replace(/[^a-zA-Z0-9]/g, '_');
+  const safeTitle = (metadata.chartTitle || 'Trust').replace(/[^a-z0-9]/gi, '_');
   await pptx.writeFile({ fileName: `${safeTitle}_Structure.pptx` });
 }
 

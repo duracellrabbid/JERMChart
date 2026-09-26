@@ -25,18 +25,18 @@ export type NormalizedColumn =
 
 export function normalizeColumnHeader(header: string): NormalizedColumn {
   const h = header.toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (/^(entity|company|trust)?name$/i.test(h) || h === 'entity' || h === 'company') return 'name';
-  if (/^(immediate)?parent(entity|company)?$/i.test(h) || h === 'owner' || h === 'parent') return 'parent';
-  if (/^ownership(percentage)?$/i.test(h) || h === 'percentage' || h === 'sharespct' || h === 'holdingpct') return 'ownership';
-  if (/^(entity|legal|structure)?type$/i.test(h)) return 'type';
-  if (/^(jurisdiction|country|domicile|incorporation)$/i.test(h)) return 'jurisdiction';
-  if (/^((entity)?status|state)$/i.test(h)) return 'status';
-  if (/^(directors|board|officers|trustees)$/i.test(h)) return 'directors';
-  if (/^(registration|reg|company)(number|no)?$/i.test(h)) return 'registrationNumber';
-  if (/^(taxid|tin|ein|taxnumber)$/i.test(h)) return 'taxId';
-  if (/^(ubos?|beneficiaries|settlor|beneficialowners?|ubosbeneficiaries)$/i.test(h) || h.includes('ubo') || h.includes('beneficiar')) return 'ubos';
-  if (/^((share|shares)?class|sharetype)$/i.test(h)) return 'shareClass';
-  if (/^(notes?|remarks?|comments?|description)$/i.test(h)) return 'notes';
+  if (/^(?:entity|company|trust)?name$/i.test(h) || h === 'entity' || h === 'company') return 'name';
+  if (/^(?:immediate)?parent(?:entity|company)?$/i.test(h) || h === 'owner' || h === 'parent') return 'parent';
+  if (/^ownership(?:percentage)?$/i.test(h) || h === 'percentage' || h === 'sharespct' || h === 'holdingpct') return 'ownership';
+  if (/^(?:entity|legal|structure)?type$/i.test(h)) return 'type';
+  if (/^(?:jurisdiction|country|domicile|incorporation)$/i.test(h)) return 'jurisdiction';
+  if (/^(?:(?:entity)?status|state)$/i.test(h)) return 'status';
+  if (/^(?:directors|board|officers|trustees)$/i.test(h)) return 'directors';
+  if (/^(?:registration|reg|company)(?:number|no)?$/i.test(h)) return 'registrationNumber';
+  if (/^(?:taxid|tin|ein|taxnumber)$/i.test(h)) return 'taxId';
+  if (/^(?:ubos?|beneficiaries|settlor|beneficialowners?|ubosbeneficiaries)$/i.test(h) || h.includes('ubo') || h.includes('beneficiar')) return 'ubos';
+  if (/^(?:(?:share|shares)?class|sharetype)$/i.test(h)) return 'shareClass';
+  if (/^(?:notes?|remarks?|comments?|description)$/i.test(h)) return 'notes';
   return 'unknown';
 }
 
@@ -83,12 +83,12 @@ export function parseDirectorString(raw: string): Director[] {
   const directors: Director[] = [];
 
   items.forEach((item, index) => {
-    const isCorporate = /[([][^()[\]]*\b(corp|corporate)\b[^()[\]]*[)\]]/i.test(item);
-    const isResident = /[([][^()[\]]*\b(res|resident)\b[^()[\]]*[)\]]/i.test(item);
+    const isCorporate = /[([][^()[\]]*\b(?:corp|corporate)\b[^()[\]]*[)\]]/i.test(item);
+    const isResident = /[([][^()[\]]*\b(?:res|resident)\b[^()[\]]*[)\]]/i.test(item);
 
     // Clean name by stripping tag annotations like (Corp, Res), [Corporate], (Resident), etc.
     const cleanName = item
-      .replace(/[([][^()[\]]*\b(corp|corporate|res|resident)\b[^()[\]]*[)\]]/gi, '')
+      .replace(/[([][^()[\]]*\b(?:corp|corporate|res|resident)\b[^()[\]]*[)\]]/gi, '')
       .replace(/\s+/g, ' ')
       .trim();
 

@@ -95,7 +95,7 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
         <polygon
           points="170,6 332,274 8,274"
           fill="#ffffff"
-          stroke={isSelected ? '#38bdf8' : containsHighlightedDirector ? '#f59e0b' : '#f59e0b'}
+          stroke={isSelected ? '#38bdf8' : '#f59e0b'}
           strokeWidth={isSelected || containsHighlightedDirector ? '3' : '2'}
           strokeLinejoin="round"
         />

@@ -6,6 +6,7 @@ import {
   getAIConfig,
   saveAIConfig,
 } from '../../services/ai/aiConfig';
+import { joinUrl } from '../../utils/urlUtils';
 import {
   Settings,
   Eye,
@@ -74,7 +75,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
         });
       } else {
         const baseUrl = config.customEndpoint || 'https://api.openai.com/v1';
-        const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+        const url = joinUrl(baseUrl, 'chat/completions');
         const res = await fetch(url, {
           method: 'POST',
           headers: {

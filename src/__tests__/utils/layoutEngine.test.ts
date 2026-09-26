@@ -3,7 +3,6 @@ import {
   calculateSortedLayout,
   sortSiblingEntities,
   calculateCardHeight,
-  CARD_WIDTH,
   BASE_CARD_HEIGHT,
   DIRECTOR_ROW_HEIGHT,
   TRUST_CARD_WIDTH,

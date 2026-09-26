@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   parseRawAiResponse,
   analyzeChartImage,
+  trimTrailingSlashes,
 } from '../../services/ai/chartVisionService';
 import { AIConfig } from '../../services/ai/aiConfig';
 
@@ -325,6 +326,26 @@ describe('chartVisionService', () => {
     Object.defineProperty(globalThis, 'crypto', {
       value: originalCrypto,
       configurable: true,
+    });
+  });
+
+  describe('trimTrailingSlashes', () => {
+    it('removes trailing slashes without regex backtracking', () => {
+      expect(trimTrailingSlashes('https://api.openai.com/v1/')).toBe('https://api.openai.com/v1');
+      expect(trimTrailingSlashes('https://api.openai.com/v1///')).toBe('https://api.openai.com/v1');
+      expect(trimTrailingSlashes('https://api.openai.com/v1')).toBe('https://api.openai.com/v1');
+    });
+
+    it('handles empty strings, whitespace, and root slashes', () => {
+      expect(trimTrailingSlashes('')).toBe('');
+      expect(trimTrailingSlashes('   ')).toBe('');
+      expect(trimTrailingSlashes('///')).toBe('');
+      expect(trimTrailingSlashes('  https://api.openai.com/v1/  ')).toBe('https://api.openai.com/v1');
+    });
+
+    it('preserves internal slashes in paths', () => {
+      expect(trimTrailingSlashes('https://example.com/api/v2/')).toBe('https://example.com/api/v2');
+      expect(trimTrailingSlashes('/a/b/c//')).toBe('/a/b/c');
     });
   });
 });

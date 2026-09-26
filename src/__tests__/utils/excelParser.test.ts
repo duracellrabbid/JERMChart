@@ -19,15 +19,6 @@ const { setMockEmptySheets } = vi.hoisted(() => {
 
 vi.mock('xlsx', async (importOriginal) => {
   const actual = await importOriginal<typeof import('xlsx')>();
-  const { getMockEmptySheets } = await import('vitest').then(() => ({
-    getMockEmptySheets: () => {
-      try {
-        return (globalThis as any).__mockEmptySheets;
-      } catch {
-        return false;
-      }
-    },
-  }));
 
   return {
     ...actual,

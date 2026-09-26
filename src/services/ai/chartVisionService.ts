@@ -184,13 +184,16 @@ async function callGeminiVision(
   return text;
 }
 
+import { joinUrl, trimTrailingSlashes } from '../../utils/urlUtils';
+export { trimTrailingSlashes };
+
 async function callOpenAIVision(
   base64Image: string,
   mimeType: string,
   config: AIConfig
 ): Promise<string> {
   const baseUrl = config.customEndpoint || 'https://api.openai.com/v1';
-  const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+  const url = joinUrl(baseUrl, 'chat/completions');
   const model = config.model || 'gpt-4o';
 
   const requestBody = {

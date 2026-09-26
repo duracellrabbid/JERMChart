@@ -62,9 +62,9 @@ All autonomous AI agents, subagents, and human developers collaborating with age
 
 - **Principle**: Prevent Regular Expression Denial of Service (ReDoS). All regular expressions must run in guaranteed linear time $\mathcal{O}(n)$ with respect to input length.
 - **Guidelines**:
-  - **Ban Catastrophic Backtracking Patterns**: Never use nested quantifiers such as `(a+)+`, `(a*)*`, `(a|b+)*`, or overlapping repeating groups `(a|a)+`.
+  - **Ban Catastrophic Backtracking Patterns**: Never use nested quantifiers such as `(a+)+`, `(a*)*`, `(a|b+)*`, overlapping repeating groups `(a|a)+`, or unanchored suffix quantifiers such as `/\/+$/` (which cause quadratic $\mathcal{O}(n^2)$ backtracking in NFA engines).
   - **Avoid Ambiguous Wildcard Repetition**: Avoid unanchored patterns like `.*` inside repeating capture groups (e.g., `^.*(a|b).*$`).
-  - **Prefer String Primitives**: When searching for fixed substrings, prefixes, or suffixes, prefer native string methods (`String.prototype.includes()`, `startsWith()`, `endsWith()`, `indexOf()`, `slice()`) over regex.
+  - **Prefer String Primitives & Dedicated Utilities**: When searching for fixed substrings, prefixes, or suffixes (such as stripping trailing slashes or trimming separators), always prefer native string methods (`String.prototype.includes()`, `startsWith()`, `endsWith()`, `indexOf()`, `slice()`) or linear string utilities (e.g. `src/utils/urlUtils.ts`) over regex.
   - **Input Boundaries & Length Limits**: When validating user inputs or file contents (e.g., Excel imports or entity names), enforce maximum string lengths before applying regex.
 
 ### Rule 6: Dedicated `__tests__` Folder Excluded from Executable Builds
@@ -83,7 +83,7 @@ All autonomous AI agents, subagents, and human developers collaborating with age
   - **Planning**: Formulate detailed, structured, step-by-step implementation plans before modifying code (`writing-plans`).
   - **Test-Driven Development (TDD)**: Write failing tests in dedicated `__tests__/` directories before writing implementation code (`test-driven-development`).
   - **Systematic Debugging**: When bugs or failures arise, systematically trace root causes using evidence rather than guessing or speculative fixes (`systematic-debugging`).
-  - **Verification Before Completion**: Run verification commands (`rtk npm test`, `rtk npm run build`) and inspect results before declaring any task complete (`verification-before-completion`).
+  - **Verification Before Completion**: Run verification commands (`rtk npm run lint`, `rtk npm test`, `rtk npm run build`) and inspect results before declaring any task complete (`verification-before-completion`).
 
 ---
 
@@ -96,7 +96,8 @@ All autonomous AI agents, subagents, and human developers collaborating with age
 | **State Management** | Zustand |
 | **Diagram & Graph** | `@xyflow/react` (React Flow), `@dagrejs/dagre` |
 | **File I/O & Export** | `xlsx` (Excel), `jspdf` (PDF), `html-to-image` (Canvas Rendering) |
-| **Build & Tooling** | Vite 6, TypeScript 5.7, Vitest 3, Electron-Builder 26 |
+| **Linting & Quality** | ESLint 9+ (`eslint-plugin-sonarjs`, `eslint-plugin-regexp`), Husky 9 (pre-commit) |
+| **Build & Tooling** | Vite 6, TypeScript 5.7, Vitest 4, Electron-Builder 26 |
 | **Token Optimization**| RTK (`rtk`), `context-mode` |
 | **Code Intelligence** | `codegraph` (`.codegraph/`) |
 
@@ -110,7 +111,7 @@ flowchart TD
     B --> C["Targeted Inspection (context-mode)"]
     C --> D["Plan Implementation"]
     D --> E["Write Code & Tests in __tests__/"]
-    E --> F["Check Cognitive Complexity (<15) & ReDoS"]
+    E --> F["Lint Check via rtk (rtk npm run lint)"]
     F --> G["Run Verification via rtk (rtk npm test)"]
     G --> H["Build & Packaging Check (rtk npm run build)"]
 ```
@@ -125,6 +126,7 @@ flowchart TD
    - Ensure linear regex and verify cognitive complexity is `< 15`.
 
 3. **Validation**:
+   - Run linter (strictly enforcing Rule 4 & 5): `rtk npm run lint`
    - Run test suite: `rtk npm test`
-   - Run type checks and build: `rtk npm run build`
+   - Run type checks and build: `rtk npm run build` (build executes lint check automatically)
    - Verify that test files and test dependencies remain strictly excluded from release bundles.

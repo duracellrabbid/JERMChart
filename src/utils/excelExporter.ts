@@ -61,7 +61,7 @@ export function buildExcelRowsFromChart(chart: TrustStructureChart): Record<stri
         rows.push({
           'Entity Name': baseFields['Entity Name'],
           'Parent Entity': parentEntity ? parentEntity.name : '',
-          'Ownership %': edge.ownershipPercentage !== undefined ? edge.ownershipPercentage : 100,
+          'Ownership %': edge.ownershipPercentage ?? 100,
           'Entity Type': baseFields['Entity Type'],
           'Jurisdiction': baseFields['Jurisdiction'],
           'Status': baseFields['Status'],

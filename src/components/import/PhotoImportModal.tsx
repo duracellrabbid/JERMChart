@@ -20,6 +20,68 @@ interface PhotoImportModalProps {
   onOpenSettings: () => void;
 }
 
+function isHeicFile(filename: string): boolean {
+  const lower = filename.toLowerCase();
+  return lower.endsWith('.heic') || lower.endsWith('.heif');
+}
+
+const ApiKeyRequiredNotice: React.FC<{ onConfigure: () => void }> = ({ onConfigure }) => (
+  <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-900 space-y-3">
+    <div className="flex items-center gap-2 font-bold text-amber-800 text-sm">
+      <KeyRound className="w-4 h-4 text-amber-600" />
+      <span>API Key Required</span>
+    </div>
+    <p className="leading-relaxed">
+      To transcribe hand-drawn diagrams into digital structure charts, this feature uses
+      multimodal vision AI (Google Gemini or OpenAI). Please configure your API key in Settings first.
+    </p>
+    <button
+      type="button"
+      onClick={onConfigure}
+      className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5 transition shadow"
+    >
+      <span>Configure API Key</span>
+      <ArrowRight className="w-4 h-4" />
+    </button>
+  </div>
+);
+
+const ConfirmReplaceNotice: React.FC<{
+  entityCount: number;
+  isProcessing: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}> = ({ entityCount, isProcessing, onCancel, onConfirm }) => (
+  <div className="p-4 rounded-xl border border-sky-200 bg-sky-50 text-xs text-slate-800 space-y-3 animate-in fade-in">
+    <div className="flex items-center gap-2 font-bold text-sky-900 text-sm">
+      <AlertTriangle className="w-4 h-4 text-sky-600" />
+      <span>Replace Current Canvas Chart?</span>
+    </div>
+    <p className="leading-relaxed text-slate-600">
+      You currently have {entityCount} entities on the canvas. Importing this new diagram
+      will replace the current chart. Your previous chart will be preserved in an Undo snapshot.
+    </p>
+    <div className="flex items-center gap-2 pt-1">
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={isProcessing}
+        className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-white font-semibold transition"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        onClick={onConfirm}
+        disabled={isProcessing}
+        className="px-4 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-500 font-semibold shadow transition"
+      >
+        Replace & Continue
+      </button>
+    </div>
+  </div>
+);
+
 export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   onClose,
   onOpenSettings,
@@ -61,9 +123,8 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
     setErrorMsg(null);
 
     // If it's a regular browser-displayable image, show preview
-    if (!selectedFile.name.toLowerCase().endsWith('.heic') && !selectedFile.name.toLowerCase().endsWith('.heif')) {
-      const url = URL.createObjectURL(selectedFile);
-      setPreviewUrl(url);
+    if (!isHeicFile(selectedFile.name)) {
+      setPreviewUrl(URL.createObjectURL(selectedFile));
     } else {
       setPreviewUrl(null);
     }
@@ -132,92 +193,39 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
     executeAnalysis();
   };
 
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
-    >
-      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white">
-          <div className="flex items-center gap-2">
-            <Camera className="w-5 h-5 text-sky-400" />
-            <h2 className="text-base font-bold">Import from Photo / Hand-drawn Chart</h2>
-          </div>
-          <button
-            onClick={onClose}
-            disabled={isProcessing}
-            aria-label="Close"
-            className="text-slate-400 hover:text-white p-1 rounded transition disabled:opacity-50"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const renderModalBody = () => {
+    if (!hasKey) {
+      return (
+        <ApiKeyRequiredNotice
+          onConfigure={() => {
+            onClose();
+            onOpenSettings();
+          }}
+        />
+      );
+    }
 
-        {/* Content */}
-        <div className="p-6 space-y-4">
-          {!hasKey ? (
-            <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-900 space-y-3">
-              <div className="flex items-center gap-2 font-bold text-amber-800 text-sm">
-                <KeyRound className="w-4 h-4 text-amber-600" />
-                <span>API Key Required</span>
-              </div>
-              <p className="leading-relaxed">
-                To transcribe hand-drawn diagrams into digital structure charts, this feature uses
-                multimodal vision AI (Google Gemini or OpenAI). Please configure your API key in Settings first.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenSettings();
-                }}
-                className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5 transition shadow"
-              >
-                <span>Configure API Key</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          ) : showConfirmReplace ? (
-            <div className="p-4 rounded-xl border border-sky-200 bg-sky-50 text-xs text-slate-800 space-y-3 animate-in fade-in">
-              <div className="flex items-center gap-2 font-bold text-sky-900 text-sm">
-                <AlertTriangle className="w-4 h-4 text-sky-600" />
-                <span>Replace Current Canvas Chart?</span>
-              </div>
-              <p className="leading-relaxed text-slate-600">
-                You currently have {entities.length} entities on the canvas. Importing this new diagram
-                will replace the current chart. Your previous chart will be preserved in an Undo snapshot.
-              </p>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmReplace(false)}
-                  disabled={isProcessing}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-white font-semibold transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={executeAnalysis}
-                  disabled={isProcessing}
-                  className="px-4 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-500 font-semibold shadow transition"
-                >
-                  Replace & Continue
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Dropzone */}
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center ${
-                  isDragging
+    if (showConfirmReplace) {
+      return (
+        <ConfirmReplaceNotice
+          entityCount={entities.length}
+          isProcessing={isProcessing}
+          onCancel={() => setShowConfirmReplace(false)}
+          onConfirm={executeAnalysis}
+        />
+      );
+    }
+
+    return (
+      <>
+        {/* Dropzone */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center ${
+            isDragging
                     ? 'border-sky-500 bg-sky-50/50'
                     : 'border-slate-300 hover:border-sky-400 hover:bg-slate-50'
                 }`}
@@ -305,7 +313,35 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
                 </button>
               </div>
             </>
-          )}
+    );
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+    >
+      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white">
+          <div className="flex items-center gap-2">
+            <Camera className="w-5 h-5 text-sky-400" />
+            <h2 className="text-base font-bold">Import from Photo / Hand-drawn Chart</h2>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={isProcessing}
+            aria-label="Close"
+            className="text-slate-400 hover:text-white p-1 rounded transition disabled:opacity-50"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-4">
+          {renderModalBody()}
         </div>
       </div>
     </div>

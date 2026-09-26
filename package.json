@@ -9,10 +9,13 @@
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run lint && tsc && vite build",
     "preview": "vite preview",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "prepare": "husky",
     "electron:dev": "concurrently -k \"cross-env BROWSER=none vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
     "electron:pack": "npm run build && electron-builder --dir",
     "electron:build": "npm run build && electron-builder --win --x64"
@@ -38,6 +41,7 @@
     "dompurify": "^3.4.15"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^22.13.4",
@@ -50,10 +54,15 @@
     "cross-env": "^10.1.0",
     "electron": "^44.4.3",
     "electron-builder": "^26.15.3",
+    "eslint": "^10.11.0",
+    "eslint-plugin-regexp": "^3.3.1",
+    "eslint-plugin-sonarjs": "^4.2.1",
+    "husky": "^9.1.7",
     "jsdom": "^26.0.0",
     "postcss": "^8.5.2",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.70.1",
     "vite": "^6.1.0",
     "vitest": "^4.1.11",
     "wait-on": "^9.1.0"
