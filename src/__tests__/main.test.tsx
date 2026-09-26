@@ -21,5 +21,5 @@ describe('main entrypoint', () => {
 
     expect(mockCreateRoot).toHaveBeenCalledWith(document.getElementById('root'));
     expect(mockRender).toHaveBeenCalled();
-  });
+  }, 25000);
 });

@@ -83,7 +83,7 @@ All autonomous AI agents, subagents, and human developers collaborating with age
   - **Planning**: Formulate detailed, structured, step-by-step implementation plans before modifying code (`writing-plans`).
   - **Test-Driven Development (TDD)**: Write failing tests in dedicated `__tests__/` directories before writing implementation code (`test-driven-development`).
   - **Systematic Debugging**: When bugs or failures arise, systematically trace root causes using evidence rather than guessing or speculative fixes (`systematic-debugging`).
-  - **Verification Before Completion**: Run verification commands (`rtk npm run lint`, `rtk npm test`, `rtk npm run build`) and inspect results before declaring any task complete (`verification-before-completion`).
+  - **Verification Before Completion**: Run verification commands (`rtk npm run verify:pre-commit`, `rtk npm run verify:pre-push`) and inspect results before declaring any task complete (`verification-before-completion`).
 
 ---
 
@@ -96,7 +96,7 @@ All autonomous AI agents, subagents, and human developers collaborating with age
 | **State Management** | Zustand |
 | **Diagram & Graph** | `@xyflow/react` (React Flow), `@dagrejs/dagre` |
 | **File I/O & Export** | `xlsx` (Excel), `jspdf` (PDF), `html-to-image` (Canvas Rendering) |
-| **Linting & Quality** | ESLint 9+ (`eslint-plugin-sonarjs`, `eslint-plugin-regexp`), Husky 9 (pre-commit) |
+| **Linting & Quality** | ESLint 9+ (`eslint-plugin-sonarjs`, `eslint-plugin-regexp`), Husky 9 (pre-commit & pre-push) |
 | **Build & Tooling** | Vite 6, TypeScript 5.7, Vitest 4, Electron-Builder 26 |
 | **Token Optimization**| RTK (`rtk`), `context-mode` |
 | **Code Intelligence** | `codegraph` (`.codegraph/`) |
@@ -111,9 +111,9 @@ flowchart TD
     B --> C["Targeted Inspection (context-mode)"]
     C --> D["Plan Implementation"]
     D --> E["Write Code & Tests in __tests__/"]
-    E --> F["Lint Check via rtk (rtk npm run lint)"]
-    F --> G["Run Verification via rtk (rtk npm test)"]
-    G --> H["Build & Packaging Check (rtk npm run build)"]
+    E --> F["Pre-Commit Guard (rtk npm run verify:pre-commit)"]
+    F --> G["Pre-Push Guard (rtk npm run verify:pre-push)"]
+    G --> H["Ready for Merge / Delivery"]
 ```
 
 1. **Discovery**:
@@ -125,8 +125,7 @@ flowchart TD
    - Write tests in dedicated `__tests__/` directories before or alongside implementation.
    - Ensure linear regex and verify cognitive complexity is `< 15`.
 
-3. **Validation**:
-   - Run linter (strictly enforcing Rule 4 & 5): `rtk npm run lint`
-   - Run test suite: `rtk npm test`
-   - Run type checks and build: `rtk npm run build` (build executes lint check automatically)
+3. **Validation & Git Lifecycle Gates**:
+   - **Pre-Commit Gate**: `rtk npm run verify:pre-commit` (runs `npm run lint` enforcing Rule 4 & 5, followed by `npm run test:coverage` enforcing 100% coverage threshold).
+   - **Pre-Push Gate**: `rtk npm run verify:pre-push` (runs `npm run build` validating production compilation, followed by `npm run audit:security` verifying zero moderate or higher vulnerabilities).
    - Verify that test files and test dependencies remain strictly excluded from release bundles.
