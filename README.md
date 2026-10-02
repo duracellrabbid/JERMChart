@@ -1,7 +1,9 @@
 # JERMChart: Fiduciary Structure Chart Utility
 
-A 100% client-side web application designed for trust officers, fiduciary specialists, and corporate administrators to quickly prepare, organize, interactively sort, and export corporate and trust structure charts.
+A 100% client-side, zero-telemetry application designed for trust officers, fiduciary specialists, and corporate administrators to quickly prepare, organize, interactively sort, and export corporate and trust structure charts.
 
+[![CI](https://github.com/duracellrabbid/JERMChart/actions/workflows/ci.yml/badge.svg)](https://github.com/duracellrabbid/JERMChart/actions/workflows/ci.yml)
+[![Release](https://github.com/duracellrabbid/JERMChart/actions/workflows/release.yml/badge.svg)](https://github.com/duracellrabbid/JERMChart/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
@@ -44,18 +46,26 @@ This utility solves these challenges with an **algorithmic layout engine**, **cu
   - Full roundtrip compatibility: export the active canvas structure to a standard 12-column Excel workbook, or import existing client entity registers into editable interactive charts.
   - Multi-parent ownership resolution, share classes, and director parsing.
 
-- **AI-Powered Photo & Hand-Drawn Chart OCR**:
-  - Transcribe photos of whiteboard sketches, whiteboard diagrams, or hand-drawn trust structures directly into editable digital charts using Google Gemini or OpenAI vision models.
+- **AI-Powered Photo & Hand-Drawn Chart OCR (Google Gemini Exclusive)**:
+  - Transcribe photos of whiteboard sketches, diagrams, or hand-drawn trust structures directly into editable digital charts exclusively using Google Gemini multimodal vision (`@google/genai`).
   - Interactive OCR review banner with one-click undo snapshot restoration.
+  - **Fiduciary Data Privacy Notice**: Built-in enterprise compliance disclaimer deflecting liability and requiring users to ensure their Google AI API key is an Enterprise/Paid tier with model training disabled.
 
-- **100% In-Browser Privacy & Export Engine**:
-  - **No backend or cloud database required**: Client data stays completely inside the user's browser for compliance and privacy.
+- **Airgapped Zero-Telemetry & Mathematical Offline Architecture**:
+  - **100% In-Browser Privacy**: Client data stays completely inside the user's browser or local machine. Zero unauthorized network egress, analytics, or background telemetry.
+  - **Compile-Time AST Restrictions**: ESLint `no-restricted-globals` statically forbids `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon` across all application modules, with an exception solely for explicit user-initiated Gemini OCR in `chartVisionService.ts`.
+  - **Content Security Policy (CSP)**: Strict `<meta http-equiv="Content-Security-Policy">` restricting `connect-src` strictly to `'self'` and `https://generativelanguage.googleapis.com`.
+  - **Electron Runtime Firewall & Chromium Hardening**: Suppresses Chromium background telemetry via 6 privacy flags (`disable-background-networking`, `disable-component-update`, `disable-domain-reliability`, `disable-sync`, `metrics-recording-only`, `no-report-upload`) and enforces an active network firewall via `session.defaultSession.webRequest.onBeforeRequest` that cancels unauthorized egress.
+  - **Automated Offline Isolation Suite**: Dedicated test suite (`src/__tests__/offline/networkIsolation.test.ts`) guaranteeing zero network requests across all entity operations, Dagre layout calculations, Excel imports, and document exports.
+
+- **Print-Ready Fiduciary Export Engine**:
   - **Print-Ready PDF**: A4 Landscape layout embedding structure title, client/matter reference, effective date, and confidentiality footer (`"STRICTLY CONFIDENTIAL - PREPARED FOR CLIENT REVIEW ONLY"`).
   - **PowerPoint Presentation (.pptx)**: Export presentation slides directly to Microsoft PowerPoint via `pptxgenjs`.
   - **High-Resolution PNG (2.5x DPI) & Vector SVG**: Crisp vector and raster formats for Word advisory memos and client deliverables.
   - **JSON Backup & Restore**: Save and load `.json` client files locally for individual client matters.
 
 - **Enterprise Quality & Security Safeguards**:
+  - **Automated GitHub Actions CI/CD**: Unified quality and security pipeline preventing `--no-verify` bypass by running pre-commit and pre-push gates in CI on every push and pull request.
   - **Guaranteed Linear String Primitives**: ReDoS-free URL/path utilities (`urlUtils.ts`) preventing catastrophic regular expression backtracking.
   - **Cognitive Complexity < 15**: Strictly enforced via `eslint-plugin-sonarjs` for maintainability.
   - **Automated Git Lifecycle Guards**: Pre-commit and pre-push hooks via Husky enforcing 100% test coverage and zero security vulnerabilities.
@@ -71,9 +81,10 @@ This utility solves these challenges with an **algorithmic layout engine**, **cu
 - **Styling**: Tailwind CSS + Lucide React Icons
 - **State Management**: Zustand 5
 - **File I/O & Export Services**: `xlsx`, `jspdf`, `pptxgenjs`, `html-to-image`, `heic2any`
-- **AI Multimodal Vision**: `@google/genai` (Google Gemini) and OpenAI Vision APIs
+- **AI Multimodal Vision**: `@google/genai` (Google Gemini exclusively)
 - **Code Quality & Linting**: ESLint 10 (`eslint-plugin-sonarjs`, `eslint-plugin-regexp`), Husky 9
-- **Testing & Coverage**: Vitest 4 (v8 coverage) + React Testing Library
+- **Testing & Coverage**: Vitest 5 (v8 coverage) + React Testing Library (100% global threshold)
+- **CI/CD & Packaging**: GitHub Actions, `electron-builder`
 
 ---
 
@@ -114,15 +125,38 @@ This utility solves these challenges with an **algorithmic layout engine**, **cu
 | `npm run dev` | Starts Vite local development server with HMR. | &mdash; |
 | `npm run lint` | Runs ESLint across `src/`. | Cognitive complexity < 15, ReDoS-free linear regex. |
 | `npm run lint:fix` | Automatically fixes auto-fixable lint issues. | &mdash; |
-| `npm test` | Runs all 24 unit and component test suites via Vitest. | 0 test failures. |
+| `npm test` | Runs all 26 unit and component test suites (298 tests) via Vitest. | 0 test failures. |
 | `npm run test:coverage` | Runs full test suite with V8 coverage reporting. | **100% threshold** across statements, branches, functions, and lines. |
 | `npm run audit:security` | Audits installed npm dependencies for vulnerabilities. | Blocks `moderate`, `high`, and `critical` vulnerabilities. |
-| `npm run verify:pre-commit` | **Pre-Commit Gate**: Runs `npm run lint` then `npm run test:coverage`. | Enforced automatically by Git pre-commit hook via Husky. |
-| `npm run verify:pre-push` | **Pre-Push Gate**: Runs `npm run build` then `npm run audit:security`. | Enforced automatically by Git pre-push hook via Husky. |
+| `npm run verify:pre-commit` | **Pre-Commit Gate**: Runs `npm run lint` then `npm run test:coverage`. | Enforced automatically by Git pre-commit hook via Husky and GitHub Actions CI. |
+| `npm run verify:pre-push` | **Pre-Push Gate**: Runs `npm run build` then `npm run audit:security`. | Enforced automatically by Git pre-push hook via Husky and GitHub Actions CI. |
 | `npm run build` | Compiles production assets: runs linter, `tsc`, and `vite build`. | Produces optimized static web bundle in `dist/`. |
 | `npm run electron:dev` | Launches Electron desktop app in development mode with live reload. | Desktop dev runtime. |
 | `npm run electron:pack` | Packages unpacked standalone desktop binary in `release/win-unpacked/`. | Portable testing. |
 | `npm run electron:build` | Builds Windows standalone installer and portable `.exe` in `release/`. | Production desktop installer. |
+
+---
+
+## Continuous Integration & Automated Releases (GitHub Actions)
+
+To prevent code hygiene regressions and bypass of local git hooks via `--no-verify`, the repository includes automated GitHub Actions workflows:
+
+### 1. Unified CI Pipeline (`.github/workflows/ci.yml`)
+- **Triggers**: Every `push` and `pull_request` targeting `main` or `master`.
+- **Environment**: Clean `ubuntu-latest` runner on Node.js 22 with npm dependency caching.
+- **Workflow Steps**:
+  1. Installs clean locked dependencies via `npm ci`.
+  2. Runs `npm run verify:pre-commit` (ESLint cognitive complexity < 15, ReDoS-free linear regex, AST-level network bans, and 100% test coverage across statements, branches, functions, and lines).
+  3. Runs `npm run verify:pre-push` (TypeScript type check, Vite production bundling, and npm security audit for moderate or higher vulnerabilities).
+
+### 2. Windows Desktop CD Release Pipeline (`.github/workflows/release.yml`)
+- **Triggers**: Pushing a version tag matching `v*.*.*` or manual dispatch via `workflow_dispatch`.
+- **Environment**: `windows-latest` runner on Node.js 22.
+- **Workflow Steps**:
+  1. Runs full pre-commit and pre-push verification gates.
+  2. Builds and packages Windows x64 executables via `npm run electron:build`.
+  3. Computes cryptographic SHA-256 hashes for all `.exe` artifacts and writes `release/SHA256SUMS.txt`.
+  4. Publishes a **Draft Release** on GitHub via `softprops/action-gh-release@v2`, allowing maintainers to inspect and verify binaries before manually publishing.
 
 ---
 
@@ -216,21 +250,28 @@ The project includes a ready-to-use **Electron** desktop wrapper that turns the 
    - **`release/JERMChart Setup 1.0.0.exe`**: Standard Windows installer with desktop and start-menu shortcuts.
    - **`release/JERMChart 1.0.0.exe`**: Zero-install standalone portable `.exe` that users can copy to a USB drive or local folder and run immediately.
 
+4. **Automated GitHub Releases**:
+   Pre-built Windows binaries are automatically generated and attached to GitHub Draft Releases via the [Windows Release Workflow](.github/workflows/release.yml), accompanied by cryptographic `SHA256SUMS.txt` hashes for binary integrity verification.
+
 ---
 
 ## Project Structure
 
 ```
 JERMChart/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml               # Unified CI pipeline (Lint, 100% Coverage, Build, Security Audit)
+│       └── release.yml          # Windows Draft Release CD workflow with SHA-256 checksums
 ├── .husky/                      # Git hooks (pre-commit, pre-push)
-├── docs/                        # Superpower implementation plans and specs
-├── index.html                   # HTML shell
+├── docs/                        # Architecture documentation, standards, and specifications
+├── index.html                   # HTML shell with strict Content Security Policy (CSP)
 ├── package.json                 # Project dependencies, scripts, and quality gates
-├── eslint.config.js             # ESLint 10 flat configuration (SonarJS, Regexp)
+├── eslint.config.js             # ESLint 10 flat configuration (SonarJS, Regexp, AST network ban)
 ├── vite.config.ts               # Vite configuration and Vitest 100% coverage thresholds
 ├── tailwind.config.js           # Corporate fiduciary color themes
 ├── tsconfig.json                # TypeScript compiler configuration
-├── electron/                    # Native desktop application main and preload wrappers
+├── electron/                    # Native desktop application main (firewall) and preload wrappers
 ├── src/
 │   ├── main.tsx                 # Application entry point
 │   ├── App.tsx                  # Root layout (Header, Sidebar, Canvas, Modals)
@@ -242,7 +283,7 @@ JERMChart/
 │   ├── store/
 │   │   └── useStructureStore.ts # Central Zustand state store with undo snapshots
 │   ├── services/
-│   │   └── ai/                  # AI vision integrations (Gemini, OpenAI, AIConfig)
+│   │   └── ai/                  # AI vision OCR integration (Gemini exclusively, AIConfig, ModelCatalog)
 │   ├── utils/
 │   │   ├── urlUtils.ts          # ReDoS-free linear string primitives for URL/path handling
 │   │   ├── layoutEngine.ts      # Dagre auto-layout & sibling sorting algorithms
@@ -258,9 +299,10 @@ JERMChart/
 │   │   ├── nodes/               # Custom executive entity card & trust triangle nodes
 │   │   ├── edges/               # Custom stepped orthogonal ownership connector
 │   │   ├── import/              # Excel spreadsheet & AI photo OCR import modals
-│   │   ├── settings/            # AI provider configuration & API key manager
+│   │   ├── settings/            # Gemini API key manager & Enterprise Compliance Notice
 │   │   └── export/              # Export modal for PDF/PNG/SVG/PPTX and JSON
-│   └── __tests__/               # Isolated unit and integration test suites (Rule 6)
+│   └── __tests__/               # Isolated unit, component, and integration test suites (Rule 6)
+│       └── offline/             # Automated network isolation suite verifying zero outbound egress
 ```
 
 ---
