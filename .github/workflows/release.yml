@@ -1,0 +1,65 @@
+name: Windows Desktop Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release Tag Name (e.g. v1.0.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build & Package Windows (x64)
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Execute Pre-Commit Verification Gate
+        run: npm run verify:pre-commit
+
+      - name: Execute Pre-Push Verification Gate
+        run: npm run verify:pre-push
+
+      - name: Package Windows Executables (NSIS & Portable)
+        run: npm run electron:build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute SHA-256 Checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path release\*.exe | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $($_.Path | Split-Path -Leaf)" } | Out-File -FilePath release\SHA256SUMS.txt -Encoding ascii
+          Write-Host "Generated SHA256SUMS.txt:"
+          Get-Content release\SHA256SUMS.txt
+
+      - name: Create GitHub Draft Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          files: |
+            release/*.exe
+            release/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
