@@ -33,36 +33,12 @@ export const GEMINI_MODELS: AIModelDefinition[] = [
   },
 ];
 
-export const OPENAI_MODELS: AIModelDefinition[] = [
-  {
-    id: 'gpt-5.2',
-    displayName: 'GPT-5.2 (Recommended - High Accuracy)',
-    description: 'Flagship model for advanced multimodal vision & structured JSON extraction',
-    isDefault: true,
-  },
-  {
-    id: 'gpt-5.2-pro',
-    displayName: 'GPT-5.2 Pro (Deep Reasoning)',
-    description: 'High-capability reasoning for complex fiduciary structures',
-  },
-  {
-    id: 'gpt-5.4',
-    displayName: 'GPT-5.4 (Advanced Thinking)',
-    description: 'Native multimodal planning and visual extraction',
-  },
-  {
-    id: 'gpt-5.6',
-    displayName: 'GPT-5.6 (Latest Frontier)',
-    description: 'Latest frontier model for visual understanding',
-  },
-];
-
-export function getModelsForProvider(provider: AIProvider): AIModelDefinition[] {
-  return provider === 'openai' ? OPENAI_MODELS : GEMINI_MODELS;
+export function getModelsForProvider(_provider?: AIProvider): AIModelDefinition[] {
+  return GEMINI_MODELS;
 }
 
-export function getDefaultModelForProvider(provider: AIProvider): string {
-  return provider === 'openai' ? 'gpt-5.2' : 'gemini-3.8-flash';
+export function getDefaultModelForProvider(_provider?: AIProvider): string {
+  return 'gemini-3.8-flash';
 }
 
 export function isValidModelForProvider(provider: AIProvider, modelId: string): boolean {

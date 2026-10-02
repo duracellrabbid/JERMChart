@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import OpenAI from 'openai';
 import {
   AIConfig,
-  AIProvider,
   getAIConfig,
   saveAIConfig,
 } from '../../services/ai/aiConfig';
 import {
   CUSTOM_MODEL_VALUE,
   getModelsForProvider,
-  getDefaultModelForProvider,
   isCustomModel,
 } from '../../services/ai/modelCatalog';
-import { trimTrailingSlashes } from '../../utils/urlUtils';
 import {
   Settings,
   Eye,
@@ -22,6 +18,7 @@ import {
   AlertCircle,
   X,
   Sparkles,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -47,17 +44,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
-
-  const handleProviderChange = (newProvider: AIProvider) => {
-    const defaultModel = getDefaultModelForProvider(newProvider);
-    setConfig((prev) => ({
-      ...prev,
-      provider: newProvider,
-      model: defaultModel,
-    }));
-    setIsCustom(false);
-    setTestResult(null);
-  };
 
   const handleModelChange = (selectedId: string) => {
     if (selectedId === CUSTOM_MODEL_VALUE) {
@@ -99,28 +85,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     setTestResult(null);
 
     try {
-      if (config.provider === 'gemini') {
-        const model = config.model || 'gemini-3.8-flash';
-        const ai = new GoogleGenAI({ apiKey: config.apiKey.trim() });
-        await ai.models.generateContent({
-          model,
-          contents: 'Ping',
-        });
-      } else {
-        const rawEndpoint = config.customEndpoint?.trim();
-        const baseURL = rawEndpoint ? trimTrailingSlashes(rawEndpoint) : undefined;
-        const client = new OpenAI({
-          apiKey: config.apiKey.trim(),
-          baseURL,
-          dangerouslyAllowBrowser: true,
-        });
-
-        await client.chat.completions.create({
-          model: config.model || 'gpt-5.2',
-          messages: [{ role: 'user', content: 'Ping' }],
-          max_tokens: 5,
-        });
-      }
+      const model = config.model || 'gemini-3.8-flash';
+      const ai = new GoogleGenAI({ apiKey: config.apiKey.trim() });
+      await ai.models.generateContent({
+        model,
+        contents: 'Ping',
+      });
 
       setTestResult({
         success: true,
@@ -163,26 +133,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
         {/* Content Form */}
         <div className="p-6 space-y-4 text-xs text-slate-700">
-          {/* Provider */}
-          <div>
-            <label htmlFor="ai-provider" className="block font-semibold text-slate-800 mb-1">
-              Provider
-            </label>
-            <select
-              id="ai-provider"
-              value={config.provider}
-              onChange={(e) => handleProviderChange(e.target.value as AIProvider)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
-            >
-              <option value="gemini">Google Gemini (Default, Recommended)</option>
-              <option value="openai">OpenAI</option>
-            </select>
+          {/* Fiduciary Privacy Notice */}
+          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed space-y-1.5">
+            <div className="flex items-center gap-1.5 font-semibold text-amber-800">
+              <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <span>Fiduciary Privacy & Enterprise Disclaimer</span>
+            </div>
+            <p>
+              JERMChart operates 100% locally and never sends structure chart data to any external server. When using Vision OCR, chart images are transmitted directly to Google Gemini using your personal API key.
+            </p>
+            <p className="font-medium text-amber-950">
+              Important: You must ensure your API key belongs to a paid/enterprise Google Cloud project with prompt logging disabled. Consumer/free-tier Google AI keys may use prompt data for model training. JERMChart disclaims liability for data processed under non-enterprise terms.
+            </p>
           </div>
 
           {/* Model Selection */}
           <div>
             <label htmlFor="ai-model" className="block font-semibold text-slate-800 mb-1">
-              Model
+              Google Gemini Vision Model
             </label>
             <select
               id="ai-model"
@@ -199,7 +167,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </select>
             <p className="text-[10px] text-slate-500 mt-1">
               {isCustom
-                ? 'Specify a custom or fine-tuned model identifier for your provider deployment.'
+                ? 'Specify a custom or fine-tuned model identifier for your enterprise Gemini deployment.'
                 : currentModelDescription}
             </p>
           </div>
@@ -215,7 +183,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 type="text"
                 value={config.model}
                 onChange={(e) => handleCustomModelInputChange(e.target.value)}
-                placeholder={config.provider === 'gemini' ? 'e.g. gemini-3.8-flash' : 'e.g. gpt-5.2'}
+                placeholder="e.g. gemini-3.8-flash"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
               />
             </div>
@@ -224,14 +192,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           {/* API Key */}
           <div>
             <label htmlFor="ai-apikey" className="block font-semibold text-slate-800 mb-1">
-              API Key
+              Google Gemini API Key
             </label>
             <div className="relative">
               <input
                 id="ai-apikey"
                 type={showApiKey ? 'text' : 'password'}
                 value={config.apiKey}
-                placeholder="Enter API Key"
+                placeholder="Enter Gemini API Key"
                 onChange={(e) => {
                   setConfig((prev) => ({ ...prev, apiKey: e.target.value }));
                   setTestResult(null);
@@ -251,23 +219,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               Stored locally on your device in your user profile. Never transmitted elsewhere.
             </p>
           </div>
-
-          {/* Custom Endpoint (OpenAI only) */}
-          {config.provider === 'openai' && (
-            <div>
-              <label htmlFor="ai-endpoint" className="block font-semibold text-slate-800 mb-1">
-                Custom Endpoint (Optional)
-              </label>
-              <input
-                id="ai-endpoint"
-                type="text"
-                value={config.customEndpoint || ''}
-                onChange={(e) => setConfig((prev) => ({ ...prev, customEndpoint: e.target.value }))}
-                placeholder="https://api.openai.com/v1"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
-              />
-            </div>
-          )}
 
           {/* Test Status feedback */}
           {testResult && (

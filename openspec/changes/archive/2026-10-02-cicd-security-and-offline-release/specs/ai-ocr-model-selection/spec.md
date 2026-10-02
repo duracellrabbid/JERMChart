@@ -1,9 +1,13 @@
-# ai-ocr-model-selection Specification
+# ai-ocr-model-selection Spec Delta
 
-## Purpose
-Provide a user-friendly, curated model selection interface for AI-driven structure chart OCR, supporting the latest active vision models across Google Gemini and OpenAI, backed by the official OpenAI client SDK.
+## REMOVED Requirements
 
-## Requirements
+### Requirement: Official OpenAI Client SDK Integration
+The system MUST execute OpenAI vision OCR requests and connection verification pings using the official `openai` SDK (`OpenAI` client instance) with `dangerouslyAllowBrowser: true` and optional custom `baseURL`.
+
+**Reason**: Deprecate OpenAI integration and custom network endpoints to minimize egress attack surface, simplifying network defense down to a single Google Gemini domain.
+
+## MODIFIED Requirements
 
 ### Requirement: Curated Vision Model Catalog
 The system MUST provide a centralized catalog of verified vision-capable models exclusively for the `gemini` AI provider, mapping exact API identifiers to human-readable labels, descriptions, and recommended default flags.
@@ -27,16 +31,7 @@ The Settings modal MUST display a curated model `<select>` dropdown populated ex
 - **WHEN** the user views the model options
 - **THEN** the dropdown defaults to `gemini-3.8-flash` without requiring provider toggling.
 
-### Requirement: Custom Model Identifier Input
-The system MUST support a "Custom Model..." option in the dropdown to allow advanced users to specify unlisted or internal enterprise deployment model identifiers.
-
-#### Scenario: Selecting Custom Model
-- **WHEN** the user selects the "Custom Model..." option in the model dropdown
-- **THEN** an additional text input appears permitting the user to enter a custom model string.
-
-#### Scenario: Saving a Custom Model
-- **WHEN** the user saves settings with a custom model string entered
-- **THEN** the custom model string is saved to the client configuration and used for vision OCR requests.
+## ADDED Requirements
 
 ### Requirement: Fiduciary Data Privacy and Enterprise Tier Compliance Notice
 The Settings modal and AI Vision OCR modal MUST display a persistent fiduciary compliance and privacy disclaimer notifying users of Google AI Studio terms and establishing customer responsibility for utilizing enterprise/paid keys.

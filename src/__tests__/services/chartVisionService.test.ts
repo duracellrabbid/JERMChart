@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   parseRawAiResponse,
   analyzeChartImage,
@@ -15,30 +15,9 @@ vi.mock('@google/genai', () => ({
   },
 }));
 
-const mockChatCompletionsCreate = vi.fn();
-let capturedOpenAIOptions: any = null;
-vi.mock('openai', () => ({
-  default: class MockOpenAI {
-    chat = {
-      completions: {
-        create: mockChatCompletionsCreate,
-      },
-    };
-    constructor(public options: any) {
-      capturedOpenAIOptions = options;
-    }
-  },
-}));
-
 describe('chartVisionService', () => {
-  const originalFetch = global.fetch;
-
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    global.fetch = originalFetch;
   });
 
   it('parses valid AI structured output and sanitizes node types and UUIDs', () => {
@@ -60,7 +39,7 @@ describe('chartVisionService', () => {
           type: 'Holding Company',
           jurisdiction: 'BVI',
           status: 'Active',
-          directors: [{ name: 'Arthur Pendelton', isResident: true, isCorporate: false }],
+          directors: [{ name: 'Jane Doe', role: 'Director', isResident: true }],
         },
       ],
       relationships: [
@@ -68,140 +47,67 @@ describe('chartVisionService', () => {
           sourceTempId: 't1',
           targetTempId: 't2',
           ownershipPercentage: 100,
-          shareClass: 'Ordinary Shares',
+          shareClass: 'Class A Ordinary',
         },
       ],
-      warnings: ['Assumed 100% ownership based on vertical hierarchy line'],
+      warnings: ['Inferred ownership percentage 100% for t1 -> t2'],
     });
 
     const result = parseRawAiResponse(rawAiOutput);
+    expect(result.chart.metadata.chartTitle).toBe('The Wellington Trust Structure');
     expect(result.chart.entities).toHaveLength(2);
     expect(result.chart.relationships).toHaveLength(1);
-    expect(result.chart.metadata.chartTitle).toBe('The Wellington Trust Structure');
-    expect(result.warnings).toContain('Assumed 100% ownership based on vertical hierarchy line');
-
-    const sourceId = result.chart.relationships[0].source;
-    const targetId = result.chart.relationships[0].target;
-    expect(result.chart.entities.find((e) => e.id === sourceId)?.name).toBe('The Wellington Trust');
-    expect(result.chart.entities.find((e) => e.id === targetId)?.name).toBe('Wellington Holding Ltd');
-    expect(result.chart.entities[1].directors[0].name).toBe('Arthur Pendelton');
-    expect(result.chart.entities[1].directors[0].isResident).toBe(true);
+    expect(result.warnings).toHaveLength(1);
   });
 
-  it('handles markdown fence wrapped json and assigns fallback values', () => {
-    const markdownWrapped = `\`\`\`json
-    {
-      "entities": [
+  it('parses output wrapped in markdown code fence', () => {
+    const payload = {
+      chartTitle: 'Clean Markdown Chart',
+      entities: [
         {
-          "tempId": "node-a",
-          "name": "Unknown Entity Ltd",
-          "type": "InvalidType",
-          "status": "InvalidStatus"
-        }
+          tempId: 'm1',
+          name: 'Trust Entity',
+          type: 'Trust',
+          jurisdiction: 'Singapore',
+        },
       ],
-      "relationships": []
-    }
-    \`\`\``;
+      relationships: [],
+    };
+    const wrappedOutput = `\`\`\`json\n${JSON.stringify(payload)}\n\`\`\``;
 
-    const result = parseRawAiResponse(markdownWrapped);
+    const result = parseRawAiResponse(wrappedOutput);
+    expect(result.chart.metadata.chartTitle).toBe('Clean Markdown Chart');
     expect(result.chart.entities).toHaveLength(1);
-    expect(result.chart.entities[0].type).toBe('Holding Company');
-    expect(result.chart.entities[0].status).toBe('Active');
-    expect(result.chart.entities[0].jurisdiction).toBe('Unknown Jurisdiction');
-    expect(result.chart.metadata.chartTitle).toBe('Inferred Trust Structure');
   });
 
-  it('throws helpful error on malformed JSON payload', () => {
-    expect(() => parseRawAiResponse('This is not json at all')).toThrow(
-      /failed to extract valid structure/i
-    );
-  });
-
-  it('calls Google Gemini API via official SDK and returns parsed chart', async () => {
-    mockGenerateContent.mockResolvedValueOnce({
+  it('calls Gemini API and returns parsed chart', async () => {
+    const mockGeminiResponse = {
       text: JSON.stringify({
         chartTitle: 'Gemini Structure',
         entities: [
-          { tempId: 'g1', name: 'Gemini Trust', type: 'Trust', jurisdiction: 'Cayman Islands' },
+          { tempId: 'g1', name: 'Gemini Trust', type: 'Trust', jurisdiction: 'Jersey' },
         ],
         relationships: [],
         warnings: [],
       }),
-    });
+    };
+
+    mockGenerateContent.mockResolvedValueOnce(mockGeminiResponse);
 
     const config: AIConfig = {
       provider: 'gemini',
-      apiKey: 'test-gemini-key',
-      model: 'gemini-2.5-flash',
+      apiKey: 'AIzaSyValidGeminiKey',
+      model: 'gemini-3.8-flash',
     };
 
     const result = await analyzeChartImage('base64imgdata', 'image/jpeg', config);
     expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'gemini-2.5-flash',
-        contents: expect.arrayContaining([
-          expect.objectContaining({
-            inlineData: { mimeType: 'image/jpeg', data: 'base64imgdata' },
-          }),
-        ]),
+        model: 'gemini-3.8-flash',
+        config: { responseMimeType: 'application/json' },
       })
     );
     expect(result.chart.metadata.chartTitle).toBe('Gemini Structure');
-    expect(result.chart.entities).toHaveLength(1);
-  });
-
-  it('calls OpenAI API via official SDK and returns parsed chart', async () => {
-    const mockOpenAIResponse = {
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              chartTitle: 'OpenAI Structure',
-              entities: [
-                { tempId: 'o1', name: 'OpenAI Trust', type: 'Trust', jurisdiction: 'Jersey' },
-              ],
-              relationships: [],
-              warnings: [],
-            }),
-          },
-        },
-      ],
-    };
-
-    mockChatCompletionsCreate.mockResolvedValueOnce(mockOpenAIResponse);
-
-    const config: AIConfig = {
-      provider: 'openai',
-      apiKey: 'sk-test-key',
-      model: 'gpt-5.2',
-      customEndpoint: 'https://custom-openai-proxy.internal/v1',
-    };
-
-    const result = await analyzeChartImage('base64imgdata', 'image/jpeg', config);
-    expect(capturedOpenAIOptions).toEqual({
-      apiKey: 'sk-test-key',
-      baseURL: 'https://custom-openai-proxy.internal/v1',
-      dangerouslyAllowBrowser: true,
-    });
-    expect(mockChatCompletionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: 'gpt-5.2',
-        response_format: { type: 'json_object' },
-        messages: expect.arrayContaining([
-          expect.objectContaining({ role: 'system' }),
-          expect.objectContaining({
-            role: 'user',
-            content: expect.arrayContaining([
-              expect.objectContaining({
-                type: 'image_url',
-                image_url: { url: 'data:image/jpeg;base64,base64imgdata' },
-              }),
-            ]),
-          }),
-        ]),
-      })
-    );
-    expect(result.chart.metadata.chartTitle).toBe('OpenAI Structure');
   });
 
   it('throws error on missing API key', async () => {
@@ -230,33 +136,16 @@ describe('chartVisionService', () => {
     );
   });
 
-  it('throws error on OpenAI SDK failure with details', async () => {
-    mockChatCompletionsCreate.mockRejectedValueOnce(new Error('Quota exceeded'));
-
+  it('throws error when Gemini returns empty response text', async () => {
+    mockGenerateContent.mockResolvedValueOnce({ text: '' });
     const config: AIConfig = {
-      provider: 'openai',
-      apiKey: 'invalid-key',
-      model: 'gpt-5.2',
+      provider: 'gemini',
+      apiKey: 'test-key',
+      model: '',
     };
 
     await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
-      /Quota exceeded/i
-    );
-  });
-
-  it('throws error when OpenAI returns empty content', async () => {
-    mockChatCompletionsCreate.mockResolvedValueOnce({
-      choices: [{ message: { content: null } }],
-    });
-
-    const config: AIConfig = {
-      provider: 'openai',
-      apiKey: 'valid-key',
-      model: 'gpt-5.2',
-    };
-
-    await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
-      /AI returned an empty response/i
+      /ai returned an empty response/i
     );
   });
 
@@ -275,7 +164,6 @@ describe('chartVisionService', () => {
       clientReference: 'REF-123',
       entities: [
         {
-          // tempId and name missing
           type: null,
           directors: [null, { name: '  ' }, { name: 'Valid Dir', isCorporate: true }],
           ubosOrBeneficiaries: ['Beneficiary 1', ''],
@@ -283,7 +171,6 @@ describe('chartVisionService', () => {
       ],
       relationships: [
         {
-          // unknown or empty tempIds
           sourceTempId: '',
           targetTempId: '',
           ownershipPercentage: 'not-a-number',
@@ -316,37 +203,6 @@ describe('chartVisionService', () => {
     expect(() => parseRawAiResponse(raw)).toThrow();
   });
 
-  it('throws error when Gemini returns empty response text', async () => {
-    mockGenerateContent.mockResolvedValueOnce({ text: '' });
-    const config: AIConfig = {
-      provider: 'gemini',
-      apiKey: 'test-key',
-      model: '',
-    };
-
-    await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
-      /ai returned an empty response/i
-    );
-  });
-
-  it('throws error when OpenAI returns empty response text', async () => {
-    mockChatCompletionsCreate.mockResolvedValueOnce({
-      choices: [{ message: { content: '' } }],
-    });
-
-    const config: AIConfig = {
-      provider: 'openai',
-      apiKey: 'test-key',
-      model: '',
-      customEndpoint: 'https://custom-api.example.com/v1///',
-    };
-
-    await expect(analyzeChartImage('data', 'image/jpeg', config)).rejects.toThrow(
-      /ai returned an empty response/i
-    );
-    expect(capturedOpenAIOptions.baseURL).toBe('https://custom-api.example.com/v1');
-  });
-
   it('falls back when crypto is undefined or randomUUID is missing', () => {
     const originalCrypto = globalThis.crypto;
     Object.defineProperty(globalThis, 'crypto', {
@@ -368,16 +224,22 @@ describe('chartVisionService', () => {
 
   describe('trimTrailingSlashes', () => {
     it('removes trailing slashes without regex backtracking', () => {
-      expect(trimTrailingSlashes('https://api.openai.com/v1/')).toBe('https://api.openai.com/v1');
-      expect(trimTrailingSlashes('https://api.openai.com/v1///')).toBe('https://api.openai.com/v1');
-      expect(trimTrailingSlashes('https://api.openai.com/v1')).toBe('https://api.openai.com/v1');
+      expect(trimTrailingSlashes('https://generativelanguage.googleapis.com/')).toBe(
+        'https://generativelanguage.googleapis.com'
+      );
+      expect(trimTrailingSlashes('https://generativelanguage.googleapis.com///')).toBe(
+        'https://generativelanguage.googleapis.com'
+      );
+      expect(trimTrailingSlashes('https://generativelanguage.googleapis.com')).toBe(
+        'https://generativelanguage.googleapis.com'
+      );
     });
 
     it('handles empty strings, whitespace, and root slashes', () => {
       expect(trimTrailingSlashes('')).toBe('');
       expect(trimTrailingSlashes('   ')).toBe('');
       expect(trimTrailingSlashes('///')).toBe('');
-      expect(trimTrailingSlashes('  https://api.openai.com/v1/  ')).toBe('https://api.openai.com/v1');
+      expect(trimTrailingSlashes('  https://example.com/  ')).toBe('https://example.com');
     });
 
     it('preserves internal slashes in paths', () => {

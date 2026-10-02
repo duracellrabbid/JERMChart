@@ -1,7 +1,63 @@
-const { app, BrowserWindow, Menu, shell } = require('electron');
+const { app, BrowserWindow, Menu, shell, session } = require('electron');
 const path = require('path');
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+// Privacy and zero-telemetry hardening: suppress Chromium background networking and telemetry
+const PRIVACY_SWITCHES = [
+  'disable-background-networking',
+  'disable-component-update',
+  'disable-domain-reliability',
+  'disable-sync',
+  'metrics-recording-only',
+  'no-report-upload',
+];
+
+if (app.commandLine && typeof app.commandLine.appendSwitch === 'function') {
+  PRIVACY_SWITCHES.forEach((switchName) => {
+    app.commandLine.appendSwitch(switchName);
+  });
+}
+
+const ALLOWED_PROTOCOLS = new Set(['file:', 'devtools:', 'blob:', 'data:']);
+const DEV_HOSTS = new Set(['localhost', '127.0.0.1']);
+
+function isAllowedUrl(rawUrl, isDevelopment) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+
+  if (ALLOWED_PROTOCOLS.has(parsed.protocol)) {
+    return true;
+  } else if (isDevelopment && DEV_HOSTS.has(parsed.hostname)) {
+    return true;
+  } else if (parsed.protocol === 'https:' && parsed.hostname === 'generativelanguage.googleapis.com') {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+function setupSecurityFirewall(sessionInstance, isDevelopment) {
+  const currentSession = sessionInstance !== undefined ? sessionInstance : session.defaultSession;
+  if (!currentSession || !currentSession.webRequest) {
+    return;
+  } else {
+    const devMode = typeof isDevelopment === 'boolean' ? isDevelopment : isDev;
+
+    currentSession.webRequest.onBeforeRequest((details, callback) => {
+      if (isAllowedUrl(details.url, devMode)) {
+        callback({ cancel: false });
+      } else {
+        console.warn(`[BLOCKED EGRESS] Blocked unauthorized outbound request: ${details.url}`);
+        callback({ cancel: true });
+      }
+    });
+  }
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -79,6 +135,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  setupSecurityFirewall();
   createWindow();
 
   app.on('activate', () => {
@@ -97,3 +154,10 @@ app.on('window-all-closed', () => {
     // Keep alive on macOS
   }
 });
+
+module.exports = {
+  createWindow,
+  isAllowedUrl,
+  setupSecurityFirewall,
+  PRIVACY_SWITCHES,
+};

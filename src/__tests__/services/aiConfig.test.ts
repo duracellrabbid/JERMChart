@@ -20,17 +20,16 @@ describe('aiConfig', () => {
     expect(hasValidApiKey()).toBe(false);
   });
 
-  it('saves and retrieves updated configuration', () => {
+  it('saves and retrieves updated configuration locked to gemini', () => {
     saveAIConfig({
-      provider: 'openai',
-      apiKey: 'sk-test-key-12345',
-      model: 'gpt-5.2',
+      apiKey: 'AIzaSyTestKey12345',
+      model: 'gemini-3.7-flash',
     });
 
     const config = getAIConfig();
-    expect(config.provider).toBe('openai');
-    expect(config.apiKey).toBe('sk-test-key-12345');
-    expect(config.model).toBe('gpt-5.2');
+    expect(config.provider).toBe('gemini');
+    expect(config.apiKey).toBe('AIzaSyTestKey12345');
+    expect(config.model).toBe('gemini-3.7-flash');
     expect(hasValidApiKey()).toBe(true);
   });
 
@@ -50,52 +49,51 @@ describe('aiConfig', () => {
     expect(config.model).toBe('gemini-3.8-flash');
   });
 
-  it('handles non-string or whitespace properties and sets default model for openai', () => {
+  it('handles non-string or whitespace properties and defaults model to gemini-3.8-flash', () => {
     window.localStorage.setItem(
       'tmu_ai_config',
       JSON.stringify({
         provider: 'openai',
         apiKey: 12345,
         model: '   ',
-        customEndpoint: null,
       })
     );
     const config = getAIConfig();
-    expect(config.provider).toBe('openai');
+    expect(config.provider).toBe('gemini');
     expect(config.apiKey).toBe('');
-    expect(config.model).toBe('gpt-5.2');
-    expect(config.customEndpoint).toBe('');
+    expect(config.model).toBe('gemini-3.8-flash');
 
-    // Non-string model branch
+    // Non-string model branch and non-string provider branch
     window.localStorage.setItem(
       'tmu_ai_config',
       JSON.stringify({
-        provider: 'gemini',
+        provider: 9999,
         model: 9999,
       })
     );
     expect(getAIConfig().model).toBe('gemini-3.8-flash');
+    expect(getAIConfig().provider).toBe('gemini');
   });
 
-  it('migrates legacy model identifiers automatically', () => {
+  it('migrates legacy and OpenAI model identifiers automatically to Gemini', () => {
     expect(migrateLegacyModel('gemini', 'gemini-2.5-flash')).toBe('gemini-3.8-flash');
     expect(migrateLegacyModel('gemini', 'gemini-3.5-flash')).toBe('gemini-3.8-flash');
     expect(migrateLegacyModel('gemini', 'gemini-1.5-flash')).toBe('gemini-3.8-flash');
     expect(migrateLegacyModel('gemini', 'gemini-2.0-flash')).toBe('gemini-3.8-flash');
-    expect(migrateLegacyModel('openai', 'gpt-4o')).toBe('gpt-5.2');
-    expect(migrateLegacyModel('openai', 'gpt-4o-mini')).toBe('gpt-5.2');
-    expect(migrateLegacyModel('openai', 'gpt-4-turbo')).toBe('gpt-5.2');
-    expect(migrateLegacyModel('openai', 'gpt-4')).toBe('gpt-5.2');
+    expect(migrateLegacyModel('openai', 'gpt-4o')).toBe('gemini-3.8-flash');
+    expect(migrateLegacyModel('openai', 'gpt-4o-mini')).toBe('gemini-3.8-flash');
+    expect(migrateLegacyModel('openai', 'gpt-4-turbo')).toBe('gemini-3.8-flash');
+    expect(migrateLegacyModel('openai', 'gpt-4')).toBe('gemini-3.8-flash');
+    expect(migrateLegacyModel('openai', 'gpt-5.2')).toBe('gemini-3.8-flash');
+    expect(migrateLegacyModel('gemini', 'gpt-5.4')).toBe('gemini-3.8-flash');
 
     // Preserves active models or custom enterprise models
     expect(migrateLegacyModel('gemini', 'gemini-3.7-flash')).toBe('gemini-3.7-flash');
     expect(migrateLegacyModel('gemini', 'custom-enterprise-gemini')).toBe('custom-enterprise-gemini');
-    expect(migrateLegacyModel('openai', 'gpt-5.4')).toBe('gpt-5.4');
-    expect(migrateLegacyModel('openai', 'azure-deployment-gpt')).toBe('azure-deployment-gpt');
 
     // Blank returns default
     expect(migrateLegacyModel('gemini', '')).toBe('gemini-3.8-flash');
-    expect(migrateLegacyModel('openai', '')).toBe('gpt-5.2');
+    expect(migrateLegacyModel('openai', '')).toBe('gemini-3.8-flash');
   });
 
   it('migrates legacy stored models when loading config from storage', () => {
@@ -117,7 +115,8 @@ describe('aiConfig', () => {
         model: 'gpt-4o',
       })
     );
-    expect(getAIConfig().model).toBe('gpt-5.2');
+    expect(getAIConfig().model).toBe('gemini-3.8-flash');
+    expect(getAIConfig().provider).toBe('gemini');
   });
 
   it('falls back to in-memory storage if localStorage throws an error', () => {

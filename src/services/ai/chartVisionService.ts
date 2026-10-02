@@ -1,5 +1,4 @@
 import { GoogleGenAI } from '@google/genai';
-import OpenAI from 'openai';
 import { AIConfig } from './aiConfig';
 import {
   Director,
@@ -185,45 +184,7 @@ async function callGeminiVision(
   return text;
 }
 
-import { trimTrailingSlashes } from '../../utils/urlUtils';
-export { trimTrailingSlashes };
-
-async function callOpenAIVision(
-  base64Image: string,
-  mimeType: string,
-  config: AIConfig
-): Promise<string> {
-  const model = config.model || 'gpt-5.2';
-  const rawEndpoint = config.customEndpoint?.trim();
-  const baseURL = rawEndpoint ? trimTrailingSlashes(rawEndpoint) : undefined;
-  const client = new OpenAI({
-    apiKey: config.apiKey.trim(),
-    baseURL,
-    dangerouslyAllowBrowser: true,
-  });
-
-  const response = await client.chat.completions.create({
-    model,
-    response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: SYSTEM_INSTRUCTION },
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: 'Extract this trust structure chart into JSON.' },
-          {
-            type: 'image_url',
-            image_url: { url: `data:${mimeType};base64,${base64Image}` },
-          },
-        ],
-      },
-    ],
-  });
-
-  const text = response?.choices?.[0]?.message?.content;
-  if (!text) throw new Error('AI returned an empty response.');
-  return text;
-}
+export { trimTrailingSlashes } from '../../utils/urlUtils';
 
 export async function analyzeChartImage(
   base64Image: string,
@@ -234,10 +195,6 @@ export async function analyzeChartImage(
     throw new Error('API key is required. Please set your API key in Settings.');
   }
 
-  const jsonText =
-    config.provider === 'openai'
-      ? await callOpenAIVision(base64Image, mimeType, config)
-      : await callGeminiVision(base64Image, mimeType, config);
-
+  const jsonText = await callGeminiVision(base64Image, mimeType, config);
   return parseRawAiResponse(jsonText);
 }

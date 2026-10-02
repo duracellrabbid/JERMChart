@@ -9,6 +9,7 @@ describe('electron/main.cjs', () => {
   let MockBrowserWindow: any;
   let mockMenu: any;
   let mockShell: any;
+  let mockSession: any;
   let registeredListeners: Record<string, Function>;
 
   beforeEach(() => {
@@ -18,6 +19,9 @@ describe('electron/main.cjs', () => {
 
     mockApp = {
       isPackaged: false,
+      commandLine: {
+        appendSwitch: vi.fn(),
+      },
       whenReady: vi.fn(() => ({
         then: (callback: () => void) => {
           callback();
@@ -54,6 +58,14 @@ describe('electron/main.cjs', () => {
       openExternal: vi.fn().mockResolvedValue(undefined),
     };
 
+    mockSession = {
+      defaultSession: {
+        webRequest: {
+          onBeforeRequest: vi.fn(),
+        },
+      },
+    };
+
     const electronResolved = require.resolve('electron');
     require.cache[electronResolved] = {
       id: electronResolved,
@@ -64,6 +76,7 @@ describe('electron/main.cjs', () => {
         BrowserWindow: MockBrowserWindow,
         Menu: mockMenu,
         shell: mockShell,
+        session: mockSession,
       },
     } as any;
   });
@@ -83,6 +96,109 @@ describe('electron/main.cjs', () => {
     delete require.cache[mainResolved];
     return require('../../../electron/main.cjs');
   };
+
+  it('appends Chromium privacy and zero-telemetry switches on startup', () => {
+    const mainModule = loadMain();
+    expect(mockApp.commandLine.appendSwitch).toHaveBeenCalledWith('disable-background-networking');
+    expect(mockApp.commandLine.appendSwitch).toHaveBeenCalledWith('disable-component-update');
+    expect(mockApp.commandLine.appendSwitch).toHaveBeenCalledWith('disable-domain-reliability');
+    expect(mockApp.commandLine.appendSwitch).toHaveBeenCalledWith('disable-sync');
+    expect(mockApp.commandLine.appendSwitch).toHaveBeenCalledWith('metrics-recording-only');
+    expect(mockApp.commandLine.appendSwitch).toHaveBeenCalledWith('no-report-upload');
+    expect(mainModule.PRIVACY_SWITCHES).toHaveLength(6);
+  });
+
+  it('handles case when app.commandLine is missing', () => {
+    mockApp.commandLine = undefined;
+    const mainModule = loadMain();
+    expect(mainModule).toBeDefined();
+  });
+
+  it('validates allowed and blocked URLs via isAllowedUrl', () => {
+    const { isAllowedUrl } = loadMain();
+
+    // Local / internal protocol resources
+    expect(isAllowedUrl('file:///path/to/dist/index.html', false)).toBe(true);
+    expect(isAllowedUrl('devtools://devtools/bundled/inspector.html', false)).toBe(true);
+    expect(isAllowedUrl('blob:http://localhost:5173/uuid-here', false)).toBe(true);
+    expect(isAllowedUrl('data:image/png;base64,abc123', false)).toBe(true);
+
+    // Dev server allowed only in development
+    expect(isAllowedUrl('http://localhost:5173', true)).toBe(true);
+    expect(isAllowedUrl('http://127.0.0.1:8080', true)).toBe(true);
+    expect(isAllowedUrl('http://localhost:5173', false)).toBe(false);
+    expect(isAllowedUrl('http://127.0.0.1:8080', false)).toBe(false);
+    expect(isAllowedUrl('http://other-site.com', true)).toBe(false);
+    expect(isAllowedUrl('http://other-site.com', false)).toBe(false);
+
+    // Approved AI vision host in dev and prod
+    expect(
+      isAllowedUrl('https://generativelanguage.googleapis.com/v1beta/models', false)
+    ).toBe(true);
+    expect(
+      isAllowedUrl('https://generativelanguage.googleapis.com/v1beta/models', true)
+    ).toBe(true);
+    expect(
+      isAllowedUrl('http://generativelanguage.googleapis.com/v1beta/models', false)
+    ).toBe(false); // Insecure HTTP blocked
+    expect(
+      isAllowedUrl('http://generativelanguage.googleapis.com/v1beta/models', true)
+    ).toBe(false);
+
+    // Unauthorized external hosts blocked in dev and prod
+    expect(isAllowedUrl('https://api.openai.com/v1', false)).toBe(false);
+    expect(isAllowedUrl('https://api.openai.com/v1', true)).toBe(false);
+    expect(isAllowedUrl('https://evil-analytics.com/collect', true)).toBe(false);
+    expect(isAllowedUrl('https://telemetry.example.org', false)).toBe(false);
+    expect(isAllowedUrl('http://unauthorized.org', true)).toBe(false);
+
+    // Malformed URL blocked safely
+    expect(isAllowedUrl('not-a-valid-url', false)).toBe(false);
+  });
+
+  it('sets up security firewall and intercepts requests in dev mode', () => {
+    const { setupSecurityFirewall } = loadMain();
+
+    expect(mockSession.defaultSession.webRequest.onBeforeRequest).toHaveBeenCalled();
+    const interceptor =
+      mockSession.defaultSession.webRequest.onBeforeRequest.mock.calls[0][0];
+
+    const mockCallback = vi.fn();
+
+    // Allowed: file protocol
+    interceptor(
+      { url: 'file:///path/to/dist/index.html' },
+      mockCallback
+    );
+    expect(mockCallback).toHaveBeenCalledWith({ cancel: false });
+
+    // Allowed: dev server localhost
+    interceptor(
+      { url: 'http://localhost:5173/src/main.tsx' },
+      mockCallback
+    );
+    expect(mockCallback).toHaveBeenCalledWith({ cancel: false });
+
+    // Allowed: Gemini API
+    interceptor(
+      { url: 'https://generativelanguage.googleapis.com/test' },
+      mockCallback
+    );
+    expect(mockCallback).toHaveBeenCalledWith({ cancel: false });
+
+    // Blocked: unauthorized external host
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    interceptor({ url: 'https://leak-data.com/track' }, mockCallback);
+    expect(mockCallback).toHaveBeenCalledWith({ cancel: true });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[BLOCKED EGRESS]')
+    );
+    warnSpy.mockRestore();
+
+    // Handles null / empty session gracefully
+    expect(() => setupSecurityFirewall(null)).not.toThrow();
+    expect(() => setupSecurityFirewall({ webRequest: null })).not.toThrow();
+  });
 
   it('initializes window with dev defaults when in development', async () => {
     process.env.NODE_ENV = 'development';
@@ -160,13 +276,36 @@ describe('electron/main.cjs', () => {
     const template = mockMenu.buildFromTemplate.mock.calls[0][0];
     const viewMenu = template.find((m: any) => m.label === 'View');
     expect(viewMenu.submenu.some((item: any) => item.role === 'toggleDevTools')).toBe(false);
+
+    // Test firewall in production mode
+    expect(mockSession.defaultSession.webRequest.onBeforeRequest).toHaveBeenCalled();
+    const prodInterceptor =
+      mockSession.defaultSession.webRequest.onBeforeRequest.mock.calls[0][0];
+
+    const mockProdCallback = vi.fn();
+
+    // Allowed in prod: file protocol
+    prodInterceptor({ url: 'file:///dist/index.html' }, mockProdCallback);
+    expect(mockProdCallback).toHaveBeenCalledWith({ cancel: false });
+
+    // Allowed in prod: Gemini API
+    prodInterceptor(
+      { url: 'https://generativelanguage.googleapis.com/v1beta' },
+      mockProdCallback
+    );
+    expect(mockProdCallback).toHaveBeenCalledWith({ cancel: false });
+
+    // Blocked in prod: localhost
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    prodInterceptor({ url: 'http://localhost:5173' }, mockProdCallback);
+    expect(mockProdCallback).toHaveBeenCalledWith({ cancel: true });
+    warnSpy.mockRestore();
   });
 
   it('handles app activate event: creates window if none exist', () => {
     loadMain();
     expect(mockBrowserWindowInstances.length).toBe(1);
 
-    // Simulate all windows closed then activate
     mockBrowserWindowInstances = [];
     MockBrowserWindow.getAllWindows.mockReturnValue([]);
 

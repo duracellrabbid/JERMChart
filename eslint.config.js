@@ -32,6 +32,28 @@ export default tseslint.config(
       'sonarjs/pseudo-random': 'off', // Math.random is used for canvas node positioning / non-crypto fallbacks
       'sonarjs/no-nested-conditional': 'warn',
 
+      // Zero-telemetry offline defense: ban outbound network APIs outside of approved service
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'fetch',
+          message:
+            'Direct network fetch is prohibited in offline-first mode. Allowed only in src/services/ai/chartVisionService.ts.',
+        },
+        {
+          name: 'XMLHttpRequest',
+          message: 'Direct network XMLHttpRequest is prohibited in offline-first mode.',
+        },
+        {
+          name: 'WebSocket',
+          message: 'WebSocket connections are prohibited in offline-first mode.',
+        },
+        {
+          name: 'EventSource',
+          message: 'EventSource streaming connections are prohibited in offline-first mode.',
+        },
+      ],
+
       // General code quality & TypeScript guardrails
       '@typescript-eslint/no-explicit-any': 'off', // Permitted for external xlsx/data payloads
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
@@ -39,10 +61,18 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/services/ai/chartVisionService.ts'],
+    rules: {
+      // Scoped exception for explicit user-triggered Vision OCR
+      'no-restricted-globals': 'off',
+    },
+  },
+  {
     files: ['src/**/__tests__/**/*.{ts,tsx}', '**/*.test.{ts,tsx}'],
     rules: {
       // Relax cognitive complexity and test-specific patterns inside test suites
       'sonarjs/cognitive-complexity': 'off',
+      'no-restricted-globals': 'off',
       'sonarjs/prefer-specific-assertions': 'off',
       'sonarjs/no-identical-functions': 'off',
       'sonarjs/assertions-in-tests': 'off',
@@ -50,6 +80,7 @@ export default tseslint.config(
       'sonarjs/no-dead-store': 'off',
       'sonarjs/no-unused-vars': 'off',
       'sonarjs/unused-import': 'warn',
+      'sonarjs/no-clear-text-protocols': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-require-imports': 'off',
