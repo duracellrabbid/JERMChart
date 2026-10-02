@@ -12,6 +12,7 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     coverage: {
       provider: 'v8',
+      ignoreEmptyLines: true,
       reporter: ['text', 'json', 'html'],
       include: ['src/**', 'electron/**'],
       exclude: [
