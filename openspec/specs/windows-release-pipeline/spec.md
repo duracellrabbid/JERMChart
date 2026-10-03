@@ -2,15 +2,17 @@
 
 ## Purpose
 Automated continuous delivery workflow on GitHub Actions to package, verify, and publish draft Windows desktop releases (`nsis` and `portable`) with cryptographic checksums.
-
 ## Requirements
-
 ### Requirement: Windows Build Matrix and Packaging
-The system MUST provide a GitHub Actions workflow (`.github/workflows/release.yml`) running on `windows-latest` that compiles and packages the desktop application into Windows x64 NSIS installer and portable executables via `electron-builder`.
+The system MUST provide a GitHub Actions workflow (`.github/workflows/release.yml`) running on `windows-latest` that compiles and packages the desktop application into Windows x64 NSIS installer and portable executables via `electron-builder` v27 while maintaining zero moderate or higher security vulnerabilities.
 
 #### Scenario: Workflow builds Windows desktop executables
 - **WHEN** the release workflow runs on `windows-latest`
 - **THEN** it executes `npm run verify:pre-commit`, `npm run verify:pre-push`, and `npm run electron:build`, generating `.exe` distribution artifacts in the `release/` directory.
+
+#### Scenario: Security audit zero-vulnerability verification
+- **WHEN** `npm run verify:pre-push` is executed during CI validation or pre-release verification
+- **THEN** `npm run audit:security` passes with zero moderate, high, or critical vulnerabilities.
 
 ### Requirement: Cryptographic Checksum Generation
 The release workflow MUST compute SHA-256 hashes for all generated release executables and store them in a standardized `SHA256SUMS.txt` manifest.
@@ -29,3 +31,4 @@ The release workflow MUST automatically create a GitHub Release marked explicitl
 #### Scenario: Manual dispatch triggers draft release
 - **WHEN** a maintainer triggers the workflow via `workflow_dispatch`
 - **THEN** the workflow generates and attaches the draft release artifacts.
+
