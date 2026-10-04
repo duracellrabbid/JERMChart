@@ -20,8 +20,8 @@
     "verify:pre-push": "npm run build && npm run audit:security",
     "prepare": "husky",
     "electron:dev": "concurrently -k \"cross-env BROWSER=none vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
-    "electron:pack": "npm run build && electron-builder --dir",
-    "electron:build": "npm run build && electron-builder --win --x64"
+    "electron:pack": "npm run build && electron-builder --dir --publish never",
+    "electron:build": "npm run build && electron-builder --win --x64 --publish never"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",

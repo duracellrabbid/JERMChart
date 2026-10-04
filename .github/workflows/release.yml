@@ -41,8 +41,6 @@ jobs:
 
       - name: Package Windows Executables (NSIS & Portable)
         run: npm run electron:build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compute SHA-256 Checksums
         shell: pwsh
