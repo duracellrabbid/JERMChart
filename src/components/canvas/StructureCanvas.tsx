@@ -13,13 +13,14 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { useStructureStore } from '../../store/useStructureStore';
-import { EntityCardNode } from '../nodes/EntityCardNode';
+import { EntityCardNode, SatelliteRoleCard } from '../nodes/EntityCardNode';
 import { OwnershipEdge } from '../edges/OwnershipEdge';
 import { calculateSortedLayout } from '../../utils/layoutEngine';
 import { OcrReviewBanner } from './OcrReviewBanner';
 
 const nodeTypes = {
   entityNode: EntityCardNode,
+  satelliteNode: SatelliteRoleCard,
 };
 
 const edgeTypes = {

@@ -190,8 +190,8 @@ describe('chartVisionService', () => {
     expect(result.chart.metadata.clientReference).toBe('REF-123');
     expect(result.chart.entities[0].name).toBe('Entity 1');
     expect(result.chart.entities[0].type).toBe('Holding Company');
-    expect(result.chart.entities[0].directors).toHaveLength(1);
-    expect(result.chart.entities[0].directors[0].name).toBe('Valid Dir');
+    expect(result.chart.entities[0].associatedParties).toHaveLength(1);
+    expect(result.chart.entities[0].associatedParties[0].name).toBe('Valid Dir');
     expect(result.chart.relationships).toHaveLength(1);
     expect(result.chart.relationships[0].ownershipPercentage).toBe(100);
     expect(result.chart.relationships[0].shareClass).toBe('Ordinary Shares');
@@ -201,6 +201,26 @@ describe('chartVisionService', () => {
   it('handles markdown fence without valid newline or closing backticks', () => {
     const raw = '```json { "entities": [] }';
     expect(() => parseRawAiResponse(raw)).toThrow();
+  });
+
+  it('handles non-array associatedParties and blank role string in AI response', () => {
+    const raw = JSON.stringify({
+      entities: [
+        {
+          name: 'Firm Ltd',
+          associatedParties: 'not-an-array',
+        },
+        {
+          name: 'Trust Corp',
+          associatedParties: [
+            { name: 'John Doe', role: '   ' },
+          ],
+        },
+      ],
+    });
+    const result = parseRawAiResponse(raw);
+    expect(result.chart.entities[0].associatedParties).toEqual([]);
+    expect(result.chart.entities[1].associatedParties[0].role).toBe('Director');
   });
 
   it('falls back when crypto is undefined or randomUUID is missing', () => {

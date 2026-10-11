@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import {
+  AssociatedParty,
   ChartMetadata,
-  Director,
   EntityNodeData,
   OwnershipEdgeData,
   SiblingSortCriteria,
@@ -19,6 +19,7 @@ export interface StructureState {
   entities: EntityNodeData[];
   relationships: OwnershipEdgeData[];
   selectedEntityId: string | null;
+  highlightedParty: string | null;
   highlightedDirector: string | null;
   sortCriteria: SiblingSortCriteria;
   undoSnapshot: TrustStructureChart | null;
@@ -29,6 +30,7 @@ export interface StructureState {
   // Actions
   setMetadata: (meta: Partial<ChartMetadata>) => void;
   setSelectedEntityId: (id: string | null) => void;
+  setHighlightedParty: (partyName: string | null) => void;
   setHighlightedDirector: (directorName: string | null) => void;
   setSortCriteria: (criteria: SiblingSortCriteria) => void;
   setDirectorCap: (cap: number | 'all') => void;
@@ -43,8 +45,10 @@ export interface StructureState {
   updateEntity: (id: string, updates: Partial<EntityNodeData>) => void;
   deleteEntity: (id: string) => void;
 
-  // Director mutations
-  addDirector: (entityId: string, director: Omit<Director, 'id'>) => void;
+  // Associated Party mutations
+  addAssociatedParty: (entityId: string, party: Omit<AssociatedParty, 'id'>) => void;
+  removeAssociatedParty: (entityId: string, partyId: string) => void;
+  addDirector: (entityId: string, director: Omit<AssociatedParty, 'id'>) => void;
   removeDirector: (entityId: string, directorId: string) => void;
 
   // Relationship mutations
@@ -60,11 +64,12 @@ export interface StructureState {
 
 const initialSample = structuredClone(sampleTrustStructure);
 
-export const useStructureStore = create<StructureState>((set) => ({
+export const useStructureStore = create<StructureState>((set, get) => ({
   metadata: initialSample.metadata,
   entities: initialSample.entities,
   relationships: initialSample.relationships,
   selectedEntityId: null,
+  highlightedParty: null,
   highlightedDirector: null,
   sortCriteria: 'alphabetical',
   undoSnapshot: null,
@@ -76,7 +81,10 @@ export const useStructureStore = create<StructureState>((set) => ({
     set((state) => ({ metadata: { ...state.metadata, ...meta } })),
 
   setSelectedEntityId: (id) => set({ selectedEntityId: id }),
-  setHighlightedDirector: (directorName) => set({ highlightedDirector: directorName }),
+  setHighlightedParty: (partyName) =>
+    set({ highlightedParty: partyName, highlightedDirector: partyName }),
+  setHighlightedDirector: (directorName) =>
+    set({ highlightedParty: directorName, highlightedDirector: directorName }),
   setSortCriteria: (criteria) => set({ sortCriteria: criteria }),
   setDirectorCap: (cap) => set({ directorCap: cap }),
   setExportMode: (isExport) => set({ isExportMode: isExport }),
@@ -84,7 +92,7 @@ export const useStructureStore = create<StructureState>((set) => ({
   setUndoSnapshot: (snapshot) => set({ undoSnapshot: snapshot }),
 
   restoreUndoSnapshot: () => {
-    const snapshot = useStructureStore.getState().undoSnapshot;
+    const snapshot = get().undoSnapshot;
     if (!snapshot) return false;
     set({
       metadata: { ...snapshot.metadata },
@@ -93,6 +101,7 @@ export const useStructureStore = create<StructureState>((set) => ({
       undoSnapshot: null,
       ocrReviewState: null,
       selectedEntityId: null,
+      highlightedParty: null,
       highlightedDirector: null,
       isExportMode: false,
     });
@@ -107,7 +116,7 @@ export const useStructureStore = create<StructureState>((set) => ({
     const newEntity: EntityNodeData = {
       ...entityData,
       id: newId,
-      directors: entityData.directors || [],
+      associatedParties: entityData.associatedParties || [],
       ubosOrBeneficiaries: entityData.ubosOrBeneficiaries || [],
     };
 
@@ -144,29 +153,41 @@ export const useStructureStore = create<StructureState>((set) => ({
       selectedEntityId: state.selectedEntityId === id ? null : state.selectedEntityId,
     })),
 
-  addDirector: (entityId, director) =>
+  addAssociatedParty: (entityId, party) =>
     set((state) => ({
       entities: state.entities.map((e) => {
         if (e.id !== entityId) return e;
-        const newDir: Director = {
-          ...director,
-          id: `dir-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        const newParty: AssociatedParty = {
+          ...party,
+          id: `party-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          role: party.role || 'Director',
         };
-        return { ...e, directors: [...e.directors, newDir] };
+        return { ...e, associatedParties: [...(e.associatedParties || []), newParty] };
       }),
     })),
 
-  removeDirector: (entityId, directorId) =>
+  removeAssociatedParty: (entityId, partyId) =>
     set((state) => ({
       entities: state.entities.map((e) => {
         if (e.id !== entityId) return e;
-        return { ...e, directors: e.directors.filter((d) => d.id !== directorId) };
+        return {
+          ...e,
+          associatedParties: (e.associatedParties || []).filter((p) => p.id !== partyId),
+        };
       }),
     })),
+
+  addDirector: (entityId, director) =>
+    get().addAssociatedParty(entityId, {
+      ...director,
+      role: director.role || 'Director',
+    }),
+
+  removeDirector: (entityId, directorId) =>
+    get().removeAssociatedParty(entityId, directorId),
 
   addRelationship: (rel) =>
     set((state) => {
-      // Avoid duplicate edges between same pair
       const exists = state.relationships.some((r) => r.source === rel.source && r.target === rel.target);
       if (exists) return state;
       const newRel: OwnershipEdgeData = {
@@ -192,6 +213,7 @@ export const useStructureStore = create<StructureState>((set) => ({
       entities: [...chart.entities],
       relationships: [...chart.relationships],
       selectedEntityId: null,
+      highlightedParty: null,
       highlightedDirector: null,
     }),
 
@@ -202,6 +224,7 @@ export const useStructureStore = create<StructureState>((set) => ({
       entities: sample.entities,
       relationships: sample.relationships,
       selectedEntityId: null,
+      highlightedParty: null,
       highlightedDirector: null,
     });
   },
@@ -216,6 +239,7 @@ export const useStructureStore = create<StructureState>((set) => ({
       entities: [],
       relationships: [],
       selectedEntityId: null,
+      highlightedParty: null,
       highlightedDirector: null,
     }),
 }));

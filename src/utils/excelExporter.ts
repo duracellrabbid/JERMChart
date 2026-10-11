@@ -1,17 +1,22 @@
 import * as XLSX from 'xlsx';
-import { Director, TrustStructureChart } from '../types/structure';
+import { AssociatedParty, TrustStructureChart } from '../types/structure';
 
-export function formatDirectorsString(directors: Director[]): string {
-  if (!Array.isArray(directors) || directors.length === 0) return '';
-  return directors
-    .map((d) => {
+export function formatAssociatedPartiesString(parties: AssociatedParty[]): string {
+  if (!Array.isArray(parties) || parties.length === 0) return '';
+  return parties
+    .map((p) => {
       const tags: string[] = [];
-      if (d.isResident) tags.push('Res');
-      if (d.isCorporate) tags.push('Corp');
+      if (p.isResident) tags.push('Res');
+      if (p.isCorporate) tags.push('Corp');
+      const rolePrefix = p.role ? `[${p.role}] ` : '';
       const tagStr = tags.length > 0 ? ` (${tags.join(', ')})` : '';
-      return `${d.name}${tagStr}`;
+      return `${rolePrefix}${p.name}${tagStr}`;
     })
     .join('; ');
+}
+
+export function formatDirectorsString(directors: AssociatedParty[]): string {
+  return formatAssociatedPartiesString(directors);
 }
 
 export function buildExcelRowsFromChart(chart: TrustStructureChart): Record<string, any>[] {
@@ -28,12 +33,14 @@ export function buildExcelRowsFromChart(chart: TrustStructureChart): Record<stri
 
   chart.entities.forEach((entity) => {
     const incomingEdges = incomingEdgesMap.get(entity.id) || [];
+    const partiesStr = formatAssociatedPartiesString(entity.associatedParties || []);
     const baseFields = {
       'Entity Name': entity.name,
       'Entity Type': entity.type,
       'Jurisdiction': entity.jurisdiction,
       'Status': entity.status,
-      'Directors': formatDirectorsString(entity.directors || []),
+      'Associated Parties': partiesStr,
+      'Directors': partiesStr,
       'Registration No': entity.registrationNumber || '',
       'Tax ID': entity.taxId || '',
       'UBOs / Beneficiaries': (entity.ubosOrBeneficiaries || []).join('; '),
@@ -48,6 +55,7 @@ export function buildExcelRowsFromChart(chart: TrustStructureChart): Record<stri
         'Entity Type': baseFields['Entity Type'],
         'Jurisdiction': baseFields['Jurisdiction'],
         'Status': baseFields['Status'],
+        'Associated Parties': baseFields['Associated Parties'],
         'Directors': baseFields['Directors'],
         'Registration No': baseFields['Registration No'],
         'Tax ID': baseFields['Tax ID'],
@@ -65,6 +73,7 @@ export function buildExcelRowsFromChart(chart: TrustStructureChart): Record<stri
           'Entity Type': baseFields['Entity Type'],
           'Jurisdiction': baseFields['Jurisdiction'],
           'Status': baseFields['Status'],
+          'Associated Parties': baseFields['Associated Parties'],
           'Directors': baseFields['Directors'],
           'Registration No': baseFields['Registration No'],
           'Tax ID': baseFields['Tax ID'],
@@ -79,27 +88,32 @@ export function buildExcelRowsFromChart(chart: TrustStructureChart): Record<stri
   return rows;
 }
 
-export function exportStructureToExcel(chart: TrustStructureChart): Uint8Array {
+export function exportChartToExcel(chart: TrustStructureChart): Uint8Array {
   const rows = buildExcelRowsFromChart(chart);
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(rows);
+  const worksheet = XLSX.utils.json_to_sheet(rows);
 
-  ws['!cols'] = [
-    { wch: 30 }, // Entity Name
-    { wch: 28 }, // Parent Entity
+  const colWidths = [
+    { wch: 32 }, // Entity Name
+    { wch: 32 }, // Parent Entity
     { wch: 14 }, // Ownership %
-    { wch: 18 }, // Entity Type
-    { wch: 25 }, // Jurisdiction
-    { wch: 12 }, // Status
-    { wch: 40 }, // Directors
+    { wch: 20 }, // Entity Type
+    { wch: 24 }, // Jurisdiction
+    { wch: 14 }, // Status
+    { wch: 40 }, // Associated Parties
+    { wch: 35 }, // Directors
     { wch: 20 }, // Registration No
     { wch: 16 }, // Tax ID
-    { wch: 28 }, // UBOs
-    { wch: 22 }, // Share Class
-    { wch: 40 }, // Notes
+    { wch: 35 }, // UBOs / Beneficiaries
+    { wch: 24 }, // Share Class
+    { wch: 30 }, // Notes
   ];
+  worksheet['!cols'] = colWidths;
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Structure');
-  const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-  return new Uint8Array(buffer);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Trust Structure');
+
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  return new Uint8Array(excelBuffer);
 }
+
+export const exportStructureToExcel = exportChartToExcel;

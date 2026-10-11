@@ -83,7 +83,7 @@ describe('ExcelImportModal Component', () => {
           type: 'Trust',
           jurisdiction: 'Jersey',
           status: 'Active',
-          directors: [{ id: 'd-1', name: 'Trustee Corp', isCorporate: true }],
+          associatedParties: [{ id: 'd-1', name: 'Trustee Corp', role: 'Trustee', isCorporate: true }],
         },
         {
           id: 'ent-2',
@@ -91,9 +91,9 @@ describe('ExcelImportModal Component', () => {
           type: 'Holding Company',
           jurisdiction: 'BVI',
           status: 'Active',
-          directors: [
-            { id: 'd-2', name: 'Alice Smith', isCorporate: false },
-            { id: 'd-3', name: 'Bob Jones', isCorporate: false },
+          associatedParties: [
+            { id: 'd-2', name: 'Alice Smith', role: 'Director', isCorporate: false },
+            { id: 'd-3', name: 'Bob Jones', role: 'Director', isCorporate: false },
           ],
         },
       ],
@@ -133,8 +133,8 @@ describe('ExcelImportModal Component', () => {
       expect(screen.getByText(/Entities Found/i)).toBeInTheDocument();
       expect(screen.getByText('1')).toBeInTheDocument(); // 1 Relationship
       expect(screen.getByText(/Ownership Links/i)).toBeInTheDocument();
-      expect(screen.getByText('3')).toBeInTheDocument(); // 3 Directors total
-      expect(screen.getByText(/Total Directors/i)).toBeInTheDocument();
+      expect(screen.getByText('3')).toBeInTheDocument(); // 3 Associated Parties total
+      expect(screen.getByText(/Associated Parties/i)).toBeInTheDocument();
 
       // Table rows
       expect(screen.getByText('Apex Dynasty Trust')).toBeInTheDocument();
@@ -161,7 +161,7 @@ describe('ExcelImportModal Component', () => {
           type: 'Operating Company',
           jurisdiction: 'Singapore',
           status: 'Active',
-          directors: [],
+          associatedParties: undefined as any,
         },
       ],
       relationships: [],
@@ -257,7 +257,7 @@ describe('ExcelImportModal Component', () => {
           type: 'Trust',
           jurisdiction: 'Jersey',
           status: 'Active',
-          directors: [],
+          associatedParties: [],
         },
       ],
       relationships: [],
@@ -298,7 +298,7 @@ describe('ExcelImportModal Component', () => {
           type: 'Operating Company',
           jurisdiction: 'Delaware',
           status: 'Active',
-          directors: [],
+          associatedParties: [],
         },
       ],
       relationships: [],

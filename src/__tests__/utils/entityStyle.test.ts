@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getEntityTypeColor, getStatusDotClass } from '../../utils/entityStyle';
+import { getEntityTypeColor, getStatusDotClass, getRoleBadgeStyle } from '../../utils/entityStyle';
 import { EntityType, EntityStatus } from '../../types/structure';
 
 describe('entityStyle utils', () => {
@@ -30,6 +30,14 @@ describe('entityStyle utils', () => {
       expect(colors.badgeBg).toBe('bg-emerald-100');
       expect(colors.badgeText).toBe('text-emerald-800');
       expect(colors.accentBar).toBe('bg-emerald-600');
+    });
+
+    it('returns cyan colors for Bank', () => {
+      const colors = getEntityTypeColor('Bank');
+      expect(colors.border).toBe('border-cyan-500');
+      expect(colors.badgeBg).toBe('bg-cyan-100');
+      expect(colors.badgeText).toBe('text-cyan-800');
+      expect(colors.accentBar).toBe('bg-cyan-600');
     });
 
     it('returns indigo colors for Foundation', () => {
@@ -82,6 +90,26 @@ describe('entityStyle utils', () => {
 
     it('returns bg-slate-300 for unknown status', () => {
       expect(getStatusDotClass('Unknown' as EntityStatus)).toBe('bg-slate-300');
+    });
+  });
+
+  describe('getRoleBadgeStyle', () => {
+    it('returns expected styles for standard fiduciary roles', () => {
+      expect(getRoleBadgeStyle('Director').bg).toBe('bg-sky-50');
+      expect(getRoleBadgeStyle('directors').bg).toBe('bg-sky-50');
+      expect(getRoleBadgeStyle('Settlor').bg).toBe('bg-amber-50');
+      expect(getRoleBadgeStyle('Protector').bg).toBe('bg-purple-50');
+      expect(getRoleBadgeStyle('Enforcers').bg).toBe('bg-rose-50');
+      expect(getRoleBadgeStyle('enforcer').bg).toBe('bg-rose-50');
+      expect(getRoleBadgeStyle('Fund Manager').bg).toBe('bg-emerald-50');
+      expect(getRoleBadgeStyle('Asset Contributor').bg).toBe('bg-indigo-50');
+      expect(getRoleBadgeStyle('Authorised Signatories').bg).toBe('bg-teal-50');
+      expect(getRoleBadgeStyle('authorised signatory').bg).toBe('bg-teal-50');
+      expect(getRoleBadgeStyle('authorized signatory').bg).toBe('bg-teal-50');
+      expect(getRoleBadgeStyle('authorized signatories').bg).toBe('bg-teal-50');
+      expect(getRoleBadgeStyle('Custom Role').bg).toBe('bg-slate-50');
+      expect(getRoleBadgeStyle('').bg).toBe('bg-slate-50');
+      expect(getRoleBadgeStyle(null as any).bg).toBe('bg-slate-50');
     });
   });
 });

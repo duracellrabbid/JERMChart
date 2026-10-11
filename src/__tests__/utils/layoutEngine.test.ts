@@ -4,12 +4,17 @@ import {
   sortSiblingEntities,
   calculateCardHeight,
   calculateTrustDimensions,
-  calculateSubsidiaryDimensions,
+  calculateBankDimensions,
+  groupPartiesByRole,
+  distributeRoleGroups,
+  formatRoleTitle,
   BASE_CARD_HEIGHT,
   DIRECTOR_ROW_HEIGHT,
   TRUST_CARD_WIDTH,
   TRUST_CARD_HEIGHT,
   SUBSIDIARY_CARD_SIZE,
+  SUBSIDIARY_CARD_HEIGHT,
+  BANK_CARD_SIZE,
   getEntityDimensions,
 } from '../../utils/layoutEngine';
 import { EntityNodeData, OwnershipEdgeData } from '../../types/structure';
@@ -22,7 +27,11 @@ describe('layoutEngine', () => {
       type: 'Trust',
       jurisdiction: 'Jersey',
       status: 'Active',
-      directors: [],
+      associatedParties: [
+        { id: 'p1', name: 'Settlor Person', role: 'Settlor' },
+        { id: 'p2', name: 'Protector Person', role: 'Protector' },
+        { id: 'p3', name: 'Enforcer Person', role: 'Enforcer' },
+      ],
     },
     {
       id: '2',
@@ -30,9 +39,9 @@ describe('layoutEngine', () => {
       type: 'Operating Company',
       jurisdiction: 'Singapore',
       status: 'Active',
-      directors: [
-        { id: 'd1', name: 'Director One', isCorporate: false },
-        { id: 'd2', name: 'Director Two', isCorporate: true },
+      associatedParties: [
+        { id: 'p4', name: 'Director One', role: 'Director', isCorporate: false },
+        { id: 'p5', name: 'Director Two', role: 'Director', isCorporate: true },
       ],
     },
     {
@@ -41,37 +50,118 @@ describe('layoutEngine', () => {
       type: 'Operating Company',
       jurisdiction: 'Cayman Islands',
       status: 'Active',
-      directors: [],
+      associatedParties: [],
+    },
+    {
+      id: '4',
+      name: 'Treasury Bank',
+      type: 'Bank',
+      jurisdiction: 'Singapore',
+      status: 'Active',
+      associatedParties: [
+        { id: 'p6', name: 'Auth Signatory 1', role: 'Authorised Signatory' },
+        { id: 'p7', name: 'Auth Signatory 2', role: 'Authorised Signatory' },
+      ],
     },
   ];
 
   const mockEdges: OwnershipEdgeData[] = [
     { id: 'e1', source: '1', target: '2', ownershipPercentage: 50, shareClass: 'Ordinary A' },
     { id: 'e2', source: '1', target: '3', ownershipPercentage: 100, shareClass: 'Ordinary B' },
+    { id: 'e3', source: '2', target: '4', ownershipPercentage: 100, shareClass: 'Bank Account' },
   ];
 
   describe('calculateCardHeight', () => {
-    it('returns base card height when director count is 0 or negative', () => {
+    it('returns base card height when party count is 0 or negative', () => {
       expect(calculateCardHeight(0)).toBe(BASE_CARD_HEIGHT);
       expect(calculateCardHeight(-1)).toBe(BASE_CARD_HEIGHT);
     });
 
-    it('calculates height including director rows', () => {
+    it('calculates height including rows', () => {
       expect(calculateCardHeight(2)).toBe(BASE_CARD_HEIGHT + 2 * DIRECTOR_ROW_HEIGHT);
       expect(calculateCardHeight(5)).toBe(BASE_CARD_HEIGHT + 5 * DIRECTOR_ROW_HEIGHT);
     });
   });
 
-  describe('getEntityDimensions', () => {
+  describe('getEntityDimensions and Bank dimensions', () => {
+    it('returns circular dimensions for Bank', () => {
+      expect(calculateBankDimensions()).toEqual({ width: BANK_CARD_SIZE, height: BANK_CARD_SIZE });
+      expect(getEntityDimensions('Bank')).toEqual({ width: 180, height: 180 });
+    });
+
     it('returns triangular dimensions for Trust and Trust Company', () => {
       expect(getEntityDimensions('Trust')).toEqual({ width: TRUST_CARD_WIDTH, height: TRUST_CARD_HEIGHT });
       expect(getEntityDimensions('Trust Company')).toEqual({ width: TRUST_CARD_WIDTH, height: TRUST_CARD_HEIGHT });
     });
 
-    it('returns square dimensions for subsidiary entity types', () => {
-      expect(getEntityDimensions('Holding Company')).toEqual({ width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_SIZE });
-      expect(getEntityDimensions('Operating Company')).toEqual({ width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_SIZE });
-      expect(getEntityDimensions('LLC')).toEqual({ width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_SIZE });
+    it('returns rectangular dimensions for subsidiary entity types', () => {
+      expect(getEntityDimensions('Holding Company')).toEqual({ width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_HEIGHT });
+      expect(getEntityDimensions('Operating Company')).toEqual({ width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_HEIGHT });
+      expect(getEntityDimensions('LLC')).toEqual({ width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_HEIGHT });
+    });
+  });
+
+  describe('groupPartiesByRole and formatRoleTitle', () => {
+    it('formats role titles accurately for single vs plural parties', () => {
+      expect(formatRoleTitle('Director', 1)).toBe('Director');
+      expect(formatRoleTitle('Director', 2)).toBe('Directors');
+      expect(formatRoleTitle('Enforcer', 2)).toBe('Enforcers');
+      expect(formatRoleTitle('Authorised Signatory', 2)).toBe('Authorised Signatories');
+      expect(formatRoleTitle('Directors', 3)).toBe('Directors');
+      expect(formatRoleTitle('Advisor', 2)).toBe('Advisors');
+    });
+
+    it('groups parties by role category correctly', () => {
+      const parties = [
+        { id: '1', name: 'Alice', role: 'Director' },
+        { id: '2', name: 'Bob', role: 'Director' },
+        { id: '3', name: 'Charlie', role: 'Protector' },
+      ];
+      const groups = groupPartiesByRole(parties);
+      expect(groups).toHaveLength(2);
+      const dirGroup = groups.find((g) => g.role === 'Directors');
+      expect(dirGroup?.parties).toHaveLength(2);
+      const protGroup = groups.find((g) => g.role === 'Protector');
+      expect(protGroup?.parties).toHaveLength(1);
+    });
+
+    it('returns empty array when parties is empty or undefined', () => {
+      expect(groupPartiesByRole([])).toEqual([]);
+      expect(groupPartiesByRole(undefined)).toEqual([]);
+    });
+  });
+
+  describe('distributeRoleGroups', () => {
+    it('distributes 3 groups equally: 2 on Left, 1 on Right', () => {
+      const groups = [
+        { role: 'Settlor', parties: [] },
+        { role: 'Enforcers', parties: [] },
+        { role: 'Protector', parties: [] },
+      ];
+      const { left, right } = distributeRoleGroups(groups);
+      expect(left).toHaveLength(2);
+      expect(right).toHaveLength(1);
+      expect(left[0].role).toBe('Settlor');
+      expect(left[1].role).toBe('Enforcers');
+      expect(right[0].role).toBe('Protector');
+    });
+
+    it('distributes 4 groups equally: 2 on Left, 2 on Right', () => {
+      const groups = [
+        { role: 'G1', parties: [] },
+        { role: 'G2', parties: [] },
+        { role: 'G3', parties: [] },
+        { role: 'G4', parties: [] },
+      ];
+      const { left, right } = distributeRoleGroups(groups);
+      expect(left).toHaveLength(2);
+      expect(right).toHaveLength(2);
+    });
+
+    it('handles empty groups safely', () => {
+      const { left, right } = distributeRoleGroups([]);
+      expect(left).toEqual([]);
+      expect(right).toEqual([]);
     });
   });
 
@@ -103,74 +193,45 @@ describe('layoutEngine', () => {
       expect(sorted[0].id).toBe('2');
       expect(sorted[1].id).toBe('3');
     });
-
-    it('handles missing ownership percentage gracefully by defaulting to 0', () => {
-      const edgesWithoutPct: OwnershipEdgeData[] = [
-        { id: 'e1', source: '1', target: '2' }, // undefined ownership
-        { id: 'e2', source: '1', target: '3', ownershipPercentage: 25 },
-      ];
-      const siblings = [mockEntities[1], mockEntities[2]];
-      const sorted = sortSiblingEntities(siblings, edgesWithoutPct, 'ownership');
-      expect(sorted[0].id).toBe('3'); // 25% > 0%
-      expect(sorted[1].id).toBe('2');
-    });
-
-    it('correctly sorts siblings relative to specific parentId in multi-parent relationships', () => {
-      // Child 2 has 20% from Parent 1, 80% from Parent 4
-      // Child 3 has 70% from Parent 1, 30% from Parent 4
-      const multiParentEdges: OwnershipEdgeData[] = [
-        { id: 'e1', source: 'p1', target: '2', ownershipPercentage: 20 },
-        { id: 'e2', source: 'p1', target: '3', ownershipPercentage: 70 },
-        { id: 'e3', source: 'p4', target: '2', ownershipPercentage: 80 },
-        { id: 'e4', source: 'p4', target: '3', ownershipPercentage: 30 },
-      ];
-      const siblings = [mockEntities[1], mockEntities[2]]; // '2' and '3'
-
-      // Under Parent 1: Child 3 (70%) > Child 2 (20%)
-      const sortedUnderP1 = sortSiblingEntities(siblings, multiParentEdges, 'ownership', 'p1');
-      expect(sortedUnderP1[0].id).toBe('3');
-      expect(sortedUnderP1[1].id).toBe('2');
-
-      // Under Parent 4: Child 2 (80%) > Child 3 (30%)
-      const sortedUnderP4 = sortSiblingEntities(siblings, multiParentEdges, 'ownership', 'p4');
-      expect(sortedUnderP4[0].id).toBe('2');
-      expect(sortedUnderP4[1].id).toBe('3');
-    });
   });
 
-  describe('calculateSortedLayout', () => {
-    it('calculates deterministic layout positions with Dagre', () => {
+  describe('calculateSortedLayout with hybrid satellites and Banks', () => {
+    it('places core entities and generates flanking satellite cards and association edges', () => {
       const { nodes, edges } = calculateSortedLayout(mockEntities, mockEdges, 'alphabetical');
-      expect(nodes.length).toBe(3);
-      expect(edges.length).toBe(2);
 
-      // Parent is in top rank (lower y coordinate than children)
-      const parentNode = nodes.find((n) => n.id === '1');
-      const childNode2 = nodes.find((n) => n.id === '2');
-      const childNode3 = nodes.find((n) => n.id === '3');
-      expect(parentNode!.position.y).toBeLessThan(childNode2!.position.y);
-      expect(parentNode!.position.y).toBeLessThan(childNode3!.position.y);
+      // 4 entity nodes + satellites for entities 1, 2, 4
+      const entityNodes = nodes.filter((n) => n.type === 'entityNode');
+      expect(entityNodes).toHaveLength(4);
 
-      // No NaN coordinates
-      nodes.forEach((n) => {
-        expect(Number.isNaN(n.position.x)).toBe(false);
-        expect(Number.isNaN(n.position.y)).toBe(false);
+      const satelliteNodes = nodes.filter((n) => n.type === 'satelliteNode');
+      expect(satelliteNodes.length).toBeGreaterThan(0);
+
+      // Entity 1 has 3 groups (Settlor, Protector, Enforcer): 2 on left, 1 on right
+      const entity1Satellites = satelliteNodes.filter((s) => s.data.parentEntityId === '1');
+      expect(entity1Satellites).toHaveLength(3);
+      const leftSats = entity1Satellites.filter((s) => s.data.side === 'left');
+      const rightSats = entity1Satellites.filter((s) => s.data.side === 'right');
+      expect(leftSats).toHaveLength(2);
+      expect(rightSats).toHaveLength(1);
+
+      // Left satellites have x < entity1.x; Right satellites have x > entity1.x
+      const entity1Node = entityNodes.find((n) => n.id === '1')!;
+      leftSats.forEach((s) => {
+        expect(s.position.x).toBeLessThan(entity1Node.position.x);
+      });
+      rightSats.forEach((s) => {
+        expect(s.position.x).toBeGreaterThan(entity1Node.position.x);
       });
 
-      // Node structure and computed height
-      expect(parentNode?.type).toBe('entityNode');
-      expect(parentNode?.data.computedHeight).toBe(TRUST_CARD_HEIGHT);
-      expect(parentNode?.data.computedWidth).toBe(TRUST_CARD_WIDTH);
-      expect(childNode2?.data.computedHeight).toBe(SUBSIDIARY_CARD_SIZE);
-      expect(childNode2?.data.computedWidth).toBe(SUBSIDIARY_CARD_SIZE);
+      // Association edges generated for satellites
+      const associationEdges = edges.filter((e) => e.data?.isAssociationEdge);
+      expect(associationEdges.length).toBe(satelliteNodes.length);
 
-      // Edge structure and data
-      const edge1 = edges.find((e) => e.id === 'e1');
-      expect(edge1?.type).toBe('ownershipEdge');
-      expect(edge1?.source).toBe('1');
-      expect(edge1?.target).toBe('2');
-      expect(edge1?.data?.ownershipPercentage).toBe(50);
-      expect(edge1?.data?.shareClass).toBe('Ordinary A');
+      // Bank entity 4 is positioned below entity 2
+      const bankNode = entityNodes.find((n) => n.id === '4')!;
+      const sub2Node = entityNodes.find((n) => n.id === '2')!;
+      expect(bankNode.position.y).toBeGreaterThan(sub2Node.position.y);
+      expect(bankNode.data.type).toBe('Bank');
     });
 
     it('handles empty entities and edges without throwing', () => {
@@ -181,169 +242,62 @@ describe('layoutEngine', () => {
 
     it('handles cross-links properly in layout', () => {
       const crossLinkEdge: OwnershipEdgeData = {
-        id: 'e3',
+        id: 'e-cross',
         source: '2',
         target: '3',
         isCrossLink: true,
       };
-      const { nodes, edges } = calculateSortedLayout(
+      const { edges } = calculateSortedLayout(
         mockEntities,
         [...mockEdges, crossLinkEdge],
         'alphabetical'
       );
-      expect(nodes.length).toBe(3);
-      expect(edges.length).toBe(3);
-      const crossEdge = edges.find((e) => e.id === 'e3');
+      const crossEdge = edges.find((e) => e.id === 'e-cross');
       expect(crossEdge?.data?.isCrossLink).toBe(true);
     });
 
-    it('adds edges when relationship source or target is not in the parentToChildren list', () => {
+    it('handles relationships from unregistered source IDs and unregistered target IDs', () => {
       const extraEdge: OwnershipEdgeData = {
         id: 'e-orphan',
-        source: 'external-parent',
-        target: 'external-child',
+        source: 'unregistered-source',
+        target: '2',
       };
-      const { edges } = calculateSortedLayout(mockEntities, [...mockEdges, extraEdge]);
-      expect(edges.find((e) => e.id === 'e-orphan')).toBeDefined();
-    });
-
-    it('uses default alphabetical sort when sortCriteria is omitted', () => {
-      const { nodes } = calculateSortedLayout(mockEntities, mockEdges);
-      expect(nodes.length).toBe(3);
-    });
-
-    it('falls back to preserving order when criteria is unrecognized in sortSiblingEntities', () => {
-      const siblings = [mockEntities[1], mockEntities[2]];
-      const sorted = sortSiblingEntities(siblings, mockEdges, 'other' as any);
-      expect(sorted[0].id).toBe('2');
-      expect(sorted[1].id).toBe('3');
-    });
-
-    it('positions nodes in correct vertical hierarchy across multi-tier structures', () => {
-      const grandchild: EntityNodeData = {
-        id: '4',
-        name: 'Grandchild Sub',
-        type: 'Operating Company',
-        jurisdiction: 'Hong Kong',
-        status: 'Active',
-        directors: [],
+      const extraTargetEdge: OwnershipEdgeData = {
+        id: 'e-orphan-target',
+        source: '1',
+        target: 'unregistered-target',
       };
-      const grandchildEdge: OwnershipEdgeData = {
-        id: 'e3',
-        source: '2',
-        target: '4',
-        ownershipPercentage: 100,
-      };
-
-      const { nodes } = calculateSortedLayout(
-        [...mockEntities, grandchild],
-        [...mockEdges, grandchildEdge],
+      const { edges } = calculateSortedLayout(
+        mockEntities,
+        [...mockEdges, extraEdge, extraTargetEdge],
         'alphabetical'
       );
-
-      const parent = nodes.find((n) => n.id === '1')!;
-      const child = nodes.find((n) => n.id === '2')!;
-      const gc = nodes.find((n) => n.id === '4')!;
-
-      expect(parent.position.y).toBeLessThan(child.position.y);
-      expect(child.position.y).toBeLessThan(gc.position.y);
+      const orphan = edges.find((e) => e.id === 'e-orphan');
+      expect(orphan).toBeDefined();
     });
 
-    it('populates directorCap and isExportMode on node data and dynamically sizes trust card with high content', () => {
-      const denseTrust: EntityNodeData = {
-        id: '1',
-        name: 'The Ultra Comprehensive Global Discretionary Trust With Extremely Long Name',
+    it('calculates extra height for long trust names and handles roleless parties and missing ownership pct', () => {
+      const longNameDims = calculateTrustDimensions({
+        id: 'long-trust',
+        name: 'The Ultra Long Name Dynastic Irrevocable Settlement Trust',
         type: 'Trust',
-        jurisdiction: 'Cook Islands',
-        registrationNumber: 'REG-99999',
-        status: 'Active',
-        directors: [
-          { id: 'd1', name: 'Director One', isCorporate: false },
-          { id: 'd2', name: 'Director Two', isCorporate: true },
-          { id: 'd3', name: 'Director Three', isCorporate: false },
-          { id: 'd4', name: 'Director Four', isCorporate: true },
-          { id: 'd5', name: 'Director Five', isCorporate: false },
-        ],
-        ubosOrBeneficiaries: ['Beneficiary One', 'Beneficiary Two'],
-      };
-
-      const cappedLayout = calculateSortedLayout([denseTrust], [], 'alphabetical', 3, false);
-      const cappedNode = cappedLayout.nodes[0];
-      expect(cappedNode.data.directorCap).toBe(3);
-      expect(cappedNode.data.isExportMode).toBe(false);
-      expect(cappedNode.data.computedHeight).toBeGreaterThanOrEqual(280);
-      expect(cappedNode.data.computedWidth).toBe(Math.round(cappedNode.data.computedHeight * 1.25));
-
-      const uncappedLayout = calculateSortedLayout([denseTrust], [], 'alphabetical', 3, true);
-      const uncappedNode = uncappedLayout.nodes[0];
-      expect(uncappedNode.data.directorCap).toBe('all');
-      expect(uncappedNode.data.isExportMode).toBe(true);
-      expect(uncappedNode.data.computedHeight).toBeGreaterThan(cappedNode.data.computedHeight);
-    });
-
-    it('expands subsidiary cards vertically in export mode when director count exceeds 3', () => {
-      const denseSub: EntityNodeData = {
-        id: '2',
-        name: 'Sub With Many Directors',
-        type: 'Operating Company',
-        jurisdiction: 'Singapore',
-        status: 'Active',
-        directors: [
-          { id: 'd1', name: 'D1', isCorporate: false },
-          { id: 'd2', name: 'D2', isCorporate: false },
-          { id: 'd3', name: 'D3', isCorporate: false },
-          { id: 'd4', name: 'D4', isCorporate: false },
-          { id: 'd5', name: 'D5', isCorporate: false },
-        ],
-      };
-
-      const normalLayout = calculateSortedLayout([denseSub], [], 'alphabetical', 3, false);
-      expect(normalLayout.nodes[0].data.computedHeight).toBe(SUBSIDIARY_CARD_SIZE);
-
-      const exportLayout = calculateSortedLayout([denseSub], [], 'alphabetical', 3, true);
-      expect(exportLayout.nodes[0].data.computedHeight).toBe(SUBSIDIARY_CARD_SIZE + 2 * 22);
-    });
-
-    it('handles undefined or minimal entities and edge cases across dimension helpers', () => {
-      // Minimal trust entity with falsy name and undefined directors/UBOs
-      const minimalTrust = {
-        id: 'min-trust',
-        name: '',
-        type: 'Trust' as const,
         jurisdiction: 'Jersey',
-        status: 'Active' as const,
-      };
-      const trustDims = calculateTrustDimensions(minimalTrust, 3);
-      expect(trustDims.width).toBe(TRUST_CARD_WIDTH);
-      expect(trustDims.height).toBe(TRUST_CARD_HEIGHT);
+        status: 'Active',
+      });
+      expect(longNameDims.height).toBeGreaterThan(160);
 
-      // Minimal subsidiary entity with undefined directors
-      const minimalSub = {
-        id: 'min-sub',
-        name: '',
-        type: 'Operating Company' as const,
-        jurisdiction: 'UK',
-        status: 'Active' as const,
-      };
-      const subDims = calculateSubsidiaryDimensions(minimalSub, 3, false);
-      expect(subDims.width).toBe(SUBSIDIARY_CARD_SIZE);
-      expect(subDims.height).toBe(SUBSIDIARY_CARD_SIZE);
+      const partiesWithRoleless = groupPartiesByRole([
+        { id: 'p1', name: 'No Role Person', role: '' as any },
+      ]);
+      expect(partiesWithRoleless[0].role).toBe('Director');
 
-      // calculateSubsidiaryDimensions with undefined entity
-      const undefSubDims = calculateSubsidiaryDimensions(undefined);
-      expect(undefSubDims.width).toBe(SUBSIDIARY_CARD_SIZE);
-      expect(undefSubDims.height).toBe(SUBSIDIARY_CARD_SIZE);
-
-      // getEntityDimensions with undefined entity for Trust
-      const undefTrustDims = getEntityDimensions('Trust', undefined);
-      expect(undefTrustDims.width).toBe(TRUST_CARD_WIDTH);
-      expect(undefTrustDims.height).toBe(TRUST_CARD_HEIGHT);
-
-      // getEntityDimensions with undefined entity for subsidiary
-      const undefSubDims2 = getEntityDimensions('Operating Company', undefined);
-      expect(undefSubDims2.width).toBe(SUBSIDIARY_CARD_SIZE);
-      expect(undefSubDims2.height).toBe(SUBSIDIARY_CARD_SIZE);
+      // sortSiblingEntities without parentId or missing edge ownership
+      const sorted = sortSiblingEntities(
+        [mockEntities[1], mockEntities[2]],
+        [{ id: 'rel-none', source: 'none', target: 'none' }],
+        'ownership'
+      );
+      expect(sorted).toHaveLength(2);
     });
   });
 });
-

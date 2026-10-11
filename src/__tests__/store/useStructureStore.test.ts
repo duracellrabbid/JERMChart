@@ -8,11 +8,14 @@ describe('useStructureStore', () => {
     useStructureStore.getState().resetToSample();
   });
 
-  it('initializes with sample trust data', () => {
+  it('initializes with sample trust data including Bank and associated roles', () => {
     const { entities, relationships, metadata } = useStructureStore.getState();
-    expect(entities.length).toBe(5);
-    expect(relationships.length).toBe(4);
+    expect(entities.length).toBe(6);
+    expect(relationships.length).toBe(5);
     expect(metadata.chartTitle).toContain('Aurelius Dynasty Trust');
+    const bank = entities.find((e) => e.type === 'Bank');
+    expect(bank).toBeDefined();
+    expect(bank?.name).toBe('DBS Private Bank');
   });
 
   it('adds an entity and updates store', () => {
@@ -21,11 +24,11 @@ describe('useStructureStore', () => {
       type: 'Holding Company',
       jurisdiction: 'Cayman Islands',
       status: 'Active',
-      directors: [],
+      associatedParties: [],
     });
 
     const entities = useStructureStore.getState().entities;
-    expect(entities.length).toBe(6);
+    expect(entities.length).toBe(7);
     expect(entities[entities.length - 1].name).toBe('New Cayman SPV Ltd');
   });
 
@@ -38,7 +41,7 @@ describe('useStructureStore', () => {
         type: 'Operating Company',
         jurisdiction: 'Singapore',
         status: 'Active',
-        directors: [],
+        associatedParties: [],
       },
       parentId,
       80
@@ -68,7 +71,7 @@ describe('useStructureStore', () => {
 
   it('deletes an entity and cascades to remove connected relationships', () => {
     const state = useStructureStore.getState();
-    const deleteId = 'entity-2'; // source for 3 rels, target for 1 rel
+    const deleteId = 'entity-2';
 
     state.setSelectedEntityId(deleteId);
     expect(useStructureStore.getState().selectedEntityId).toBe(deleteId);
@@ -89,7 +92,7 @@ describe('useStructureStore', () => {
       type: 'Operating Company',
       jurisdiction: 'UK',
       status: 'Active',
-      directors: [],
+      associatedParties: [],
     });
 
     state.addRelationship({
@@ -107,7 +110,6 @@ describe('useStructureStore', () => {
     const state = useStructureStore.getState();
     const initialCount = state.relationships.length;
 
-    // entity-1 -> entity-2 already exists
     state.addRelationship({
       source: 'entity-1',
       target: 'entity-2',
@@ -133,32 +135,97 @@ describe('useStructureStore', () => {
     expect(rel).toBeUndefined();
   });
 
-  it('adds and removes directors on an entity', () => {
+  it('adds and removes associated parties with specific roles on an entity', () => {
     const targetEntityId = 'entity-3';
-    useStructureStore.getState().addDirector(targetEntityId, {
+    useStructureStore.getState().addAssociatedParty(targetEntityId, {
       name: 'Eleanor Sterling',
+      role: 'Protector',
       isCorporate: false,
       isResident: true,
     });
 
     let entity = useStructureStore.getState().entities.find((e) => e.id === targetEntityId);
-    const addedDir = entity?.directors.find((d) => d.name === 'Eleanor Sterling');
-    expect(addedDir).toBeDefined();
-    expect(addedDir?.id).toBeDefined();
+    const addedParty = entity?.associatedParties.find((p) => p.name === 'Eleanor Sterling');
+    expect(addedParty).toBeDefined();
+    expect(addedParty?.id).toBeDefined();
+    expect(addedParty?.role).toBe('Protector');
 
-    if (addedDir) {
-      useStructureStore.getState().removeDirector(targetEntityId, addedDir.id);
+    if (addedParty) {
+      useStructureStore.getState().removeAssociatedParty(targetEntityId, addedParty.id);
       entity = useStructureStore.getState().entities.find((e) => e.id === targetEntityId);
-      expect(entity?.directors.some((d) => d.id === addedDir.id)).toBe(false);
+      expect(entity?.associatedParties.some((p) => p.id === addedParty.id)).toBe(false);
     }
   });
 
-  it('spotlights and clears a director', () => {
-    useStructureStore.getState().setHighlightedDirector('Julian Vance');
-    expect(useStructureStore.getState().highlightedDirector).toBe('Julian Vance');
+  it('supports addDirector and removeDirector as convenience helpers', () => {
+    const targetEntityId = 'entity-3';
+    useStructureStore.getState().addDirector(targetEntityId, {
+      name: 'Julian Director',
+      role: 'Director',
+      isCorporate: false,
+    });
 
-    useStructureStore.getState().setHighlightedDirector(null);
+    let entity = useStructureStore.getState().entities.find((e) => e.id === targetEntityId);
+    const added = entity?.associatedParties.find((p) => p.name === 'Julian Director');
+    expect(added).toBeDefined();
+    expect(added?.role).toBe('Director');
+
+    if (added) {
+      useStructureStore.getState().removeDirector(targetEntityId, added.id);
+      entity = useStructureStore.getState().entities.find((e) => e.id === targetEntityId);
+      expect(entity?.associatedParties.some((p) => p.id === added.id)).toBe(false);
+    }
+
+    // test addAssociatedParty on entity with undefined associatedParties and missing role
+    const bareEntity = useStructureStore.getState().addEntity({
+      id: 'bare-entity',
+      name: 'Bare Entity',
+      type: 'LLC',
+      jurisdiction: 'Delaware',
+      status: 'Active',
+      associatedParties: undefined as any,
+    });
+    useStructureStore.setState({
+      entities: useStructureStore.getState().entities.map((e) =>
+        e.id === bareEntity.id ? { ...e, associatedParties: undefined as any } : e
+      ),
+    });
+    useStructureStore.getState().addAssociatedParty(bareEntity.id, {
+      name: 'Fallback Party',
+      role: '' as any,
+    });
+    const retrievedBare = useStructureStore.getState().entities.find((e) => e.id === bareEntity.id);
+    expect(retrievedBare?.associatedParties[0].role).toBe('Director');
+
+    // test removeAssociatedParty on entity with undefined associatedParties
+    useStructureStore.setState({
+      entities: useStructureStore.getState().entities.map((e) =>
+        e.id === bareEntity.id ? { ...e, associatedParties: undefined as any } : e
+      ),
+    });
+    useStructureStore.getState().removeAssociatedParty(bareEntity.id, 'some-id');
+
+    // test addDirector without role
+    useStructureStore.getState().addDirector(bareEntity.id, {
+      name: 'Director Without Role',
+      role: '' as any,
+    });
+    const finalBare = useStructureStore.getState().entities.find((e) => e.id === bareEntity.id);
+    expect(finalBare?.associatedParties[0].role).toBe('Director');
+  });
+
+  it('spotlights and clears an associated party / director', () => {
+    useStructureStore.getState().setHighlightedParty('Helena Sterling');
+    expect(useStructureStore.getState().highlightedParty).toBe('Helena Sterling');
+    expect(useStructureStore.getState().highlightedDirector).toBe('Helena Sterling');
+
+    useStructureStore.getState().setHighlightedParty(null);
+    expect(useStructureStore.getState().highlightedParty).toBeNull();
     expect(useStructureStore.getState().highlightedDirector).toBeNull();
+
+    useStructureStore.getState().setHighlightedDirector('Marcus Aurelius');
+    expect(useStructureStore.getState().highlightedParty).toBe('Marcus Aurelius');
+    expect(useStructureStore.getState().highlightedDirector).toBe('Marcus Aurelius');
   });
 
   it('updates metadata and sorting criteria', () => {
@@ -183,7 +250,7 @@ describe('useStructureStore', () => {
           type: 'Foundation',
           jurisdiction: 'Liechtenstein',
           status: 'Active',
-          directors: [],
+          associatedParties: [],
         },
       ],
       relationships: [],
@@ -194,24 +261,24 @@ describe('useStructureStore', () => {
     expect(useStructureStore.getState().entities.length).toBe(1);
 
     useStructureStore.getState().resetToSample();
-    expect(useStructureStore.getState().entities.length).toBe(5);
+    expect(useStructureStore.getState().entities.length).toBe(6);
     expect(useStructureStore.getState().metadata.chartTitle).toContain('Aurelius');
   });
 
   it('resets to sample with deep immutability using structuredClone', () => {
     const state = useStructureStore.getState();
-    // Direct mutation attempt on nested object
-    state.entities[0].directors.push({
-      id: 'mutated-dir',
-      name: 'Mutated Director',
+    state.entities[0].associatedParties.push({
+      id: 'mutated-party',
+      name: 'Mutated Party',
+      role: 'Enforcer',
       isCorporate: false,
       isResident: false,
     });
 
     state.resetToSample();
     const freshState = useStructureStore.getState();
-    expect(freshState.entities[0].directors.some((d) => d.id === 'mutated-dir')).toBe(false);
-    expect(sampleTrustStructure.entities[0].directors.some((d) => d.id === 'mutated-dir')).toBe(false);
+    expect(freshState.entities[0].associatedParties.some((p) => p.id === 'mutated-party')).toBe(false);
+    expect(sampleTrustStructure.entities[0].associatedParties.some((p) => p.id === 'mutated-party')).toBe(false);
   });
 
   it('clears canvas to an empty state with clearCanvas', () => {
@@ -224,11 +291,11 @@ describe('useStructureStore', () => {
     expect(cleared.entities).toEqual([]);
     expect(cleared.relationships).toEqual([]);
     expect(cleared.selectedEntityId).toBeNull();
-    expect(cleared.highlightedDirector).toBeNull();
+    expect(cleared.highlightedParty).toBeNull();
     expect(cleared.metadata.chartTitle).toBe('New Trust Structure');
   });
 
-  it('handles addEntity without directors or ubos by defaulting to empty arrays', () => {
+  it('handles addEntity without associatedParties or ubos by defaulting to empty arrays', () => {
     const newEnt = useStructureStore.getState().addEntity({
       name: 'Minimal Entity Ltd',
       type: 'Operating Company',
@@ -236,7 +303,7 @@ describe('useStructureStore', () => {
       status: 'Active',
     } as any);
 
-    expect(newEnt.directors).toEqual([]);
+    expect(newEnt.associatedParties).toEqual([]);
     expect(newEnt.ubosOrBeneficiaries).toEqual([]);
   });
 
@@ -266,7 +333,6 @@ describe('useStructureStore', () => {
     expect(useStructureStore.getState().entities).toHaveLength(originalCount);
     expect(useStructureStore.getState().undoSnapshot).toBeNull();
 
-    // Calling restore again when null should return false
     expect(useStructureStore.getState().restoreUndoSnapshot()).toBe(false);
   });
 
@@ -304,4 +370,3 @@ describe('useStructureStore', () => {
     expect(useStructureStore.getState().isExportMode).toBe(false);
   });
 });
-

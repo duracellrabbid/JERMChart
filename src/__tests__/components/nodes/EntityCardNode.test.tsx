@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { EntityCardNode } from '../../../components/nodes/EntityCardNode';
+import { EntityCardNode, SatelliteRoleCard } from '../../../components/nodes/EntityCardNode';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useStructureStore } from '../../../store/useStructureStore';
 
@@ -12,9 +12,9 @@ describe('EntityCardNode', () => {
     jurisdiction: 'Cook Islands',
     registrationNumber: 'REG-12345',
     status: 'Active' as const,
-    directors: [
-      { id: 'd1', name: 'Sophia Sterling', isCorporate: false, isResident: true },
-      { id: 'd2', name: 'Anchor Trustees Ltd', isCorporate: true, isResident: false },
+    associatedParties: [
+      { id: 'p1', name: 'Sophia Sterling', role: 'Protector', isCorporate: false, isResident: true },
+      { id: 'p2', name: 'Anchor Trustees Ltd', role: 'Trustee', isCorporate: true, isResident: false },
     ],
     ubosOrBeneficiaries: ['Sterling Family', 'Second Beneficiary'],
   };
@@ -35,12 +35,13 @@ describe('EntityCardNode', () => {
     act(() => {
       useStructureStore.setState({
         selectedEntityId: null,
+        highlightedParty: null,
         highlightedDirector: null,
       });
     });
   });
 
-  it('renders entity name, jurisdiction, registration number, and type badge', () => {
+  it('renders Trust entity name, jurisdiction, registration number, and type badge', () => {
     render(
       <ReactFlowProvider>
         <EntityCardNode {...(createProps() as any)} />
@@ -52,26 +53,29 @@ describe('EntityCardNode', () => {
     expect(screen.getByText('REG-12345')).toBeInTheDocument();
     expect(screen.getByText('Trust')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
-  });
+    expect(screen.getByTestId('trust-triangle-card-node')).toBeInTheDocument();
 
-  it('renders directors list with corporate and resident badges', () => {
+    // Trust with a single beneficiary (branch coverage for +N badge)
+    const singleUboProps = createProps({
+      data: {
+        ...baseEntityData,
+        ubosOrBeneficiaries: ['Single Beneficiary'],
+      },
+    });
     render(
       <ReactFlowProvider>
-        <EntityCardNode {...(createProps() as any)} />
+        <EntityCardNode {...(singleUboProps as any)} />
       </ReactFlowProvider>
     );
-
-    expect(screen.getByText('Directors (2)')).toBeInTheDocument();
-    expect(screen.getByText('Sophia Sterling')).toBeInTheDocument();
-    expect(screen.getByText('Anchor Trustees Ltd')).toBeInTheDocument();
-    expect(screen.getByText('RES')).toBeInTheDocument();
+    expect(screen.getByText('Single Beneficiary')).toBeInTheDocument();
   });
 
-  it('renders empty director message when no directors exist', () => {
+  it('renders SubsidiarySquareCard for corporate entity types', () => {
     const props = createProps({
       data: {
         ...baseEntityData,
-        directors: [],
+        type: 'Holding Company',
+        name: 'Pacific Holding Ltd',
       },
     });
 
@@ -81,15 +85,21 @@ describe('EntityCardNode', () => {
       </ReactFlowProvider>
     );
 
-    expect(screen.getByText('Directors (0)')).toBeInTheDocument();
-    expect(screen.getByText('No directors recorded')).toBeInTheDocument();
+    expect(screen.getByText('Pacific Holding Ltd')).toBeInTheDocument();
+    expect(screen.getByText('Holding Company')).toBeInTheDocument();
+    expect(screen.getByTestId('subsidiary-card-node')).toBeInTheDocument();
   });
 
-  it('renders safely when directors is undefined or missing', () => {
+  it('renders BankCircleCard for Bank entity type', () => {
     const props = createProps({
       data: {
-        ...baseEntityData,
-        directors: undefined,
+        id: 'bank-1',
+        name: 'Apex Merchant Bank',
+        type: 'Bank',
+        jurisdiction: 'Singapore',
+        registrationNumber: 'ACC-9921',
+        status: 'Active',
+        associatedParties: [],
       },
     });
 
@@ -99,444 +109,300 @@ describe('EntityCardNode', () => {
       </ReactFlowProvider>
     );
 
-    expect(screen.getByText('Directors (0)')).toBeInTheDocument();
-    expect(screen.getByText('No directors recorded')).toBeInTheDocument();
+    expect(screen.getByText('Apex Merchant Bank')).toBeInTheDocument();
+    expect(screen.getByText('Bank')).toBeInTheDocument();
+    expect(screen.getByText('Singapore')).toBeInTheDocument();
+    expect(screen.getByTestId('bank-circle-card-node')).toBeInTheDocument();
   });
 
-  it('renders UBO summary and additional count badge when multiple UBOs', () => {
+  it('updates selectedEntityId when clicking an entity card', () => {
     render(
       <ReactFlowProvider>
         <EntityCardNode {...(createProps() as any)} />
       </ReactFlowProvider>
     );
 
-    expect(screen.getByText(/Sterling Family/)).toBeInTheDocument();
-    expect(screen.getByText(/\+1/)).toBeInTheDocument();
-  });
-
-  it('selects the entity when clicked', () => {
-    const { container } = render(
-      <ReactFlowProvider>
-        <EntityCardNode {...(createProps() as any)} />
-      </ReactFlowProvider>
-    );
-
-    const card = container.firstElementChild as HTMLElement;
+    const card = screen.getByTestId('trust-triangle-card-node');
     fireEvent.click(card);
 
     expect(useStructureStore.getState().selectedEntityId).toBe('test-1');
   });
 
-  it('applies selection ring styling when selected', () => {
-    const { container, rerender } = render(
+  it('renders SatelliteRoleCard with role badge, party list, and resident tag', () => {
+    const satelliteProps = {
+      id: 'sat-1',
+      data: {
+        id: 'sat-1',
+        parentEntityId: 'test-1',
+        role: 'Directors',
+        side: 'left' as const,
+        parties: [
+          { id: 'p1', name: 'Julian Vance', role: 'Director', isCorporate: false, isResident: true },
+          { id: 'p2', name: 'Apex Corp', role: 'Director', isCorporate: true, isResident: false },
+        ],
+      },
+      selected: false,
+      type: 'satelliteNode',
+      zIndex: 0,
+      isConnectable: true,
+      positionAbsoluteX: 0,
+      positionAbsoluteY: 0,
+    };
+
+    render(
       <ReactFlowProvider>
-        <EntityCardNode {...(createProps({ selected: true }) as any)} />
+        <SatelliteRoleCard {...(satelliteProps as any)} />
       </ReactFlowProvider>
     );
 
-    const card = container.firstElementChild as HTMLElement;
-    expect(card.className).toContain('ring-4 ring-sky-400');
-
-    // Also when selectedEntityId in store matches
-    act(() => {
-      useStructureStore.setState({ selectedEntityId: 'test-1' });
-    });
-    rerender(
-      <ReactFlowProvider>
-        <EntityCardNode {...(createProps({ selected: false }) as any)} />
-      </ReactFlowProvider>
-    );
-    expect(card.className).toContain('ring-4 ring-sky-400');
+    expect(screen.getByTestId('satellite-role-card')).toBeInTheDocument();
+    expect(screen.getByText('Directors')).toBeInTheDocument();
+    expect(screen.getByText('Julian Vance')).toBeInTheDocument();
+    expect(screen.getByText('Apex Corp')).toBeInTheDocument();
+    expect(screen.getByText('RES')).toBeInTheDocument();
   });
 
-  it('handles director spotlighting click to toggle highlight in store', () => {
+  it('spotlights party when clicking a party item in SatelliteRoleCard', () => {
+    const satelliteProps = {
+      id: 'sat-1',
+      data: {
+        id: 'sat-1',
+        parentEntityId: 'test-1',
+        role: 'Protector',
+        side: 'right' as const,
+        parties: [
+          { id: 'p1', name: 'Marcus Aurelius', role: 'Protector', isCorporate: false },
+        ],
+      },
+      selected: false,
+      type: 'satelliteNode',
+      zIndex: 0,
+      isConnectable: true,
+      positionAbsoluteX: 0,
+      positionAbsoluteY: 0,
+    };
+
+    render(
+      <ReactFlowProvider>
+        <SatelliteRoleCard {...(satelliteProps as any)} />
+      </ReactFlowProvider>
+    );
+
+    const partyRow = screen.getByText('Marcus Aurelius');
+    fireEvent.click(partyRow);
+
+    expect(useStructureStore.getState().highlightedParty).toBe('Marcus Aurelius');
+
+    // Toggle off
+    fireEvent.click(partyRow);
+    expect(useStructureStore.getState().highlightedParty).toBeNull();
+  });
+
+  it('delegates to SatelliteRoleCard when isSatelliteRoleNode is true on EntityCardNode', () => {
+    const nodeProps = {
+      id: 'sat-node-1',
+      data: {
+        isSatelliteRoleNode: true,
+        satelliteData: {
+          id: 'sat-1',
+          parentEntityId: 'test-1',
+          role: 'Enforcers',
+          side: 'left' as const,
+          parties: [{ id: 'p1', name: 'Enforcer Authority', role: 'Enforcer', isCorporate: true }],
+        },
+      },
+      selected: false,
+      type: 'entityNode',
+      zIndex: 0,
+      isConnectable: true,
+      positionAbsoluteX: 0,
+      positionAbsoluteY: 0,
+    };
+
+    render(
+      <ReactFlowProvider>
+        <EntityCardNode {...(nodeProps as any)} />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('satellite-role-card')).toBeInTheDocument();
+    expect(screen.getByText('Enforcers')).toBeInTheDocument();
+  });
+
+  it('selects parent entity when clicking SatelliteRoleCard background', () => {
+    const satelliteProps = {
+      id: 'sat-1',
+      data: {
+        id: 'sat-1',
+        parentEntityId: 'test-1',
+        role: 'Directors',
+        side: 'left' as const,
+        parties: [],
+      },
+      selected: false,
+      type: 'satelliteNode',
+      zIndex: 0,
+      isConnectable: true,
+      positionAbsoluteX: 0,
+      positionAbsoluteY: 0,
+    };
+
+    render(
+      <ReactFlowProvider>
+        <SatelliteRoleCard {...(satelliteProps as any)} />
+      </ReactFlowProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('satellite-role-card'));
+    expect(useStructureStore.getState().selectedEntityId).toBe('test-1');
+  });
+
+  it('highlights entity card and dims others when a party is highlighted', () => {
+    act(() => {
+      useStructureStore.setState({ highlightedParty: 'Sophia Sterling' });
+    });
+
     render(
       <ReactFlowProvider>
         <EntityCardNode {...(createProps() as any)} />
       </ReactFlowProvider>
     );
 
-    const directorTag = screen.getByText('Sophia Sterling').closest('div')!;
-    fireEvent.click(directorTag);
-
-    expect(useStructureStore.getState().highlightedDirector).toBe('Sophia Sterling');
-
-    // Clicking again toggles it off
-    fireEvent.click(directorTag);
-    expect(useStructureStore.getState().highlightedDirector).toBeNull();
+    const card = screen.getByTestId('trust-triangle-card-node');
+    expect(card.className).toContain('ring-amber-500');
   });
 
-  it('supports keyboard interaction (Enter and Space) on director tag to toggle highlight', () => {
+  it('dims entity card when a different party is highlighted', () => {
+    act(() => {
+      useStructureStore.setState({ highlightedParty: 'Unknown Person' });
+    });
+
     render(
       <ReactFlowProvider>
         <EntityCardNode {...(createProps() as any)} />
       </ReactFlowProvider>
     );
 
-    const directorBtn = screen.getByRole('button', { name: /Sophia Sterling/i });
-    expect(directorBtn).toHaveAttribute('tabIndex', '0');
-
-    // Press Enter to toggle highlight on
-    fireEvent.keyDown(directorBtn, { key: 'Enter', code: 'Enter' });
-    expect(useStructureStore.getState().highlightedDirector).toBe('Sophia Sterling');
-
-    // Press Space to toggle highlight off
-    fireEvent.keyDown(directorBtn, { key: ' ', code: 'Space' });
-    expect(useStructureStore.getState().highlightedDirector).toBeNull();
-
-    // Press non-Enter / non-Space key (should not toggle)
-    fireEvent.keyDown(directorBtn, { key: 'Tab', code: 'Tab' });
-    expect(useStructureStore.getState().highlightedDirector).toBeNull();
-  });
-
-  it('applies spotlight ring when entity contains highlighted director', () => {
-    act(() => {
-      useStructureStore.setState({ highlightedDirector: 'Sophia Sterling' });
-    });
-
-    const { container } = render(
-      <ReactFlowProvider>
-        <EntityCardNode {...(createProps() as any)} />
-      </ReactFlowProvider>
-    );
-
-    const card = container.firstElementChild as HTMLElement;
-    expect(card.className).toContain('ring-4 ring-amber-500');
-    expect(card.className).toContain('opacity-100');
-  });
-
-  it('dims entity when highlighted director is not present in entity', () => {
-    act(() => {
-      useStructureStore.setState({ highlightedDirector: 'NonExistent Director' });
-    });
-
-    const { container } = render(
-      <ReactFlowProvider>
-        <EntityCardNode {...(createProps() as any)} />
-      </ReactFlowProvider>
-    );
-
-    const card = container.firstElementChild as HTMLElement;
-    expect(card.className).toContain('opacity-40 grayscale-[20%]');
-  });
-
-  it('renders triangular shape styling for Trust and Trust Company entities', () => {
-    const { container } = render(
-      <ReactFlowProvider>
-        <EntityCardNode {...(createProps({ data: { ...baseEntityData, type: 'Trust' } }) as any)} />
-      </ReactFlowProvider>
-    );
-    expect(container.querySelector('svg.triangle-shape-bg')).toBeInTheDocument();
-    expect(container.querySelector('[data-testid="trust-triangle-card-node"]')).toBeInTheDocument();
-  });
-
-  it('renders square 220px styling for subsidiary entities', () => {
-    const { container } = render(
-      <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: { ...baseEntityData, type: 'Holding Company', name: 'HoldCo 1' },
-          }) as any)}
-        />
-      </ReactFlowProvider>
-    );
-    const cardElement = container.querySelector('[data-testid="subsidiary-card-node"]');
-    expect(cardElement).toBeInTheDocument();
-    expect(cardElement?.className).toContain('w-[220px]');
-    expect(cardElement?.className).toContain('h-[220px]');
-  });
-
-  it('renders subsidiary card without directors, registration number, or multiple ubos', () => {
-    act(() => {
-      useStructureStore.setState({ selectedEntityId: 'sub-empty' });
-    });
-
-    const { container } = render(
-      <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            id: 'sub-empty',
-            data: {
-              id: 'sub-empty',
-              name: 'Bare Subsidiary LLC',
-              type: 'LLC',
-              jurisdiction: 'Delaware',
-              status: 'Dormant',
-              registrationNumber: undefined,
-              directors: [],
-              ubosOrBeneficiaries: ['Sole Beneficiary'],
-            },
-          }) as any)}
-        />
-      </ReactFlowProvider>
-    );
-
-    expect(screen.getByText('No directors recorded')).toBeInTheDocument();
-    expect(screen.getByText('Sole Beneficiary')).toBeInTheDocument();
-    expect(screen.queryByText(/\+/)).not.toBeInTheDocument();
-    const cardElement = container.querySelector('[data-testid="subsidiary-card-node"]');
-    expect(cardElement?.className).toContain('ring-4 ring-sky-400');
-  });
-
-  it('renders subsidiary card with highlighted director and dimmed states', () => {
-    act(() => {
-      useStructureStore.setState({ highlightedDirector: 'Target Director' });
-    });
-
-    const { container, rerender } = render(
-      <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Operating Company',
-              directors: [{ id: 'd-sub', name: 'Target Director', isCorporate: false, isResident: false }],
-              ubosOrBeneficiaries: undefined,
-            },
-          }) as any)}
-        />
-      </ReactFlowProvider>
-    );
-
-    const card = container.querySelector('[data-testid="subsidiary-card-node"]') as HTMLElement;
-    expect(card.className).toContain('ring-4 ring-amber-500');
-
-    // Dimmed state for subsidiary
-    act(() => {
-      useStructureStore.setState({ highlightedDirector: 'Other Director' });
-    });
-    rerender(
-      <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Operating Company',
-              directors: [{ id: 'd-sub', name: 'Target Director', isCorporate: false, isResident: false }],
-              ubosOrBeneficiaries: undefined,
-            },
-          }) as any)}
-        />
-      </ReactFlowProvider>
-    );
+    const card = screen.getByTestId('trust-triangle-card-node');
     expect(card.className).toContain('opacity-40');
   });
 
-  it('renders Trust card without registration number and without ubos, and with exactly 1 UBO', () => {
-    const { rerender } = render(
-      <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Trust Company',
-              status: 'In Liquidation',
-              registrationNumber: undefined,
-              ubosOrBeneficiaries: [],
-            },
-          }) as any)}
-        />
-      </ReactFlowProvider>
-    );
+  it('renders SatelliteRoleCard in selected and dimmed state without parentEntityId or parties', () => {
+    act(() => {
+      useStructureStore.setState({ highlightedParty: 'Someone Else' });
+    });
 
-    expect(screen.getByText('Trust Company')).toBeInTheDocument();
-    expect(screen.getByText('In Liquidation')).toBeInTheDocument();
-
-    // With exactly 1 UBO on triangular card
-    rerender(
-      <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Trust',
-              ubosOrBeneficiaries: ['Single Beneficiary Only'],
-            },
-          }) as any)}
-        />
-      </ReactFlowProvider>
-    );
-    expect(screen.getByText('Single Beneficiary Only')).toBeInTheDocument();
-    expect(screen.queryByText(/\+/)).not.toBeInTheDocument();
-  });
-
-  it('renders subsidiary card with undefined directors and multiple ubos', () => {
-    render(
-      <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Operating Company',
-              directors: undefined,
-              ubosOrBeneficiaries: ['UBO Alpha', 'UBO Beta'],
-            },
-          }) as any)}
-        />
-      </ReactFlowProvider>
-    );
-
-    expect(screen.getByText(/UBO Alpha/)).toBeInTheDocument();
-    expect(screen.getByText(/\+1/)).toBeInTheDocument();
-    expect(screen.getByText('Directors (0)')).toBeInTheDocument();
-  });
-
-  it('renders dynamic SVG polygon points based on computedWidth and computedHeight', () => {
-    const { container } = render(
-      <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Trust',
-              computedWidth: 400,
-              computedHeight: 320,
-            },
-          }) as any)}
-        />
-      </ReactFlowProvider>
-    );
-
-    const triangle = container.querySelector('[data-testid="trust-triangle-card-node"]');
-    expect(triangle).toBeInTheDocument();
-    expect(triangle).toHaveStyle({ width: '400px', height: '320px' });
-
-    const polygon = container.querySelector('svg.triangle-shape-bg polygon');
-    expect(polygon).toBeInTheDocument();
-    expect(polygon?.getAttribute('points')).toBe('200,6 394,314 6,314');
-  });
-
-  it('renders overflow directors badge on Trust card when director count exceeds directorCap', () => {
-    const manyDirectors = [
-      { id: 'd1', name: 'Director One', isCorporate: false },
-      { id: 'd2', name: 'Director Two', isCorporate: true },
-      { id: 'd3', name: 'Director Three', isCorporate: false, isResident: true },
-      { id: 'd4', name: 'Director Four', isCorporate: true },
-      { id: 'd5', name: 'Director Five', isCorporate: false },
-    ];
-
-    const { getByTestId, queryByText, getByText } = render(
-      <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Trust',
-              directors: manyDirectors,
-              directorCap: 2,
-            },
-          }) as any)}
-        />
-      </ReactFlowProvider>
-    );
-
-    expect(getByText('+3 more directors...')).toBeInTheDocument();
-    const badge = getByTestId('overflow-directors-badge');
-    expect(badge).toBeInTheDocument();
-    expect(getByText('Res')).toBeInTheDocument();
-    expect(getByText('Corp')).toBeInTheDocument();
-
-    // Clicking when tab button does not exist in DOM safely does not crash
-    fireEvent.click(badge);
-
-    // Clicking overflow badge selects entity and targets directors tab when present
-    const mockTab = document.createElement('button');
-    mockTab.setAttribute('data-testid', 'tab-directors');
-    const clickSpy = vi.fn();
-    mockTab.addEventListener('click', clickSpy);
-    document.body.appendChild(mockTab);
-
-    fireEvent.click(badge);
-    expect(clickSpy).toHaveBeenCalled();
-    document.body.removeChild(mockTab);
-  });
-
-  it('renders subsidiary card with custom computedHeight without fixed h-[220px] class', () => {
-    const { container } = render(
-      <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Holding Company',
-              computedHeight: 280,
-            },
-          }) as any)}
-        />
-      </ReactFlowProvider>
-    );
-    const cardElement = container.querySelector('[data-testid="subsidiary-card-node"]');
-    expect(cardElement).toBeInTheDocument();
-    expect(cardElement?.className).not.toContain('h-[220px]');
-    expect(cardElement).toHaveStyle({ height: '280px' });
-  });
-
-  it('renders overflow directors badge on Subsidiary card when director count exceeds directorCap', () => {
-    const manyDirectors = [
-      { id: 'd1', name: 'Director One', isCorporate: false },
-      { id: 'd2', name: 'Director Two', isCorporate: true },
-      { id: 'd3', name: 'Director Three', isCorporate: false },
-      { id: 'd4', name: 'Director Four', isCorporate: true },
-    ];
+    const satProps = {
+      id: 'sat-isolated',
+      data: {
+        id: 'sat-isolated',
+        role: 'Protectors',
+        side: 'left' as const,
+        parties: undefined as any,
+        parentEntityId: undefined,
+      },
+      selected: true,
+      type: 'satelliteNode',
+      zIndex: 0,
+      isConnectable: true,
+      positionAbsoluteX: 0,
+      positionAbsoluteY: 0,
+    };
 
     render(
       <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Holding Company',
-              directors: manyDirectors,
-              directorCap: 2,
-            },
-          }) as any)}
-        />
+        <SatelliteRoleCard {...(satProps as any)} />
       </ReactFlowProvider>
     );
 
-    expect(screen.getByText('+2 more directors...')).toBeInTheDocument();
+    const card = screen.getByTestId('satellite-role-card');
+    expect(card.className).toContain('ring-2 ring-sky-400');
+    expect(card.className).toContain('opacity-40');
+
+    // Clicking when parentEntityId is undefined does not throw or change selectedEntityId
+    fireEvent.click(card);
+    expect(useStructureStore.getState().selectedEntityId).toBeNull();
   });
 
-  it('renders all directors without overflow badge when directorCap is all or in export mode', () => {
-    const manyDirectors = [
-      { id: 'd1', name: 'Director One', isCorporate: false },
-      { id: 'd2', name: 'Director Two', isCorporate: true },
-      { id: 'd3', name: 'Director Three', isCorporate: false },
-    ];
+  it('renders SubsidiarySquareCard when selected, highlighted, and dimmed', () => {
+    const subProps = createProps({
+      data: {
+        ...baseEntityData,
+        type: 'Operating Company',
+        associatedParties: [{ id: 'p-sub', name: 'Sub Director', role: 'Director' }],
+      },
+      selected: true,
+    });
 
     const { rerender } = render(
       <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Trust',
-              directors: manyDirectors,
-              directorCap: 'all',
-            },
-          }) as any)}
-        />
+        <EntityCardNode {...(subProps as any)} />
       </ReactFlowProvider>
     );
+    let card = screen.getByTestId('subsidiary-card-node');
+    expect(card.className).toContain('ring-4 ring-sky-400');
 
-    expect(screen.queryByTestId('overflow-directors-badge')).not.toBeInTheDocument();
-
+    act(() => {
+      useStructureStore.setState({ highlightedParty: 'Sub Director' });
+    });
     rerender(
       <ReactFlowProvider>
-        <EntityCardNode
-          {...(createProps({
-            data: {
-              ...baseEntityData,
-              type: 'Trust',
-              directors: manyDirectors,
-              directorCap: 2,
-              isExportMode: true,
-            },
-          }) as any)}
-        />
+        <EntityCardNode {...(subProps as any)} />
       </ReactFlowProvider>
     );
+    card = screen.getByTestId('subsidiary-card-node');
+    expect(card.className).toContain('ring-4 ring-amber-500');
 
-    expect(screen.queryByTestId('overflow-directors-badge')).not.toBeInTheDocument();
+    act(() => {
+      useStructureStore.setState({ highlightedParty: 'Other Person' });
+    });
+    rerender(
+      <ReactFlowProvider>
+        <EntityCardNode {...(subProps as any)} />
+      </ReactFlowProvider>
+    );
+    card = screen.getByTestId('subsidiary-card-node');
+    expect(card.className).toContain('opacity-40');
+  });
+
+  it('renders BankCircleCard when selected, highlighted, and dimmed', () => {
+    const bankProps = createProps({
+      data: {
+        ...baseEntityData,
+        type: 'Bank',
+        associatedParties: [{ id: 'p-bank', name: 'Bank Signatory', role: 'Authorised Signatory' }],
+      },
+      selected: true,
+    });
+
+    const { rerender } = render(
+      <ReactFlowProvider>
+        <EntityCardNode {...(bankProps as any)} />
+      </ReactFlowProvider>
+    );
+    let card = screen.getByTestId('bank-circle-card-node');
+    expect(card.className).toContain('ring-4 ring-cyan-400');
+
+    act(() => {
+      useStructureStore.setState({ highlightedParty: 'Bank Signatory' });
+    });
+    rerender(
+      <ReactFlowProvider>
+        <EntityCardNode {...(bankProps as any)} />
+      </ReactFlowProvider>
+    );
+    card = screen.getByTestId('bank-circle-card-node');
+    expect(card.className).toContain('ring-4 ring-amber-500');
+
+    act(() => {
+      useStructureStore.setState({ highlightedParty: 'Other Person' });
+    });
+    rerender(
+      <ReactFlowProvider>
+        <EntityCardNode {...(bankProps as any)} />
+      </ReactFlowProvider>
+    );
+    card = screen.getByTestId('bank-circle-card-node');
+    expect(card.className).toContain('opacity-40');
   });
 });

@@ -1,6 +1,7 @@
 import dagre from '@dagrejs/dagre';
 import { Node, Edge } from '@xyflow/react';
 import {
+  AssociatedParty,
   EntityNodeData,
   EntityType,
   OwnershipEdgeData,
@@ -12,90 +13,116 @@ export const BASE_CARD_HEIGHT = 160;
 export const DIRECTOR_ROW_HEIGHT = 24;
 
 export const TRUST_ASPECT_RATIO = 1.25;
-export const TRUST_CARD_WIDTH = 350;
-export const TRUST_CARD_HEIGHT = 280;
+export const TRUST_CARD_WIDTH = 300;
+export const TRUST_CARD_HEIGHT = 240;
 export const SUBSIDIARY_CARD_SIZE = 220;
+export const SUBSIDIARY_CARD_HEIGHT = 160;
+export const BANK_CARD_SIZE = 180;
 
-function getNameLinesHeight(nameLen: number): number {
-  if (nameLen > 42) return 52;
-  if (nameLen > 20) return 36;
-  return 20;
+export const SATELLITE_CARD_WIDTH = 150;
+export const HORIZONTAL_SATELLITE_GAP = 40;
+export const VERTICAL_SATELLITE_GAP = 10;
+
+export interface RoleGroup {
+  role: string;
+  parties: AssociatedParty[];
 }
 
-function getTrustBaseHeight(visibleDirectors: number, isCapped: boolean, hasUBO: boolean): number {
-  const directorRowsHeight = Math.max(0, visibleDirectors) * 22;
-  const overflowHeight = isCapped ? 20 : 0;
-  const uboHeight = hasUBO ? 22 : 0;
-  return 18 + directorRowsHeight + overflowHeight + uboHeight + 10;
+export function calculateBankDimensions(): { width: number; height: number } {
+  return { width: BANK_CARD_SIZE, height: BANK_CARD_SIZE };
 }
 
 export function calculateTrustDimensions(
-  entity: EntityNodeData,
-  cap: number | 'all' = 3
+  entity?: EntityNodeData
 ): { width: number; height: number } {
-  const nameLen = entity.name ? entity.name.length : 0;
-  const nameLinesHeight = getNameLinesHeight(nameLen);
-  const regNoHeight = entity.registrationNumber ? 14 : 0;
-  const hMid = nameLinesHeight + regNoHeight + 20;
-
-  const totalDirectors = entity.directors ? entity.directors.length : 0;
-  const isCapped = cap !== 'all' && totalDirectors > cap;
-  const visibleDirectors = isCapped ? (cap as number) : totalDirectors;
-  const hasUBO = Boolean(entity.ubosOrBeneficiaries && entity.ubosOrBeneficiaries.length > 0);
-
-  const hBase = getTrustBaseHeight(visibleDirectors, isCapped, hasUBO);
-
-  // Geometric constraint: For a base box of width 220px to fit at depth
-  // y_base_top = H - hBase - 16 with 18px clearance from each diagonal leg:
-  // w(y_base_top) = W * (y_base_top / H) >= 220 + 36 = 256.
-  // With W = 1.25 * H, 1.25 * (H - hBase - 16) >= 256 => H >= 256/1.25 + hBase + 16 = 221 + hBase.
-  const hBaseReq = 221 + hBase;
-  const hMidReq = 88 + hMid + hBase;
-
-  const rawHeight = Math.max(hBaseReq, hMidReq);
-  const height = Math.max(TRUST_CARD_HEIGHT, Math.round(rawHeight));
-  const width = Math.max(TRUST_CARD_WIDTH, Math.round(height * TRUST_ASPECT_RATIO));
-
+  const nameLen = entity?.name ? entity.name.length : 0;
+  const extraHeight = nameLen > 35 ? 30 : 0;
+  const height = TRUST_CARD_HEIGHT + extraHeight;
+  const width = Math.round(height * TRUST_ASPECT_RATIO);
   return { width, height };
 }
 
 export function calculateSubsidiaryDimensions(
-  entity?: EntityNodeData,
-  _cap: number | 'all' = 3,
-  isExportMode: boolean = false
+  _entity?: EntityNodeData
 ): { width: number; height: number } {
-  if (!entity) {
-    return { width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_SIZE };
-  }
-
-  const totalDirectors = entity.directors ? entity.directors.length : 0;
-  if (isExportMode && totalDirectors > 3) {
-    const extraDirectors = totalDirectors - 3;
-    const expandedHeight = SUBSIDIARY_CARD_SIZE + extraDirectors * 22;
-    return { width: SUBSIDIARY_CARD_SIZE, height: expandedHeight };
-  }
-
-  return { width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_SIZE };
+  return { width: SUBSIDIARY_CARD_SIZE, height: SUBSIDIARY_CARD_HEIGHT };
 }
 
 export function getEntityDimensions(
   type: EntityType,
   entity?: EntityNodeData,
-  cap: number | 'all' = 3,
-  isExportMode: boolean = false
+  _cap?: number | 'all',
+  _isExportMode?: boolean
 ): { width: number; height: number } {
-  if (type === 'Trust' || type === 'Trust Company') {
-    if (entity) {
-      const activeCap = isExportMode ? 'all' : cap;
-      return calculateTrustDimensions(entity, activeCap);
-    }
-    return { width: TRUST_CARD_WIDTH, height: TRUST_CARD_HEIGHT };
+  if (type === 'Bank') {
+    return calculateBankDimensions();
   }
-  return calculateSubsidiaryDimensions(entity, cap, isExportMode);
+  if (type === 'Trust' || type === 'Trust Company') {
+    return calculateTrustDimensions(entity);
+  }
+  return calculateSubsidiaryDimensions(entity);
 }
 
-export function calculateCardHeight(directorCount: number): number {
-  return BASE_CARD_HEIGHT + Math.max(0, directorCount) * DIRECTOR_ROW_HEIGHT;
+export function calculateCardHeight(partyCount: number): number {
+  return BASE_CARD_HEIGHT + Math.max(0, partyCount) * DIRECTOR_ROW_HEIGHT;
+}
+
+export function formatRoleTitle(role: string, count: number): string {
+  const trimmed = role.trim();
+  if (count <= 1) return trimmed;
+  if (trimmed.endsWith('s') || trimmed.endsWith('S')) return trimmed;
+  if (trimmed.toLowerCase() === 'director') return 'Directors';
+  if (trimmed.toLowerCase() === 'enforcer') return 'Enforcers';
+  if (trimmed.toLowerCase() === 'authorised signatory' || trimmed.toLowerCase() === 'authorized signatory') {
+    return 'Authorised Signatories';
+  }
+  return `${trimmed}s`;
+}
+
+export function groupPartiesByRole(parties?: AssociatedParty[]): RoleGroup[] {
+  if (!parties || parties.length === 0) return [];
+
+  const map = new Map<string, { role: string; items: AssociatedParty[] }>();
+
+  parties.forEach((party) => {
+    const rawRole = (party.role || 'Director').trim();
+    const key = rawRole.toLowerCase();
+    const existing = map.get(key);
+    if (existing) {
+      existing.items.push(party);
+    } else {
+      map.set(key, { role: rawRole, items: [party] });
+    }
+  });
+
+  return Array.from(map.values()).map(({ role, items }) => ({
+    role: formatRoleTitle(role, items.length),
+    parties: items,
+  }));
+}
+
+export function distributeRoleGroups(groups: RoleGroup[]): {
+  left: RoleGroup[];
+  right: RoleGroup[];
+} {
+  const total = groups.length;
+  if (total === 0) return { left: [], right: [] };
+
+  const leftCount = Math.ceil(total / 2);
+  return {
+    left: groups.slice(0, leftCount),
+    right: groups.slice(leftCount),
+  };
+}
+
+export function getSatelliteCardHeight(partyCount: number): number {
+  return Math.max(48, 30 + partyCount * 22);
+}
+
+function calculateColumnTotalHeight(groups: RoleGroup[]): number {
+  const heights = groups.map((g) => getSatelliteCardHeight(g.parties.length));
+  const sum = heights.reduce((acc, h) => acc + h, 0);
+  return sum + (groups.length - 1) * VERTICAL_SATELLITE_GAP;
 }
 
 export function sortSiblingEntities(
@@ -111,7 +138,6 @@ export function sortSiblingEntities(
       return result.sort((a, b) => a.name.localeCompare(b.name));
 
     case 'ownership': {
-      // Find incoming ownership percentage
       const getPct = (id: string) => {
         const edge = relationships.find((r) =>
           parentId ? r.source === parentId && r.target === id : r.target === id
@@ -130,23 +156,86 @@ export function sortSiblingEntities(
   }
 }
 
+interface SatellitePlacementContext {
+  entityId: string;
+  side: 'left' | 'right';
+  anchorX: number;
+  centerY: number;
+  groups: RoleGroup[];
+}
+
+function buildSatelliteColumn(
+  ctx: SatellitePlacementContext,
+  nodes: Node[],
+  edges: Edge[]
+): void {
+  const { entityId, side, anchorX, centerY, groups } = ctx;
+  if (groups.length === 0) return;
+
+  const totalH = calculateColumnTotalHeight(groups);
+  let currentY = centerY - totalH / 2;
+
+  groups.forEach((group, idx) => {
+    const cardH = getSatelliteCardHeight(group.parties.length);
+    const satId = `sat-${entityId}-${side}-${idx}`;
+
+    nodes.push({
+      id: satId,
+      type: 'satelliteNode',
+      position: { x: anchorX, y: currentY },
+      data: {
+        id: satId,
+        parentEntityId: entityId,
+        role: group.role,
+        parties: group.parties,
+        side,
+        computedWidth: SATELLITE_CARD_WIDTH,
+        computedHeight: cardH,
+        isSatelliteRoleNode: true,
+        satelliteData: {
+          id: satId,
+          parentEntityId: entityId,
+          role: group.role,
+          parties: group.parties,
+          side,
+          computedWidth: SATELLITE_CARD_WIDTH,
+          computedHeight: cardH,
+        },
+      },
+    });
+
+    edges.push({
+      id: `edge-${satId}-${entityId}`,
+      source: satId,
+      sourceHandle: side === 'left' ? 'right-out' : 'left-out',
+      target: entityId,
+      targetHandle: side === 'left' ? 'left-in' : 'right-in',
+      type: 'ownershipEdge',
+      data: {
+        isAssociationEdge: true,
+      },
+    });
+
+    currentY += cardH + VERTICAL_SATELLITE_GAP;
+  });
+}
+
 export function calculateSortedLayout(
   entities: EntityNodeData[],
   relationships: OwnershipEdgeData[],
   sortCriteria: SiblingSortCriteria = 'alphabetical',
-  cap: number | 'all' = 3,
-  isExportMode: boolean = false
+  _cap?: number | 'all',
+  _isExportMode?: boolean
 ): { nodes: Node[]; edges: Edge[] } {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({
     rankdir: 'TB',
-    nodesep: 60,
+    nodesep: 140,
     ranksep: 90,
     align: 'DL',
   });
 
-  // Group children by parent to order siblings
   const parentToChildren = new Map<string, EntityNodeData[]>();
   const entityMap = new Map<string, EntityNodeData>();
   entities.forEach((e) => entityMap.set(e.id, e));
@@ -160,7 +249,6 @@ export function calculateSortedLayout(
     }
   });
 
-  // Sort siblings under each parent
   parentToChildren.forEach((children, parentId) => {
     parentToChildren.set(
       parentId,
@@ -168,19 +256,16 @@ export function calculateSortedLayout(
     );
   });
 
-  // Register nodes with dynamic dimensions
   entities.forEach((entity) => {
-    const dims = getEntityDimensions(entity.type, entity, cap, isExportMode);
+    const dims = getEntityDimensions(entity.type, entity);
     dagreGraph.setNode(entity.id, {
       width: dims.width,
       height: dims.height,
     });
   });
 
-  // Register sorted edges into Dagre
   const registeredEdgeKeys = new Set<string>();
 
-  // Add edges parent by parent in sorted order
   entities.forEach((parent) => {
     const sortedChildren = parentToChildren.get(parent.id) || [];
     sortedChildren.forEach((child) => {
@@ -189,7 +274,6 @@ export function calculateSortedLayout(
     });
   });
 
-  // Add remaining cross-links or edges
   relationships.forEach((rel) => {
     const key = `${rel.source}->${rel.target}`;
     if (!registeredEdgeKeys.has(key)) {
@@ -197,43 +281,77 @@ export function calculateSortedLayout(
     }
   });
 
-  // Run dagre layout calculation
   dagre.layout(dagreGraph);
 
-  // Map to React Flow Nodes
-  const nodes: Node[] = entities.map((entity) => {
-    const nodeWithPosition = dagreGraph.node(entity.id);
-    const dims = getEntityDimensions(entity.type, entity, cap, isExportMode);
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
 
-    return {
+  // Register main hierarchy entities
+  entities.forEach((entity) => {
+    const nodePos = dagreGraph.node(entity.id);
+    const dims = getEntityDimensions(entity.type, entity);
+    const posX = nodePos.x - dims.width / 2;
+    const posY = nodePos.y - dims.height / 2;
+
+    nodes.push({
       id: entity.id,
       type: 'entityNode',
-      position: {
-        x: nodeWithPosition.x - dims.width / 2,
-        y: nodeWithPosition.y - dims.height / 2,
-      },
+      position: { x: posX, y: posY },
       data: {
         ...entity,
         computedHeight: dims.height,
         computedWidth: dims.width,
-        directorCap: isExportMode ? 'all' : cap,
-        isExportMode,
       },
-    };
+    });
+
+    // Generate hybrid satellite role cards
+    const groups = groupPartiesByRole(entity.associatedParties);
+    if (groups.length > 0) {
+      const { left, right } = distributeRoleGroups(groups);
+      const centerY = posY + dims.height / 2;
+
+      buildSatelliteColumn(
+        {
+          entityId: entity.id,
+          side: 'left',
+          anchorX: posX - SATELLITE_CARD_WIDTH - HORIZONTAL_SATELLITE_GAP,
+          centerY,
+          groups: left,
+        },
+        nodes,
+        edges
+      );
+
+      buildSatelliteColumn(
+        {
+          entityId: entity.id,
+          side: 'right',
+          anchorX: posX + dims.width + HORIZONTAL_SATELLITE_GAP,
+          centerY,
+          groups: right,
+        },
+        nodes,
+        edges
+      );
+    }
   });
 
-  // Map to React Flow Edges
-  const edges: Edge[] = relationships.map((rel) => ({
-    id: rel.id,
-    source: rel.source,
-    target: rel.target,
-    type: 'ownershipEdge',
-    data: {
-      ownershipPercentage: rel.ownershipPercentage,
-      shareClass: rel.shareClass,
-      isCrossLink: rel.isCrossLink,
-    },
-  }));
+  // Register ownership edges
+  relationships.forEach((rel) => {
+    edges.push({
+      id: rel.id,
+      source: rel.source,
+      sourceHandle: 'bottom-out',
+      target: rel.target,
+      targetHandle: 'top-in',
+      type: 'ownershipEdge',
+      data: {
+        ownershipPercentage: rel.ownershipPercentage,
+        shareClass: rel.shareClass,
+        isCrossLink: rel.isCrossLink,
+      },
+    });
+  });
 
   return { nodes, edges };
 }

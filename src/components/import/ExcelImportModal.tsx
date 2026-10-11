@@ -207,9 +207,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose }) =
                 </div>
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-2.5 text-center">
                   <div className="text-lg font-bold text-purple-800">
-                    {parsedData.chart.entities.reduce((acc, e) => acc + e.directors.length, 0)}
+                    {parsedData.chart.entities.reduce((acc, e) => acc + (e.associatedParties?.length || 0), 0)}
                   </div>
-                  <div className="text-[10px] font-semibold text-purple-600 uppercase">Total Directors</div>
+                  <div className="text-[10px] font-semibold text-purple-600 uppercase">Associated Parties</div>
                 </div>
               </div>
 
@@ -238,7 +238,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose }) =
                       <th className="p-2">Entity Name</th>
                       <th className="p-2">Type</th>
                       <th className="p-2">Jurisdiction</th>
-                      <th className="p-2">Directors</th>
+                      <th className="p-2">Parties</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-slate-700">
@@ -247,7 +247,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose }) =
                         <td className="p-2 font-medium text-slate-900 truncate max-w-[180px]">{e.name}</td>
                         <td className="p-2">{e.type}</td>
                         <td className="p-2 truncate max-w-[140px]">{e.jurisdiction}</td>
-                        <td className="p-2 text-slate-500">{e.directors.length} recorded</td>
+                        <td className="p-2 text-slate-500">{(e.associatedParties || []).length} recorded</td>
                       </tr>
                     ))}
                   </tbody>

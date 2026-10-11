@@ -27,6 +27,20 @@ export const OwnershipEdge = memo((props: EdgeProps) => {
     borderRadius: 8,
   });
 
+  const isAssociation = Boolean(data?.isAssociationEdge);
+  if (isAssociation) {
+    return (
+      <BaseEdge
+        path={edgePath}
+        style={{
+          stroke: '#94a3b8',
+          strokeWidth: 1.5,
+          strokeDasharray: '4,4',
+        }}
+      />
+    );
+  }
+
   const ownership = data?.ownershipPercentage as number | undefined;
   const shareClass = data?.shareClass as string | undefined;
 

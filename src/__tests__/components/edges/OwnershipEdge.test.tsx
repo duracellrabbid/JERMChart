@@ -57,4 +57,20 @@ describe('OwnershipEdge', () => {
     expect(screen.getByText('Owns')).toBeInTheDocument();
     expect(screen.queryByText('Ordinary Shares')).not.toBeInTheDocument();
   });
+
+  it('renders dashed association edge without label when isAssociationEdge is true', () => {
+    const { container } = render(
+      <svg>
+        <OwnershipEdge
+          {...(baseEdgeProps as any)}
+          data={{ isAssociationEdge: true }}
+        />
+      </svg>
+    );
+
+    expect(screen.queryByText('Owns')).not.toBeInTheDocument();
+    const path = container.querySelector('path.react-flow__edge-path');
+    expect(path).toBeInTheDocument();
+    expect(path?.getAttribute('style')).toContain('stroke-dasharray: 4,4');
+  });
 });

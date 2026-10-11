@@ -17,7 +17,7 @@ export const TreeOutlineTab: React.FC = () => {
         type: 'Operating Company',
         jurisdiction: 'Cayman Islands',
         status: 'Active',
-        directors: [],
+        associatedParties: [],
       },
       parentId,
       100
@@ -30,7 +30,7 @@ export const TreeOutlineTab: React.FC = () => {
       type: 'Holding Company',
       jurisdiction: 'BVI',
       status: 'Active',
-      directors: [],
+      associatedParties: [],
     });
   };
 

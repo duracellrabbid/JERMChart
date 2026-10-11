@@ -6,16 +6,28 @@ export type EntityType =
   | 'LLC' 
   | 'Foundation' 
   | 'Partnership' 
-  | 'Individual';
+  | 'Individual'
+  | 'Bank';
 
 export type EntityStatus = 'Active' | 'Dormant' | 'In Liquidation' | 'Nominee';
 
 export type SiblingSortCriteria = 'alphabetical' | 'ownership' | 'jurisdiction' | 'manual';
 
-export interface Director {
+export type AssociatedRole =
+  | 'Director'
+  | 'Enforcer'
+  | 'Settlor'
+  | 'Protector'
+  | 'Asset Contributor'
+  | 'Authorised Signatory'
+  | 'Fund Manager'
+  | string;
+
+export interface AssociatedParty {
   id: string;
   name: string;
-  isCorporate: boolean;
+  role: string;
+  isCorporate?: boolean;
   appointmentDate?: string;
   isResident?: boolean;
 }
@@ -28,7 +40,7 @@ export interface EntityNodeData {
   registrationNumber?: string;
   taxId?: string;
   status: EntityStatus;
-  directors: Director[];
+  associatedParties: AssociatedParty[];
   ubosOrBeneficiaries?: string[];
   notes?: string;
 }

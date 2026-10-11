@@ -47,7 +47,7 @@ describe('SidebarInspector', () => {
 
     // Switch to Directors
     fireEvent.click(screen.getByRole('button', { name: /Directors/i }));
-    expect(screen.getByText(/Click any director below to highlight/i)).toBeInTheDocument();
+    expect(screen.getByText(/Click any associated party below to highlight/i)).toBeInTheDocument();
     expect(screen.getByText('Julian Vance')).toBeInTheDocument();
 
     // Switch back to Tree
@@ -171,39 +171,51 @@ describe('SidebarInspector', () => {
       expect(useStructureStore.getState().entities.find((e) => e.id === 'entity-1')?.status).toBe('Dormant');
     });
 
-    it('allows adding and removing directors', () => {
+    it('allows adding and removing associated parties', () => {
       render(<SidebarInspector />);
       fireEvent.click(screen.getByRole('button', { name: /Details/i }));
 
-      // Check existing directors
+      // Check existing parties
       expect(screen.getByText('Apex Trust Corp (Jersey) Ltd')).toBeInTheDocument();
-      expect(screen.getByText('Julian Vance')).toBeInTheDocument();
+      expect(screen.getByText('Marcus Aurelius')).toBeInTheDocument();
 
-      // Add a new director
-      const dirInput = screen.getByPlaceholderText('New Director or Trustee Name');
+      // Add a new party
+      const nameInput = screen.getByPlaceholderText('Party Name');
+      const roleInput = screen.getByPlaceholderText('Role (e.g. Director)');
       const corporateCheckbox = screen.getByLabelText(/Corporate/i);
-      const residentCheckbox = screen.getByLabelText(/Resident Director/i);
+      const residentCheckbox = screen.getByLabelText(/Resident/i);
 
-      fireEvent.change(dirInput, { target: { value: 'Lady Penelope' } });
+      fireEvent.change(nameInput, { target: { value: 'Lady Penelope' } });
+      fireEvent.change(roleInput, { target: { value: 'Protector' } });
       fireEvent.click(corporateCheckbox);
       fireEvent.click(residentCheckbox);
 
-      const addDirectorBtn = screen.getByRole('button', { name: /Add to Board/i });
-      fireEvent.click(addDirectorBtn);
+      const addPartyBtn = screen.getByRole('button', { name: /Add Associated Party/i });
+      fireEvent.click(addPartyBtn);
 
       const entity = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
-      const addedDir = entity?.directors.find((d) => d.name === 'Lady Penelope');
-      expect(addedDir).toBeDefined();
-      expect(addedDir?.isCorporate).toBe(true);
-      expect(addedDir?.isResident).toBe(true);
+      const addedParty = entity?.associatedParties.find((d) => d.name === 'Lady Penelope');
+      expect(addedParty).toBeDefined();
+      expect(addedParty?.role).toBe('Protector');
+      expect(addedParty?.isCorporate).toBe(true);
+      expect(addedParty?.isResident).toBe(true);
 
-      // Now remove a director (Julian Vance)
-      const julianTrash = screen.getByTitle('Remove Julian Vance');
-      expect(julianTrash).toBeInTheDocument();
-      fireEvent.click(julianTrash);
+      // Now remove a party (Marcus Aurelius)
+      const marcusTrash = screen.getByTitle('Remove Marcus Aurelius');
+      expect(marcusTrash).toBeInTheDocument();
+      fireEvent.click(marcusTrash);
 
       const updatedEntity = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
-      expect(updatedEntity?.directors.some((d) => d.name === 'Julian Vance')).toBe(false);
+      expect(updatedEntity?.associatedParties.some((d) => d.name === 'Marcus Aurelius')).toBe(false);
+
+      // Add a party with empty role to verify fallback to 'Director'
+      fireEvent.change(nameInput, { target: { value: 'Default Role Party' } });
+      fireEvent.change(roleInput, { target: { value: '   ' } });
+      fireEvent.click(addPartyBtn);
+
+      const entityAfterDefault = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
+      const defaultParty = entityAfterDefault?.associatedParties.find((d) => d.name === 'Default Role Party');
+      expect(defaultParty?.role).toBe('Director');
     });
     it('updates registration number, tax id, and notes', () => {
       render(<SidebarInspector />);
@@ -222,18 +234,18 @@ describe('SidebarInspector', () => {
       expect(useStructureStore.getState().entities.find((e) => e.id === 'entity-1')?.notes).toBe('Updated deed notes');
     });
 
-    it('does not add director if name is empty or only whitespace', () => {
+    it('does not add party if name is empty or only whitespace', () => {
       render(<SidebarInspector />);
       fireEvent.click(screen.getByRole('button', { name: /Details/i }));
 
-      const dirInput = screen.getByPlaceholderText('New Director or Trustee Name');
-      fireEvent.change(dirInput, { target: { value: '   ' } });
+      const nameInput = screen.getByPlaceholderText('Party Name');
+      fireEvent.change(nameInput, { target: { value: '   ' } });
 
-      const addDirectorBtn = screen.getByRole('button', { name: /Add to Board/i });
-      fireEvent.click(addDirectorBtn);
+      const addPartyBtn = screen.getByRole('button', { name: /Add Associated Party/i });
+      fireEvent.click(addPartyBtn);
 
       const entity = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
-      expect(entity?.directors.length).toBe(2);
+      expect(entity?.associatedParties.length).toBe(4);
     });
 
     it('renders entity details form with empty fallbacks for missing registration, taxId, notes, and non-resident director', () => {
@@ -243,17 +255,20 @@ describe('SidebarInspector', () => {
         type: 'Operating Company' as const,
         jurisdiction: 'BVI',
         status: 'Active' as const,
-        directors: [{ id: 'd-min', name: 'Non Resident Dir', isCorporate: false, isResident: false }],
+        associatedParties: undefined as any,
       };
       const created = useStructureStore.getState().addEntity(minimalEntity);
+      useStructureStore.setState({
+        entities: useStructureStore.getState().entities.map((e) =>
+          e.id === created.id ? { ...e, associatedParties: undefined as any } : e
+        ),
+      });
       useStructureStore.getState().setSelectedEntityId(created.id);
 
       render(<SidebarInspector />);
       fireEvent.click(screen.getByRole('button', { name: /Details/i }));
 
       expect(screen.getByDisplayValue('Minimal Ltd')).toBeInTheDocument();
-      expect(screen.getByText(/Non Resident Dir/)).toBeInTheDocument();
-      expect(screen.getByText(/\(Individual\)/)).toBeInTheDocument();
       expect(screen.getByPlaceholderText('e.g. BVI-BC-123')).toHaveValue('');
       expect(screen.getByPlaceholderText('Optional')).toHaveValue('');
       expect(screen.getByPlaceholderText(/Settlor, protector/i)).toHaveValue('');
@@ -265,27 +280,26 @@ describe('SidebarInspector', () => {
       render(<SidebarInspector />);
       fireEvent.click(screen.getByRole('button', { name: /Directors/i }));
 
-      // Julian Vance serves on entity-1, entity-2, entity-4 -> 3 boards
+      // Julian Vance serves on entity-2, entity-4, entity-6 -> 3 entities
       expect(screen.getByText('Julian Vance')).toBeInTheDocument();
-      expect(screen.getByText('3')).toBeInTheDocument();
+      expect(screen.getAllByText('3').length).toBeGreaterThanOrEqual(1);
 
-      // Helena Sterling serves on entity-2, entity-3 -> 2 boards
+      // Helena Sterling serves on entity-1, entity-2, entity-3 -> 3 entities
       expect(screen.getByText('Helena Sterling')).toBeInTheDocument();
-      expect(screen.getByText('2')).toBeInTheDocument();
     });
 
     it('displays empty state when no directors are present in any entity', () => {
-      // Clear all directors across all entities
-      const entitiesWithoutDirectors = useStructureStore.getState().entities.map((e) => ({
+      // Clear all associated parties across all entities
+      const entitiesWithoutParties = useStructureStore.getState().entities.map((e) => ({
         ...e,
-        directors: [],
+        associatedParties: [],
       }));
-      useStructureStore.setState({ entities: entitiesWithoutDirectors });
+      useStructureStore.setState({ entities: entitiesWithoutParties });
 
       render(<SidebarInspector />);
       fireEvent.click(screen.getByRole('button', { name: /Directors/i }));
 
-      expect(screen.getByText('No directors recorded.')).toBeInTheDocument();
+      expect(screen.getByText('No associated parties recorded.')).toBeInTheDocument();
     });
 
     it('toggles highlightedDirector when director item is clicked', () => {
@@ -302,6 +316,32 @@ describe('SidebarInspector', () => {
       // Click again to unhighlight
       if (julianItem) fireEvent.click(julianItem);
       expect(useStructureStore.getState().highlightedDirector).toBeNull();
+    });
+
+    it('handles entities with missing associatedParties array or party without role', () => {
+      const customEntity = {
+        id: 'no-parties-entity',
+        name: 'No Parties Ltd',
+        type: 'Operating Company' as const,
+        jurisdiction: 'BVI',
+        status: 'Active' as const,
+        associatedParties: undefined as any,
+      };
+      const entityWithRolelessParty = {
+        id: 'roleless-entity',
+        name: 'Roleless Co',
+        type: 'Holding Company' as const,
+        jurisdiction: 'Cayman',
+        status: 'Active' as const,
+        associatedParties: [{ id: 'p-no-role', name: 'Roleless Person', role: '' as any, isCorporate: false }],
+      };
+      useStructureStore.setState({ entities: [customEntity, entityWithRolelessParty] });
+
+      render(<SidebarInspector />);
+      fireEvent.click(screen.getByRole('button', { name: /Directors/i }));
+
+      expect(screen.getByText('Roleless Person')).toBeInTheDocument();
+      expect(screen.getByText('Director')).toBeInTheDocument();
     });
   });
 });

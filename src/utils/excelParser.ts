@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import {
-  Director,
+  AssociatedParty,
+  AssociatedRole,
   EntityNodeData,
   EntityStatus,
   EntityType,
@@ -31,7 +32,7 @@ export function normalizeColumnHeader(header: string): NormalizedColumn {
   if (/^(?:entity|legal|structure)?type$/i.test(h)) return 'type';
   if (/^(?:jurisdiction|country|domicile|incorporation)$/i.test(h)) return 'jurisdiction';
   if (/^(?:(?:entity)?status|state)$/i.test(h)) return 'status';
-  if (/^(?:directors|board|officers|trustees)$/i.test(h)) return 'directors';
+  if (/^(?:directors|board|officers|trustees|parties|associatedparties)$/i.test(h)) return 'directors';
   if (/^(?:registration|reg|company)(?:number|no)?$/i.test(h)) return 'registrationNumber';
   if (/^(?:taxid|tin|ein|taxnumber)$/i.test(h)) return 'taxId';
   if (/^(?:ubos?|beneficiaries|settlor|beneficialowners?|ubosbeneficiaries)$/i.test(h) || h.includes('ubo') || h.includes('beneficiar')) return 'ubos';
@@ -41,11 +42,9 @@ export function normalizeColumnHeader(header: string): NormalizedColumn {
 }
 
 function splitTopLevel(raw: string): string[] {
-  // If contains ; or \n, split by [;\n]
   if (/[;\n]/.test(raw)) {
     return raw.split(/[;\n]/).map((s) => s.trim()).filter(Boolean);
   }
-  // Otherwise split by commas not enclosed inside () or []
   const parts: string[] = [];
   let current = '';
   let depth = 0;
@@ -76,33 +75,75 @@ function generateSecureId(prefix: string, index = 1): string {
   return `${prefix}-${index}-${Date.now()}-${suffix}`;
 }
 
-export function parseDirectorString(raw: string): Director[] {
+function extractRoleFromItem(item: string): { role: string; stripped: string } {
+  const roleMatch = item.match(/\[([^[\]]+)\]/);
+  if (roleMatch) {
+    const candidate = roleMatch[1].trim();
+    if (!/^(?:corp|corporate|res|resident)$/i.test(candidate)) {
+      return {
+        role: candidate,
+        stripped: item.replace(roleMatch[0], '').trim(),
+      };
+    }
+  }
+  return { role: 'Director', stripped: item };
+}
+
+export function parseAssociatedPartiesString(raw: string): AssociatedParty[] {
   if (!raw || typeof raw !== 'string') return [];
 
   const items = splitTopLevel(raw);
-  const directors: Director[] = [];
+  const parties: AssociatedParty[] = [];
 
   items.forEach((item, index) => {
     const isCorporate = /[([][^()[\]]*\b(?:corp|corporate)\b[^()[\]]*[)\]]/i.test(item);
     const isResident = /[([][^()[\]]*\b(?:res|resident)\b[^()[\]]*[)\]]/i.test(item);
 
-    // Clean name by stripping tag annotations like (Corp, Res), [Corporate], (Resident), etc.
-    const cleanName = item
+    const { role, stripped } = extractRoleFromItem(item);
+
+    const cleanName = stripped
       .replace(/[([][^()[\]]*\b(?:corp|corporate|res|resident)\b[^()[\]]*[)\]]/gi, '')
       .replace(/\s+/g, ' ')
       .trim();
 
     if (cleanName) {
-      directors.push({
-        id: generateSecureId('dir-parsed', index),
+      parties.push({
+        id: generateSecureId('party-parsed', index),
         name: cleanName,
+        role: role as AssociatedRole,
         isCorporate,
         isResident,
       });
     }
   });
 
-  return directors;
+  return parties;
+}
+
+export function parseDirectorString(raw: string): AssociatedParty[] {
+  return parseAssociatedPartiesString(raw);
+}
+
+function resolveEntityType(rawType: any): EntityType {
+  const str = String(rawType || '').trim().toLowerCase();
+  if (str.includes('bank')) return 'Bank';
+  if (str === 'trust company') return 'Trust Company';
+  if (str.includes('trust')) return 'Trust';
+  if (str.includes('holding')) return 'Holding Company';
+  if (str.includes('operating')) return 'Operating Company';
+  if (str.includes('llc')) return 'LLC';
+  if (str.includes('foundation')) return 'Foundation';
+  if (str.includes('partnership')) return 'Partnership';
+  if (str.includes('individual')) return 'Individual';
+  return 'Holding Company';
+}
+
+function resolveEntityStatus(rawStatus: any): EntityStatus {
+  const str = String(rawStatus || '').trim().toLowerCase();
+  if (str === 'dormant') return 'Dormant';
+  if (str.includes('liquidation')) return 'In Liquidation';
+  if (str === 'nominee') return 'Nominee';
+  return 'Active';
 }
 
 export function parseExcelWorkbook(
@@ -118,11 +159,10 @@ export function parseExcelWorkbook(
   const warnings: string[] = [];
   const entityMap = new Map<
     string,
-    { entity: EntityNodeData; parentNames: { name: string; pct: number; shareClass?: string }[] }
+    { entity: EntityNodeData; parentNames: { name: string; pct: number; shareClass: string }[] }
   >();
 
   rawRows.forEach((row, idx) => {
-    // Map normalized columns
     const mapped: Record<NormalizedColumn, any> = {
       name: '',
       parent: '',
@@ -145,38 +185,23 @@ export function parseExcelWorkbook(
     });
 
     const entityName = String(mapped.name || '').trim();
-    if (!entityName) return; // Skip empty rows
+    if (!entityName) return;
 
     const parentName = String(mapped.parent || '').trim();
     let ownershipPct = Number.parseFloat(String(mapped.ownership));
     if (Number.isNaN(ownershipPct)) ownershipPct = 100;
 
-    const directors = parseDirectorString(String(mapped.directors || ''));
+    const parties = parseAssociatedPartiesString(String(mapped.directors || ''));
     const ubos = String(mapped.ubos || '')
       .split(/[;,]/)
       .map((s) => s.trim())
       .filter(Boolean);
 
-    // Validate type and status
-    const validTypes: EntityType[] = [
-      'Trust',
-      'Holding Company',
-      'Operating Company',
-      'LLC',
-      'Foundation',
-      'Partnership',
-      'Individual',
-    ];
-    const matchedType =
-      validTypes.find((t) => t.toLowerCase() === String(mapped.type).trim().toLowerCase()) || 'Holding Company';
-
-    const validStatuses: EntityStatus[] = ['Active', 'Dormant', 'In Liquidation', 'Nominee'];
-    const matchedStatus =
-      validStatuses.find((s) => s.toLowerCase() === String(mapped.status).trim().toLowerCase()) || 'Active';
+    const matchedType = resolveEntityType(mapped.type);
+    const matchedStatus = resolveEntityStatus(mapped.status);
 
     const existing = entityMap.get(entityName.toLowerCase());
     if (existing) {
-      // Merge multiple rows for the same entity (e.g. multi-parent ownership)
       if (parentName) {
         existing.parentNames.push({
           name: parentName,
@@ -193,42 +218,45 @@ export function parseExcelWorkbook(
         registrationNumber: String(mapped.registrationNumber || '').trim(),
         taxId: String(mapped.taxId || '').trim(),
         status: matchedStatus,
-        directors,
+        associatedParties: parties,
         ubosOrBeneficiaries: ubos,
         notes: String(mapped.notes || '').trim(),
       };
 
-      const parents = parentName
-        ? [
-            {
-              name: parentName,
-              pct: ownershipPct,
-              shareClass: String(mapped.shareClass || 'Ordinary Shares'),
-            },
-          ]
-        : [];
-
-      entityMap.set(entityName.toLowerCase(), { entity: newEntity, parentNames: parents });
+      entityMap.set(entityName.toLowerCase(), {
+        entity: newEntity,
+        parentNames: parentName
+          ? [
+              {
+                name: parentName,
+                pct: ownershipPct,
+                shareClass: String(mapped.shareClass || 'Ordinary Shares'),
+              },
+            ]
+          : [],
+      });
     }
   });
 
-  const entities: EntityNodeData[] = Array.from(entityMap.values()).map((v) => v.entity);
+  const entities: EntityNodeData[] = [];
   const relationships: OwnershipEdgeData[] = [];
 
-  entityMap.forEach(({ entity: childEntity, parentNames }) => {
-    parentNames.forEach(({ name: pName, pct, shareClass }) => {
-      const parentRecord = entityMap.get(pName.toLowerCase());
-      if (parentRecord) {
+  entityMap.forEach(({ entity, parentNames }) => {
+    entities.push(entity);
+
+    parentNames.forEach((parent) => {
+      const parentEntry = entityMap.get(parent.name.toLowerCase());
+      if (parentEntry) {
         relationships.push({
-          id: `rel-${parentRecord.entity.id}-${childEntity.id}-${relationships.length + 1}`,
-          source: parentRecord.entity.id,
-          target: childEntity.id,
-          ownershipPercentage: pct,
-          shareClass,
+          id: `rel-${parentEntry.entity.id}-${entity.id}`,
+          source: parentEntry.entity.id,
+          target: entity.id,
+          ownershipPercentage: parent.pct,
+          shareClass: parent.shareClass,
         });
       } else {
         warnings.push(
-          `Entity "${childEntity.name}" references parent "${pName}", but "${pName}" was not found in the spreadsheet.`
+          `Entity "${entity.name}" specified parent "${parent.name}", but "${parent.name}" was not found in the spreadsheet.`
         );
       }
     });
@@ -238,18 +266,17 @@ export function parseExcelWorkbook(
     ? `${entities.find((e) => e.type === 'Trust')!.name} Structure`
     : 'Imported Structure Chart';
 
-  return {
-    chart: {
-      metadata: {
-        chartTitle,
-        effectiveDate: new Date().toISOString().split('T')[0],
-        confidentialityNotice: 'STRICTLY CONFIDENTIAL - PREPARED FOR CLIENT REVIEW ONLY',
-      },
-      entities,
-      relationships,
+  const chart: TrustStructureChart = {
+    metadata: {
+      chartTitle,
+      effectiveDate: new Date().toISOString().split('T')[0],
+      confidentialityNotice: 'STRICTLY CONFIDENTIAL - PREPARED FOR CLIENT REVIEW ONLY',
     },
-    warnings,
+    entities,
+    relationships,
   };
+
+  return { chart, warnings };
 }
 
 export function generateExcelTemplate(): Uint8Array {
@@ -261,7 +288,7 @@ export function generateExcelTemplate(): Uint8Array {
       'Entity Type': 'Trust',
       'Jurisdiction': 'Jersey, Channel Islands',
       'Status': 'Active',
-      'Directors': 'Apex Trust Corp (Corp, Res); Julian Vance',
+      'Directors': '[Trustee] Apex Trust Corp (Corp, Res); [Settlor] Marcus Sterling',
       'Registration No': 'TR-JER-9120',
       'Tax ID': 'TIN-00192',
       'UBOs / Beneficiaries': 'Marcus Sterling (Settlor)',
@@ -275,7 +302,7 @@ export function generateExcelTemplate(): Uint8Array {
       'Entity Type': 'Holding Company',
       'Jurisdiction': 'British Virgin Islands (BVI)',
       'Status': 'Active',
-      'Directors': 'Julian Vance; Helena Sterling',
+      'Directors': '[Director] Julian Vance; [Director] Helena Sterling',
       'Registration No': 'BVI-BC-109281',
       'Tax ID': '',
       'UBOs / Beneficiaries': 'The Sterling Family Trust',
@@ -289,7 +316,7 @@ export function generateExcelTemplate(): Uint8Array {
       'Entity Type': 'Operating Company',
       'Jurisdiction': 'Singapore',
       'Status': 'Active',
-      'Directors': 'David Tan (Res); Helena Sterling',
+      'Directors': '[Director] David Tan (Res); [Fund Manager] Alpha Asset Advisors (Corp)',
       'Registration No': '202109124K',
       'Tax ID': 'T21CS0912K',
       'UBOs / Beneficiaries': 'Sterling Global Holdings Ltd',
@@ -297,25 +324,24 @@ export function generateExcelTemplate(): Uint8Array {
       'Notes': 'Operating advisory office',
     },
     {
-      'Entity Name': 'Sterling Tech Ventures LLC',
-      'Parent Entity': 'Sterling Global Holdings Ltd',
-      'Ownership %': 75,
-      'Entity Type': 'LLC',
-      'Jurisdiction': 'Delaware, USA',
+      'Entity Name': 'Sterling Private Bank',
+      'Parent Entity': 'Sterling Asia Capital Pte Ltd',
+      'Ownership %': 100,
+      'Entity Type': 'Bank',
+      'Jurisdiction': 'Singapore',
       'Status': 'Active',
-      'Directors': 'Julian Vance',
-      'Registration No': 'DE-SR-892019',
-      'Tax ID': 'EIN-12-901829',
-      'UBOs / Beneficiaries': 'Sterling Global Holdings Ltd',
-      'Share Class': 'Class A Units',
-      'Notes': 'US investment portfolio SPV',
+      'Directors': '[Authorised Signatory] David Tan (Res)',
+      'Registration No': 'ACC-99120',
+      'Tax ID': '',
+      'UBOs / Beneficiaries': 'Sterling Asia Capital Pte Ltd',
+      'Share Class': 'Depository Account',
+      'Notes': 'Primary treasury bank',
     },
   ];
 
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(sampleRows);
 
-  // Set column widths
   ws['!cols'] = [
     { wch: 30 }, // Entity Name
     { wch: 28 }, // Parent Entity
@@ -323,7 +349,7 @@ export function generateExcelTemplate(): Uint8Array {
     { wch: 18 }, // Entity Type
     { wch: 25 }, // Jurisdiction
     { wch: 12 }, // Status
-    { wch: 40 }, // Directors
+    { wch: 45 }, // Directors / Associated Parties
     { wch: 20 }, // Registration No
     { wch: 16 }, // Tax ID
     { wch: 28 }, // UBOs

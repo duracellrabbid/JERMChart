@@ -144,8 +144,8 @@ describe('exportService', () => {
       const jsonString = JSON.stringify(sampleTrustStructure);
       const parsed = parseJsonBackup(jsonString);
       expect(parsed).not.toBeNull();
-      expect(parsed?.entities.length).toBe(5);
-      expect(parsed?.relationships.length).toBe(4);
+      expect(parsed?.entities.length).toBe(sampleTrustStructure.entities.length);
+      expect(parsed?.relationships.length).toBe(sampleTrustStructure.relationships.length);
     });
 
     it('rejects malformed json gracefully', () => {

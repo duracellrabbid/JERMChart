@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { AIConfig } from './aiConfig';
 import {
-  Director,
+  AssociatedParty,
   EntityNodeData,
   EntityStatus,
   EntityType,
@@ -18,6 +18,7 @@ const VALID_ENTITY_TYPES: EntityType[] = [
   'Foundation',
   'Partnership',
   'Individual',
+  'Bank',
 ];
 
 const VALID_STATUSES: EntityStatus[] = ['Active', 'Dormant', 'In Liquidation', 'Nominee'];
@@ -54,21 +55,22 @@ function sanitizeEntityStatus(rawStatus: any): EntityStatus {
   return found || 'Active';
 }
 
-function sanitizeDirectors(rawDirectors: any[]): Director[] {
-  if (!Array.isArray(rawDirectors)) return [];
-  const directors: Director[] = [];
-  rawDirectors.forEach((d, idx) => {
-    const name = String(d?.name || '').trim();
+function sanitizeAssociatedParties(rawParties: any[]): AssociatedParty[] {
+  if (!Array.isArray(rawParties)) return [];
+  const parties: AssociatedParty[] = [];
+  rawParties.forEach((p, idx) => {
+    const name = String(p?.name || '').trim();
     if (name) {
-      directors.push({
-        id: generateSecureId('dir', idx + 1),
+      parties.push({
+        id: generateSecureId('party', idx + 1),
         name,
-        isCorporate: Boolean(d.isCorporate),
-        isResident: Boolean(d.isResident),
+        role: String(p?.role || 'Director').trim() || 'Director',
+        isCorporate: Boolean(p.isCorporate),
+        isResident: Boolean(p.isResident),
       });
     }
   });
-  return directors;
+  return parties;
 }
 
 export function parseRawAiResponse(jsonText: string): { chart: TrustStructureChart; warnings: string[] } {
@@ -95,6 +97,8 @@ export function parseRawAiResponse(jsonText: string): { chart: TrustStructureCha
     const tempId = String(e.tempId || `temp-${idx + 1}`);
     tempIdToUuid.set(tempId, uuid);
 
+    const rawParties = e.associatedParties || e.directors || [];
+
     return {
       id: uuid,
       name: String(e.name || `Entity ${idx + 1}`).trim(),
@@ -103,7 +107,7 @@ export function parseRawAiResponse(jsonText: string): { chart: TrustStructureCha
       registrationNumber: String(e.registrationNumber || '').trim(),
       taxId: String(e.taxId || '').trim(),
       status: sanitizeEntityStatus(e.status),
-      directors: sanitizeDirectors(e.directors),
+      associatedParties: sanitizeAssociatedParties(rawParties),
       ubosOrBeneficiaries: Array.isArray(e.ubosOrBeneficiaries)
         ? e.ubosOrBeneficiaries.map(String).filter(Boolean)
         : [],
@@ -149,10 +153,12 @@ export function parseRawAiResponse(jsonText: string): { chart: TrustStructureCha
 const SYSTEM_INSTRUCTION = `You are an expert trust, corporate law, and fiduciary chart analyst.
 Analyze the provided handwritten or drawn structure chart image and output a clean JSON structure adhering strictly to the schema.
 Instructions:
-1. Identify each entity box/node: extract name, legal type (Trust, Trust Company, Holding Company, Operating Company, LLC, Foundation, Partnership, Individual), jurisdiction (e.g. Jersey, BVI, Singapore, Cayman Islands, Delaware), registration number, and directors/trustees.
-2. Trace directional ownership arrows: the source is the owner/parent entity (higher up in the hierarchy or arrow tail); the target is the subsidiary/owned entity (arrow head).
-3. Read written ownership percentages along the lines (e.g. 100%, 50%). If a direct ownership line has no percentage, assume 100% and add a note to warnings.
-4. If text is hard to read or ambiguous, make your best educated inference and add an explanatory item to the warnings array.
+1. Identify each entity box/node: extract name, legal type (Trust, Trust Company, Holding Company, Operating Company, LLC, Foundation, Partnership, Individual, Bank), jurisdiction (e.g. Jersey, BVI, Singapore, Cayman Islands, Delaware), registration number, and associated parties (directors, trustees, enforcers, settlors, protectors, asset contributors, authorised signatories, fund managers).
+2. Bank entities are represented as circular nodes.
+3. Associated parties/roles may appear as external boxes beside or pointing to the entity.
+4. Trace directional ownership arrows: the source is the owner/parent entity (higher up in the hierarchy or arrow tail); the target is the subsidiary/owned entity (arrow head).
+5. Read written ownership percentages along the lines (e.g. 100%, 50%). If a direct ownership line has no percentage, assume 100% and add a note to warnings.
+6. If text is hard to read or ambiguous, make your best educated inference and add an explanatory item to the warnings array.
 Output ONLY JSON matching the schema without commentary.`;
 
 async function callGeminiVision(

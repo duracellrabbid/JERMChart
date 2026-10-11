@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStructureStore } from '../../store/useStructureStore';
-import { EntityType, EntityStatus } from '../../types/structure';
+import { EntityType, EntityStatus, AssociatedRole } from '../../types/structure';
 import { Trash2, UserPlus } from 'lucide-react';
 
 const ENTITY_TYPES: EntityType[] = [
@@ -12,6 +12,18 @@ const ENTITY_TYPES: EntityType[] = [
   'Foundation',
   'Partnership',
   'Individual',
+  'Bank',
+];
+
+const COMMON_ROLES: AssociatedRole[] = [
+  'Director',
+  'Enforcer',
+  'Settlor',
+  'Protector',
+  'Asset Contributor',
+  'Authorised Signatory',
+  'Fund Manager',
+  'Trustee',
 ];
 
 const ENTITY_STATUSES: EntityStatus[] = ['Active', 'Dormant', 'In Liquidation', 'Nominee'];
@@ -35,10 +47,11 @@ export const EntityDetailsTab: React.FC = () => {
   const selectedEntityId = useStructureStore((state) => state.selectedEntityId);
   const entities = useStructureStore((state) => state.entities);
   const updateEntity = useStructureStore((state) => state.updateEntity);
-  const addDirector = useStructureStore((state) => state.addDirector);
-  const removeDirector = useStructureStore((state) => state.removeDirector);
+  const addAssociatedParty = useStructureStore((state) => state.addAssociatedParty);
+  const removeAssociatedParty = useStructureStore((state) => state.removeAssociatedParty);
 
-  const [newDirectorName, setNewDirectorName] = useState('');
+  const [newPartyName, setNewPartyName] = useState('');
+  const [newPartyRole, setNewPartyRole] = useState<string>('Director');
   const [isCorporate, setIsCorporate] = useState(false);
   const [isResident, setIsResident] = useState(false);
 
@@ -47,20 +60,23 @@ export const EntityDetailsTab: React.FC = () => {
   if (!entity) {
     return (
       <div className="p-8 text-center text-slate-400 text-xs">
-        Select an entity from the canvas or outliner to edit its details and directors.
+        Select an entity from the canvas or outliner to edit its details and associated parties.
       </div>
     );
   }
 
-  const handleAddDirectorSubmit = (e: React.FormEvent) => {
+  const parties = entity.associatedParties || [];
+
+  const handleAddPartySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDirectorName.trim()) return;
-    addDirector(entity.id, {
-      name: newDirectorName.trim(),
+    if (!newPartyName.trim()) return;
+    addAssociatedParty(entity.id, {
+      name: newPartyName.trim(),
+      role: newPartyRole.trim() || 'Director',
       isCorporate,
       isResident,
     });
-    setNewDirectorName('');
+    setNewPartyName('');
     setIsCorporate(false);
     setIsResident(false);
   };
@@ -152,29 +168,30 @@ export const EntityDetailsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Directors Manager */}
+      {/* Associated Parties Manager */}
       <div className="pt-2 border-t border-slate-200">
         <label className="block font-semibold text-slate-800 mb-2">
-          Board of Directors ({entity.directors.length})
+          Associated Parties ({parties.length})
         </label>
 
         <div className="space-y-1.5 mb-3">
-          {entity.directors.map((d) => (
+          {parties.map((p) => (
             <div
-              key={d.id}
+              key={p.id}
               className="flex items-center justify-between p-1.5 bg-slate-50 border border-slate-200 rounded text-[11px]"
             >
               <div className="truncate">
-                <span className="font-medium text-slate-800">{d.name}</span>
+                <span className="font-semibold text-sky-800 mr-1">[{p.role}]</span>
+                <span className="font-medium text-slate-800">{p.name}</span>
                 <span className="ml-1 text-slate-400">
-                  ({d.isCorporate ? 'Corporate' : 'Individual'}
-                  {d.isResident ? ', Resident' : ''})
+                  ({p.isCorporate ? 'Corp' : 'Indiv'}
+                  {p.isResident ? ', Res' : ''})
                 </span>
               </div>
               <button
-                onClick={() => removeDirector(entity.id, d.id)}
+                onClick={() => removeAssociatedParty(entity.id, p.id)}
                 className="text-slate-400 hover:text-rose-600 p-1"
-                title={`Remove ${d.name}`}
+                title={`Remove ${p.name}`}
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -182,15 +199,30 @@ export const EntityDetailsTab: React.FC = () => {
           ))}
         </div>
 
-        {/* Add Director Form */}
-        <form onSubmit={handleAddDirectorSubmit} className="p-2 bg-slate-50 border border-slate-200 rounded space-y-2">
-          <input
-            type="text"
-            placeholder="New Director or Trustee Name"
-            value={newDirectorName}
-            onChange={(e) => setNewDirectorName(e.target.value)}
-            className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
-          />
+        {/* Add Associated Party Form */}
+        <form onSubmit={handleAddPartySubmit} className="p-2 bg-slate-50 border border-slate-200 rounded space-y-2">
+          <div className="grid grid-cols-2 gap-1.5">
+            <input
+              type="text"
+              placeholder="Party Name"
+              value={newPartyName}
+              onChange={(e) => setNewPartyName(e.target.value)}
+              className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+            />
+            <input
+              type="text"
+              list="common-roles-list"
+              placeholder="Role (e.g. Director)"
+              value={newPartyRole}
+              onChange={(e) => setNewPartyRole(e.target.value)}
+              className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+            />
+            <datalist id="common-roles-list">
+              {COMMON_ROLES.map((r) => (
+                <option key={r} value={r} />
+              ))}
+            </datalist>
+          </div>
           <div className="flex items-center gap-3 text-[11px] text-slate-600">
             <label className="flex items-center gap-1 cursor-pointer">
               <input
@@ -206,14 +238,14 @@ export const EntityDetailsTab: React.FC = () => {
                 checked={isResident}
                 onChange={(e) => setIsResident(e.target.checked)}
               />
-              Resident Director
+              Resident
             </label>
           </div>
           <button
             type="submit"
             className="w-full py-1 bg-slate-800 hover:bg-slate-900 text-white rounded font-medium text-xs flex items-center justify-center gap-1"
           >
-            <UserPlus className="w-3 h-3" /> Add to Board
+            <UserPlus className="w-3 h-3" /> Add Associated Party
           </button>
         </form>
       </div>

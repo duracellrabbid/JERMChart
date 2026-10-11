@@ -15,9 +15,11 @@ export const sampleTrustStructure: TrustStructureChart = {
       jurisdiction: 'Jersey, Channel Islands',
       registrationNumber: 'TR-JER-2018-912',
       status: 'Active',
-      directors: [
-        { id: 'dir-1', name: 'Apex Trust Corp (Jersey) Ltd', isCorporate: true, isResident: true },
-        { id: 'dir-2', name: 'Julian Vance', isCorporate: false, isResident: true },
+      associatedParties: [
+        { id: 'party-1', name: 'Apex Trust Corp (Jersey) Ltd', role: 'Trustee', isCorporate: true, isResident: true },
+        { id: 'party-2', name: 'Marcus Aurelius', role: 'Settlor', isCorporate: false, isResident: true },
+        { id: 'party-3', name: 'Helena Sterling', role: 'Protector', isCorporate: false, isResident: false },
+        { id: 'party-4', name: 'Fiduciary Enforcers Ltd', role: 'Enforcer', isCorporate: true, isResident: true },
       ],
       ubosOrBeneficiaries: ['Marcus Aurelius (Settlor)', 'Vance Family Descendants (Beneficiaries)'],
       notes: 'Discretionary irrevocable settlement governed by Jersey Law.',
@@ -29,9 +31,9 @@ export const sampleTrustStructure: TrustStructureChart = {
       jurisdiction: 'British Virgin Islands (BVI)',
       registrationNumber: 'BVI-BC-1849201',
       status: 'Active',
-      directors: [
-        { id: 'dir-2', name: 'Julian Vance', isCorporate: false, isResident: false },
-        { id: 'dir-3', name: 'Helena Sterling', isCorporate: false, isResident: false },
+      associatedParties: [
+        { id: 'party-5', name: 'Julian Vance', role: 'Director', isCorporate: false, isResident: false },
+        { id: 'party-6', name: 'Helena Sterling', role: 'Director', isCorporate: false, isResident: false },
       ],
       ubosOrBeneficiaries: ['The Aurelius Dynasty Trust (100% Beneficial Interest)'],
       notes: 'Primary offshore investment holding vehicle.',
@@ -43,9 +45,10 @@ export const sampleTrustStructure: TrustStructureChart = {
       jurisdiction: 'Singapore',
       registrationNumber: '202018492K',
       status: 'Active',
-      directors: [
-        { id: 'dir-3', name: 'Helena Sterling', isCorporate: false, isResident: false },
-        { id: 'dir-4', name: 'David Tan Wei Ming', isCorporate: false, isResident: true },
+      associatedParties: [
+        { id: 'party-7', name: 'Helena Sterling', role: 'Director', isCorporate: false, isResident: false },
+        { id: 'party-8', name: 'David Tan Wei Ming', role: 'Director', isCorporate: false, isResident: true },
+        { id: 'party-9', name: 'Alpha Asset Advisors', role: 'Fund Manager', isCorporate: true, isResident: true },
       ],
       ubosOrBeneficiaries: ['Aurelius Global Holdings Ltd'],
       notes: 'APAC treasury and private equity management office.',
@@ -57,8 +60,9 @@ export const sampleTrustStructure: TrustStructureChart = {
       jurisdiction: 'Delaware, USA',
       registrationNumber: 'DE-SR-7829104',
       status: 'Active',
-      directors: [
-        { id: 'dir-2', name: 'Julian Vance', isCorporate: false, isResident: true },
+      associatedParties: [
+        { id: 'party-10', name: 'Julian Vance', role: 'Director', isCorporate: false, isResident: true },
+        { id: 'party-11', name: 'Marcus Aurelius', role: 'Asset Contributor', isCorporate: false, isResident: true },
       ],
       ubosOrBeneficiaries: ['Aurelius Global Holdings Ltd'],
       notes: 'US venture capital portfolio holding entity.',
@@ -70,11 +74,24 @@ export const sampleTrustStructure: TrustStructureChart = {
       jurisdiction: 'Marshall Islands',
       registrationNumber: 'MI-108422',
       status: 'Dormant',
-      directors: [
-        { id: 'dir-5', name: 'Pacific Corporate Services Ltd', isCorporate: true, isResident: true },
+      associatedParties: [
+        { id: 'party-12', name: 'Pacific Corporate Services Ltd', role: 'Director', isCorporate: true, isResident: true },
       ],
       ubosOrBeneficiaries: ['Aurelius Global Holdings Ltd'],
       notes: 'Special purpose shipping SPV.',
+    },
+    {
+      id: 'entity-6',
+      name: 'DBS Private Bank',
+      type: 'Bank',
+      jurisdiction: 'Singapore',
+      registrationNumber: 'ACC-8839-201',
+      status: 'Active',
+      associatedParties: [
+        { id: 'party-13', name: 'David Tan Wei Ming', role: 'Authorised Signatory', isCorporate: false, isResident: true },
+        { id: 'party-14', name: 'Julian Vance', role: 'Authorised Signatory', isCorporate: false, isResident: false },
+      ],
+      notes: 'Primary corporate treasury depository and escrow bank.',
     },
   ],
   relationships: [
@@ -105,6 +122,13 @@ export const sampleTrustStructure: TrustStructureChart = {
       target: 'entity-5',
       ownershipPercentage: 100,
       shareClass: 'Ordinary Bearer Warrants',
+    },
+    {
+      id: 'rel-3-6',
+      source: 'entity-3',
+      target: 'entity-6',
+      ownershipPercentage: 100,
+      shareClass: 'Operating Depository Account',
     },
   ],
 };

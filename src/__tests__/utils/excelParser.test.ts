@@ -311,4 +311,57 @@ describe('excelParser', () => {
       configurable: true,
     });
   });
+
+  it('parses Dormant, In Liquidation, and Nominee statuses and preserves custom shareClass on multi-parent rows', () => {
+    const rows = [
+      { 'Entity Name': 'Parent A', 'Status': 'Dormant' },
+      { 'Entity Name': 'Parent B', 'Status': 'In Liquidation' },
+      {
+        'Entity Name': 'Multi Sub',
+        'Status': 'Nominee',
+        'Parent Entity': 'Parent A',
+        'Ownership %': 60,
+        'Share Class': 'Preferred A',
+      },
+      {
+        'Entity Name': 'Multi Sub',
+        'Parent Entity': 'Parent B',
+        'Ownership %': 40,
+        'Share Class': 'Preferred B',
+      },
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+    const { chart } = parseExcelWorkbook(buffer);
+    expect(chart.entities.find((e) => e.name === 'Parent A')?.status).toBe('Dormant');
+    expect(chart.entities.find((e) => e.name === 'Parent B')?.status).toBe('In Liquidation');
+    expect(chart.entities.find((e) => e.name === 'Multi Sub')?.status).toBe('Nominee');
+    expect(chart.relationships).toHaveLength(2);
+    expect(chart.relationships[0].shareClass).toBe('Preferred A');
+    expect(chart.relationships[1].shareClass).toBe('Preferred B');
+  });
+
+  it('resolves diverse entity types including Trust Company, LLC, Foundation, Partnership, and Individual', () => {
+    const rows = [
+      { 'Entity Name': 'TC', 'Entity Type': 'Trust Company' },
+      { 'Entity Name': 'LLC Ent', 'Entity Type': 'LLC' },
+      { 'Entity Name': 'Found', 'Entity Type': 'Foundation' },
+      { 'Entity Name': 'Part', 'Entity Type': 'Partnership' },
+      { 'Entity Name': 'Ind', 'Entity Type': 'Individual' },
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+    const { chart } = parseExcelWorkbook(buffer);
+    expect(chart.entities.find((e) => e.name === 'TC')?.type).toBe('Trust Company');
+    expect(chart.entities.find((e) => e.name === 'LLC Ent')?.type).toBe('LLC');
+    expect(chart.entities.find((e) => e.name === 'Found')?.type).toBe('Foundation');
+    expect(chart.entities.find((e) => e.name === 'Part')?.type).toBe('Partnership');
+    expect(chart.entities.find((e) => e.name === 'Ind')?.type).toBe('Individual');
+  });
 });
