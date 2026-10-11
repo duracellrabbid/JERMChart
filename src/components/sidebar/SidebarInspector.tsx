@@ -26,10 +26,10 @@ export const SidebarInspector: React.FC = () => {
     <div className="w-[340px] h-full bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
       {/* Tabs Header */}
       <div className="flex items-center justify-between border-b border-slate-200 px-2 pt-2 bg-slate-50">
-        <div className="flex space-x-1">
+        <div className="flex space-x-1 -mb-px">
           <button
             onClick={() => setActiveTab('tree')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-md border-b-2 transition ${
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition ${
               activeTab === 'tree'
                 ? 'border-sky-600 text-sky-700 bg-white'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -39,7 +39,7 @@ export const SidebarInspector: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('details')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-md border-b-2 transition ${
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition ${
               activeTab === 'details'
                 ? 'border-sky-600 text-sky-700 bg-white'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -50,7 +50,7 @@ export const SidebarInspector: React.FC = () => {
           <button
             data-testid="tab-directors"
             onClick={() => setActiveTab('directors')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-md border-b-2 transition ${
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition ${
               activeTab === 'directors'
                 ? 'border-sky-600 text-sky-700 bg-white'
                 : 'border-transparent text-slate-500 hover:text-slate-700'

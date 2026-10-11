@@ -12,6 +12,9 @@ import {
   Upload,
   Camera,
   Settings,
+  Undo2,
+  Redo2,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 
@@ -38,11 +41,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const setAssociationLineStyle = useStructureStore((state) => state.setAssociationLineStyle);
   const resetToSample = useStructureStore((state) => state.resetToSample);
   const clearCanvas = useStructureStore((state) => state.clearCanvas);
+  const undo = useStructureStore((state) => state.undo);
+  const redo = useStructureStore((state) => state.redo);
+  const undoHistory = useStructureStore((state) => state.undoHistory);
+  const redoHistory = useStructureStore((state) => state.redoHistory);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [initialTitle, setInitialTitle] = useState('');
   const [isResetMenuOpen, setIsResetMenuOpen] = useState(false);
   const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
+  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
 
   const [confirmModalConfig, setConfirmModalConfig] = useState<{
     title: string;
@@ -53,6 +61,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
   const resetMenuRef = useRef<HTMLDivElement>(null);
   const importMenuRef = useRef<HTMLDivElement>(null);
+  const viewMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -63,12 +72,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       if (importMenuRef.current && !importMenuRef.current.contains(target)) {
         setIsImportMenuOpen(false);
       }
+      if (viewMenuRef.current && !viewMenuRef.current.contains(target)) {
+        setIsViewMenuOpen(false);
+      }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsResetMenuOpen(false);
         setIsImportMenuOpen(false);
+        setIsViewMenuOpen(false);
       }
     };
 
@@ -165,67 +178,122 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
       </div>
 
-      {/* Cluster 2 & 3: View Options and Action Clusters */}
+      {/* Center/Right Clusters: Undo/Redo History, View & Layout, Document Actions */}
       <div className="flex items-center gap-2">
-        {/* Sibling Sorting Controls (Direct Quick Access) */}
-        <div className="flex items-center gap-1.5 mr-1">
-          <label htmlFor="sibling-sort-select" className="text-xs text-slate-400 font-medium">
-            Sort Siblings:
-          </label>
-          <select
-            id="sibling-sort-select"
-            value={sortCriteria}
-            onChange={(e) => setSortCriteria(e.target.value as SiblingSortCriteria)}
-            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-sky-500 cursor-pointer"
+        {/* History Controls (Undo / Redo) */}
+        <div className="flex items-center bg-slate-800 rounded-md border border-slate-700 p-0.5 mr-1">
+          <button
+            onClick={() => undo()}
+            disabled={undoHistory.length === 0}
+            className={`p-1.5 rounded transition ${
+              undoHistory.length > 0
+                ? 'text-slate-200 hover:text-white hover:bg-slate-700 cursor-pointer'
+                : 'text-slate-600 cursor-not-allowed'
+            }`}
+            title="Undo (Ctrl+Z)"
+            aria-label="Undo"
           >
-            <option value="alphabetical" className="bg-slate-800 text-white">
-              Alphabetical (A-Z)
-            </option>
-            <option value="ownership" className="bg-slate-800 text-white">
-              Ownership % (High-Low)
-            </option>
-            <option value="jurisdiction" className="bg-slate-800 text-white">
-              Jurisdiction / Domicile
-            </option>
-            <option value="manual" className="bg-slate-800 text-white">
-              Manual Ordering
-            </option>
-          </select>
+            <Undo2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => redo()}
+            disabled={redoHistory.length === 0}
+            className={`p-1.5 rounded transition ${
+              redoHistory.length > 0
+                ? 'text-slate-200 hover:text-white hover:bg-slate-700 cursor-pointer'
+                : 'text-slate-600 cursor-not-allowed'
+            }`}
+            title="Redo (Ctrl+Y)"
+            aria-label="Redo"
+          >
+            <Redo2 className="w-3.5 h-3.5" />
+          </button>
         </div>
 
-        {/* Visible Directors Cap Selector */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-300 mr-1">
-          <label htmlFor="director-cap-select" className="text-slate-400 font-medium">
-            Directors:
-          </label>
-          <select
-            id="director-cap-select"
-            data-testid="director-cap-select"
-            value={directorCap}
-            onChange={(e) => {
-              const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
-              setDirectorCap(val);
-            }}
-            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-sky-500 cursor-pointer"
+        {/* Layout & View Controls Cluster */}
+        <div className="relative" ref={viewMenuRef}>
+          <button
+            onClick={() => setIsViewMenuOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-md border border-slate-700 transition cursor-pointer"
+            title="Configure layout and display options"
+            aria-expanded={isViewMenuOpen}
+            aria-haspopup="true"
           >
-            <option value={2} className="bg-slate-800 text-white">2</option>
-            <option value={3} className="bg-slate-800 text-white">3 (Default)</option>
-            <option value={4} className="bg-slate-800 text-white">4</option>
-            <option value={5} className="bg-slate-800 text-white">5</option>
-            <option value="all" className="bg-slate-800 text-white">All (No Cap)</option>
-          </select>
-        </div>
+            <SlidersHorizontal className="w-3.5 h-3.5 text-sky-400" />
+            <span>View Options</span>
+            <ChevronDown className="w-3 h-3 text-slate-400" />
+          </button>
 
-        {/* Association Line Style Toggle */}
-        <button
-          data-testid="line-style-toggle-btn"
-          onClick={() => setAssociationLineStyle(associationLineStyle === 'dotted' ? 'solid' : 'dotted')}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-md border border-slate-700 transition cursor-pointer"
-          title={`Toggle association line style (Current: ${associationLineStyle})`}
-        >
-          <span className="text-slate-400 font-medium">Lines:</span>
-          <span className="font-semibold text-sky-400 capitalize">{associationLineStyle}</span>
-        </button>
+          <div
+            className={
+              isViewMenuOpen
+                ? 'absolute right-0 mt-1 w-72 bg-slate-800 border border-slate-700 rounded-md shadow-2xl p-3 z-30 space-y-3 block'
+                : 'sr-only'
+            }
+          >
+            {/* Sibling Sorting */}
+            <div>
+              <label htmlFor="sibling-sort-select" className="block text-xs font-semibold text-slate-300 mb-1">
+                Sort Siblings:
+              </label>
+              <select
+                id="sibling-sort-select"
+                value={sortCriteria}
+                onChange={(e) => setSortCriteria(e.target.value as SiblingSortCriteria)}
+                className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-sky-500 cursor-pointer"
+              >
+                <option value="alphabetical" className="bg-slate-800 text-white">
+                  Alphabetical (A-Z)
+                </option>
+                <option value="ownership" className="bg-slate-800 text-white">
+                  Ownership % (High-Low)
+                </option>
+                <option value="jurisdiction" className="bg-slate-800 text-white">
+                  Jurisdiction / Domicile
+                </option>
+                <option value="manual" className="bg-slate-800 text-white">
+                  Manual Ordering
+                </option>
+              </select>
+            </div>
+
+            {/* Directors Cap */}
+            <div>
+              <label htmlFor="director-cap-select" className="block text-xs font-semibold text-slate-300 mb-1">
+                Directors:
+              </label>
+              <select
+                id="director-cap-select"
+                data-testid="director-cap-select"
+                value={directorCap}
+                onChange={(e) => {
+                  const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                  setDirectorCap(val);
+                }}
+                className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-sky-500 cursor-pointer"
+              >
+                <option value={2} className="bg-slate-800 text-white">2</option>
+                <option value={3} className="bg-slate-800 text-white">3 (Default)</option>
+                <option value={4} className="bg-slate-800 text-white">4</option>
+                <option value={5} className="bg-slate-800 text-white">5</option>
+                <option value="all" className="bg-slate-800 text-white">All (No Cap)</option>
+              </select>
+            </div>
+
+            {/* Line Style Toggle */}
+            <div className="pt-2 border-t border-slate-700 flex items-center justify-between">
+              <span className="text-xs text-slate-300 font-medium">Association Line Style:</span>
+              <button
+                data-testid="line-style-toggle-btn"
+                onClick={() => setAssociationLineStyle(associationLineStyle === 'dotted' ? 'solid' : 'dotted')}
+                className="px-2 py-1 bg-slate-900 hover:bg-slate-700 text-xs rounded border border-slate-700 text-sky-400 font-semibold capitalize transition cursor-pointer"
+                title={`Toggle association line style (Current: ${associationLineStyle})`}
+              >
+                Lines: {associationLineStyle}
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Auto-Tidy Layout Trigger */}
         <button

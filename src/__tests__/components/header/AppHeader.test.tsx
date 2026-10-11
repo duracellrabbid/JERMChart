@@ -381,4 +381,52 @@ describe('AppHeader', () => {
     expect(screen.queryByText('Load Sample Template')).not.toBeInTheDocument();
     expect(useStructureStore.getState().entities.length).toBeGreaterThan(0);
   });
+
+  it('triggers undo and redo via header buttons and toggles view options menu', () => {
+    renderHeader();
+
+    const undoBtn = screen.getByRole('button', { name: /Undo/i });
+    const redoBtn = screen.getByRole('button', { name: /Redo/i });
+    expect(undoBtn).toBeDisabled();
+    expect(redoBtn).toBeDisabled();
+
+    // Mutate state to populate history
+    act(() => {
+      useStructureStore.getState().addEntity({
+        name: 'Historic Node',
+        type: 'Operating Company',
+        jurisdiction: 'Delaware',
+        status: 'Active',
+        associatedParties: [],
+      });
+    });
+
+    expect(undoBtn).not.toBeDisabled();
+    fireEvent.click(undoBtn);
+    expect(redoBtn).not.toBeDisabled();
+    fireEvent.click(redoBtn);
+
+    // Toggle view options menu open and closed
+    const viewOptionsBtn = screen.getByRole('button', { name: /View Options/i });
+    fireEvent.click(viewOptionsBtn);
+    expect(viewOptionsBtn).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(viewOptionsBtn);
+    expect(viewOptionsBtn).toHaveAttribute('aria-expanded', 'false');
+
+    // Open view options menu and click inside (should remain open)
+    fireEvent.click(viewOptionsBtn);
+    expect(viewOptionsBtn).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.mouseDown(viewOptionsBtn);
+    expect(viewOptionsBtn).toHaveAttribute('aria-expanded', 'true');
+
+    // Open view options menu and dismiss via outside click
+    fireEvent.mouseDown(document.body);
+    expect(viewOptionsBtn).toHaveAttribute('aria-expanded', 'false');
+
+    // Open view options menu and dismiss via Escape key
+    fireEvent.click(viewOptionsBtn);
+    expect(viewOptionsBtn).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(viewOptionsBtn).toHaveAttribute('aria-expanded', 'false');
+  });
 });

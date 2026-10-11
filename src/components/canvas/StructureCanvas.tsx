@@ -17,6 +17,7 @@ import { EntityCardNode, SatelliteRoleCard } from '../nodes/EntityCardNode';
 import { OwnershipEdge } from '../edges/OwnershipEdge';
 import { calculateSortedLayout } from '../../utils/layoutEngine';
 import { OcrReviewBanner } from './OcrReviewBanner';
+import { FiduciaryLegend } from './FiduciaryLegend';
 
 const nodeTypes = {
   entityNode: EntityCardNode,
@@ -103,6 +104,7 @@ export const StructureCanvas: React.FC = () => {
           className="!border !border-slate-300 !rounded-lg !bg-white"
         />
       </ReactFlow>
+      {!isExportMode && <FiduciaryLegend />}
     </div>
   );
 };

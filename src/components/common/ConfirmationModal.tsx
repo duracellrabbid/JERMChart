@@ -67,7 +67,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirmation-modal-title"
@@ -75,13 +75,13 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-md bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl p-5 text-slate-100 flex flex-col gap-4 relative animate-in zoom-in-95 duration-150"
+        className="w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-2xl p-5 text-slate-800 flex flex-col gap-4 relative animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onCancel}
           aria-label="Close dialog"
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 transition-colors p-1 rounded-md hover:bg-slate-800"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-100"
         >
           <X className="w-4 h-4" />
         </button>
@@ -95,20 +95,20 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             )}
           </div>
           <div className="flex-1 pr-4">
-            <h2 id="confirmation-modal-title" className="text-sm font-semibold text-white leading-snug">
+            <h2 id="confirmation-modal-title" className="text-sm font-bold text-slate-900 leading-snug">
               {title}
             </h2>
-            <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
               {message}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
           <button
             type="button"
             onClick={onCancel}
-            className="px-3.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700 transition"
+            className="px-3.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-300 transition"
           >
             {cancelLabel}
           </button>
@@ -116,7 +116,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             ref={confirmBtnRef}
             type="button"
             onClick={onConfirm}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${confirmBtnBg}`}
+            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white ${confirmBtnBg}`}
           >
             {confirmLabel}
           </button>

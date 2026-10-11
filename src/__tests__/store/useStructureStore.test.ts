@@ -380,4 +380,54 @@ describe('useStructureStore', () => {
     store.setAssociationLineStyle('dotted');
     expect(useStructureStore.getState().associationLineStyle).toBe('dotted');
   });
+
+  it('records undo and redo history for entity and relationship mutations', () => {
+    const store = useStructureStore.getState();
+    const initialCount = store.entities.length;
+
+    // Mutate state: add an entity
+    const newEnt = store.addEntity({
+      name: 'Undoable SPV',
+      type: 'Holding Company',
+      jurisdiction: 'BVI',
+      status: 'Active',
+      associatedParties: [],
+    });
+
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+    expect(useStructureStore.getState().undoHistory.length).toBeGreaterThan(0);
+
+    // Perform Undo
+    const undoResult = useStructureStore.getState().undo();
+    expect(undoResult).toBe(true);
+    expect(useStructureStore.getState().entities.length).toBe(initialCount);
+    expect(useStructureStore.getState().redoHistory.length).toBeGreaterThan(0);
+
+    // Perform Redo
+    const redoResult = useStructureStore.getState().redo();
+    expect(redoResult).toBe(true);
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+
+    // Undo when empty returns false
+    useStructureStore.setState({ undoHistory: [] });
+    expect(useStructureStore.getState().undo()).toBe(false);
+
+    // Redo when empty returns false
+    useStructureStore.setState({ redoHistory: [] });
+    expect(useStructureStore.getState().redo()).toBe(false);
+
+    // Verify clearCanvas, updateEntity, deleteEntity, addRelationship record history
+    store.updateEntity(newEnt.id, { name: 'Updated SPV' });
+    expect(useStructureStore.getState().undoHistory.length).toBe(1);
+
+    store.deleteEntity(newEnt.id);
+    expect(useStructureStore.getState().undoHistory.length).toBe(2);
+
+    store.clearCanvas();
+    expect(useStructureStore.getState().entities.length).toBe(0);
+    expect(useStructureStore.getState().undoHistory.length).toBe(3);
+
+    expect(useStructureStore.getState().undo()).toBe(true);
+    expect(useStructureStore.getState().undoHistory.length).toBe(2);
+  });
 });

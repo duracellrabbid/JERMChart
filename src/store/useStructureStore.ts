@@ -28,6 +28,8 @@ export interface StructureState {
   directorCap: number | 'all';
   isExportMode: boolean;
   associationLineStyle: AssociationLineStyle;
+  undoHistory: TrustStructureChart[];
+  redoHistory: TrustStructureChart[];
 
   // Actions
   setMetadata: (meta: Partial<ChartMetadata>) => void;
@@ -40,6 +42,9 @@ export interface StructureState {
   setAssociationLineStyle: (style: AssociationLineStyle) => void;
   setUndoSnapshot: (snapshot: TrustStructureChart | null) => void;
   restoreUndoSnapshot: () => boolean;
+  pushHistory: () => void;
+  undo: () => boolean;
+  redo: () => boolean;
   setOcrReviewState: (state: OcrReviewState | null) => void;
   dismissOcrReview: () => void;
 
@@ -80,6 +85,8 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   directorCap: 3,
   isExportMode: false,
   associationLineStyle: 'dotted',
+  undoHistory: [],
+  redoHistory: [],
 
   setMetadata: (meta) =>
     set((state) => ({ metadata: { ...state.metadata, ...meta } })),
@@ -95,6 +102,57 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   setAssociationLineStyle: (style) => set({ associationLineStyle: style }),
 
   setUndoSnapshot: (snapshot) => set({ undoSnapshot: snapshot }),
+
+  pushHistory: () => {
+    const { metadata, entities, relationships, undoHistory } = get();
+    const current: TrustStructureChart = {
+      metadata: structuredClone(metadata),
+      entities: structuredClone(entities),
+      relationships: structuredClone(relationships),
+    };
+    const nextHistory = [...undoHistory.slice(-19), current];
+    set({ undoHistory: nextHistory, redoHistory: [] });
+  },
+
+  undo: () => {
+    const { undoHistory, redoHistory, metadata, entities, relationships } = get();
+    if (undoHistory.length === 0) return false;
+    const previous = undoHistory[undoHistory.length - 1];
+    const newUndo = undoHistory.slice(0, -1);
+    const current: TrustStructureChart = {
+      metadata: structuredClone(metadata),
+      entities: structuredClone(entities),
+      relationships: structuredClone(relationships),
+    };
+    set({
+      metadata: { ...previous.metadata },
+      entities: [...previous.entities],
+      relationships: [...previous.relationships],
+      undoHistory: newUndo,
+      redoHistory: [current, ...redoHistory.slice(0, 19)],
+    });
+    return true;
+  },
+
+  redo: () => {
+    const { undoHistory, redoHistory, metadata, entities, relationships } = get();
+    if (redoHistory.length === 0) return false;
+    const next = redoHistory[0];
+    const newRedo = redoHistory.slice(1);
+    const current: TrustStructureChart = {
+      metadata: structuredClone(metadata),
+      entities: structuredClone(entities),
+      relationships: structuredClone(relationships),
+    };
+    set({
+      metadata: { ...next.metadata },
+      entities: [...next.entities],
+      relationships: [...next.relationships],
+      undoHistory: [...undoHistory.slice(-19), current],
+      redoHistory: newRedo,
+    });
+    return true;
+  },
 
   restoreUndoSnapshot: () => {
     const snapshot = get().undoSnapshot;
@@ -117,6 +175,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   dismissOcrReview: () => set({ ocrReviewState: null }),
 
   addEntity: (entityData, parentId, ownershipPct = 100) => {
+    get().pushHistory();
     const newId = `entity-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const newEntity: EntityNodeData = {
       ...entityData,
@@ -146,19 +205,24 @@ export const useStructureStore = create<StructureState>((set, get) => ({
     return newEntity;
   },
 
-  updateEntity: (id, updates) =>
+  updateEntity: (id, updates) => {
+    get().pushHistory();
     set((state) => ({
       entities: state.entities.map((e) => (e.id === id ? { ...e, ...updates } : e)),
-    })),
+    }));
+  },
 
-  deleteEntity: (id) =>
+  deleteEntity: (id) => {
+    get().pushHistory();
     set((state) => ({
       entities: state.entities.filter((e) => e.id !== id),
       relationships: state.relationships.filter((r) => r.source !== id && r.target !== id),
       selectedEntityId: state.selectedEntityId === id ? null : state.selectedEntityId,
-    })),
+    }));
+  },
 
-  addAssociatedParty: (entityId, party) =>
+  addAssociatedParty: (entityId, party) => {
+    get().pushHistory();
     set((state) => ({
       entities: state.entities.map((e) => {
         if (e.id !== entityId) return e;
@@ -169,9 +233,11 @@ export const useStructureStore = create<StructureState>((set, get) => ({
         };
         return { ...e, associatedParties: [...(e.associatedParties || []), newParty] };
       }),
-    })),
+    }));
+  },
 
-  removeAssociatedParty: (entityId, partyId) =>
+  removeAssociatedParty: (entityId, partyId) => {
+    get().pushHistory();
     set((state) => ({
       entities: state.entities.map((e) => {
         if (e.id !== entityId) return e;
@@ -180,7 +246,8 @@ export const useStructureStore = create<StructureState>((set, get) => ({
           associatedParties: (e.associatedParties || []).filter((p) => p.id !== partyId),
         };
       }),
-    })),
+    }));
+  },
 
   addDirector: (entityId, director) =>
     get().addAssociatedParty(entityId, {
@@ -191,28 +258,33 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   removeDirector: (entityId, directorId) =>
     get().removeAssociatedParty(entityId, directorId),
 
-  addRelationship: (rel) =>
-    set((state) => {
-      const exists = state.relationships.some((r) => r.source === rel.source && r.target === rel.target);
-      if (exists) return state;
-      const newRel: OwnershipEdgeData = {
-        ...rel,
-        id: `rel-${rel.source}-${rel.target}-${Date.now()}`,
-      };
-      return { relationships: [...state.relationships, newRel] };
-    }),
+  addRelationship: (rel) => {
+    const exists = get().relationships.some((r) => r.source === rel.source && r.target === rel.target);
+    if (exists) return;
+    get().pushHistory();
+    const newRel: OwnershipEdgeData = {
+      ...rel,
+      id: `rel-${rel.source}-${rel.target}-${Date.now()}`,
+    };
+    set((state) => ({ relationships: [...state.relationships, newRel] }));
+  },
 
-  updateRelationship: (id, updates) =>
+  updateRelationship: (id, updates) => {
+    get().pushHistory();
     set((state) => ({
       relationships: state.relationships.map((r) => (r.id === id ? { ...r, ...updates } : r)),
-    })),
+    }));
+  },
 
-  deleteRelationship: (id) =>
+  deleteRelationship: (id) => {
+    get().pushHistory();
     set((state) => ({
       relationships: state.relationships.filter((r) => r.id !== id),
-    })),
+    }));
+  },
 
-  loadStructure: (chart) =>
+  loadStructure: (chart) => {
+    get().pushHistory();
     set({
       metadata: { ...chart.metadata },
       entities: [...chart.entities],
@@ -220,7 +292,8 @@ export const useStructureStore = create<StructureState>((set, get) => ({
       selectedEntityId: null,
       highlightedParty: null,
       highlightedDirector: null,
-    }),
+    });
+  },
 
   resetToSample: () => {
     const sample = structuredClone(sampleTrustStructure);
@@ -231,10 +304,13 @@ export const useStructureStore = create<StructureState>((set, get) => ({
       selectedEntityId: null,
       highlightedParty: null,
       highlightedDirector: null,
+      undoHistory: [],
+      redoHistory: [],
     });
   },
 
-  clearCanvas: () =>
+  clearCanvas: () => {
+    get().pushHistory();
     set({
       metadata: {
         chartTitle: 'New Trust Structure',
@@ -246,5 +322,6 @@ export const useStructureStore = create<StructureState>((set, get) => ({
       selectedEntityId: null,
       highlightedParty: null,
       highlightedDirector: null,
-    }),
+    });
+  },
 }));

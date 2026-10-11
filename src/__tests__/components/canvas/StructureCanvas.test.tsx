@@ -121,5 +121,24 @@ describe('StructureCanvas', () => {
     expect(screen.getByText('The Aurelius Dynasty Trust')).toBeInTheDocument();
     expect(useStructureStore.getState().sortCriteria).toBe('ownership');
   });
+
+  it('renders FiduciaryLegend and toggles notation items', () => {
+    render(<StructureCanvas />);
+
+    const legendBtn = screen.getByRole('button', { name: /Fiduciary Notation Key/i });
+    expect(legendBtn).toBeInTheDocument();
+
+    // Initially collapsed
+    expect(screen.queryByText(/Apex Triangle/i)).not.toBeInTheDocument();
+
+    // Toggle open
+    fireEvent.click(legendBtn);
+    expect(screen.getByText(/Apex Triangle/i)).toBeInTheDocument();
+    expect(screen.getByText(/Resident Director Governance/i)).toBeInTheDocument();
+
+    // Toggle close
+    fireEvent.click(legendBtn);
+    expect(screen.queryByText(/Apex Triangle/i)).not.toBeInTheDocument();
+  });
 });
 

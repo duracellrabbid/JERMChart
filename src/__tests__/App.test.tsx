@@ -106,4 +106,86 @@ describe('App Integration', () => {
 
     expect(screen.queryByText(/AI Provider & API Keys/i)).not.toBeInTheDocument();
   });
+
+  it('handles Ctrl+Z and Ctrl+Y keyboard shortcuts to undo and redo mutations', () => {
+    render(<App />);
+
+    const initialCount = useStructureStore.getState().entities.length;
+
+    // Mutate state
+    act(() => {
+      useStructureStore.getState().addEntity({
+        name: 'Shortcut Target',
+        type: 'Holding Company',
+        jurisdiction: 'Jersey',
+        status: 'Active',
+        associatedParties: [],
+      });
+    });
+
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+
+    // Press Ctrl+Z
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount);
+
+    // Press Ctrl+Shift+Z (Redo)
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+
+    // Press Ctrl+Z then Ctrl+Y (Redo)
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount);
+
+    fireEvent.keyDown(document, { key: 'y', ctrlKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+
+    // Press Meta+Z (Mac Cmd+Z)
+    fireEvent.keyDown(document, { key: 'z', metaKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount);
+
+    // Press Meta+Y (Mac Cmd+Y)
+    fireEvent.keyDown(document, { key: 'y', metaKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+
+    // Shortcuts should be ignored if typing inside an input element
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    fireEvent.keyDown(input, { key: 'z', ctrlKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+    document.body.removeChild(input);
+
+    // Shortcuts should be ignored if typing inside a textarea
+    const textarea = document.createElement('textarea');
+    document.body.appendChild(textarea);
+    fireEvent.keyDown(textarea, { key: 'z', ctrlKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+    document.body.removeChild(textarea);
+
+    // Shortcuts should be ignored if typing inside contentEditable
+    const editableDiv = document.createElement('div');
+    Object.defineProperty(editableDiv, 'isContentEditable', { value: true, configurable: true });
+    document.body.appendChild(editableDiv);
+    fireEvent.keyDown(editableDiv, { key: 'z', ctrlKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+    document.body.removeChild(editableDiv);
+
+    // Shortcuts should be ignored if element has contenteditable attribute
+    const attrEditableDiv = document.createElement('div');
+    attrEditableDiv.setAttribute('contenteditable', 'true');
+    document.body.appendChild(attrEditableDiv);
+    fireEvent.keyDown(attrEditableDiv, { key: 'z', ctrlKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+    document.body.removeChild(attrEditableDiv);
+
+    // Event on non-HTMLElement target (e.g. document/window)
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount);
+    fireEvent.keyDown(document, { key: 'y', ctrlKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+
+    // Non-z, non-y keys are ignored
+    fireEvent.keyDown(window, { key: 'a', ctrlKey: true });
+    expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
+  });
 });
