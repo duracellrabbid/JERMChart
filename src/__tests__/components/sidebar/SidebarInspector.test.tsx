@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { SidebarInspector } from '../../../components/sidebar/SidebarInspector';
 import { useStructureStore } from '../../../store/useStructureStore';
 
@@ -103,26 +103,86 @@ describe('SidebarInspector', () => {
       expect(rel?.ownershipPercentage).toBe(100);
     });
 
-    it('deletes entity when trash icon is clicked and confirmed', () => {
-      window.confirm = vi.fn().mockReturnValue(true);
+    it('opens ConfirmationModal when trash icon is clicked, and deletes on confirmation', () => {
       render(<SidebarInspector />);
-      const deleteButtons = screen.getAllByTitle('Delete Entity');
-      fireEvent.click(deleteButtons[4]); // delete entity-5
+      const entityRow = screen.getByText('Aurelius Maritime Holdings Corp').closest('[role="treeitem"]');
+      expect(entityRow).toBeInTheDocument();
+      const deleteButton = entityRow!.querySelector('button[title="Delete Entity"]') as HTMLButtonElement;
+      fireEvent.click(deleteButton);
 
-      expect(window.confirm).toHaveBeenCalled();
+      expect(screen.getByText('Delete Fiduciary Entity')).toBeInTheDocument();
+      const modal = screen.getByTestId('confirmation-modal');
+      const confirmBtn = modal.querySelector('button.bg-rose-600') as HTMLButtonElement;
+      fireEvent.click(confirmBtn);
+
       const exists = useStructureStore.getState().entities.some((e) => e.id === 'entity-5');
       expect(exists).toBe(false);
     });
 
-    it('does not delete entity when confirm is cancelled', () => {
-      window.confirm = vi.fn().mockReturnValue(false);
+    it('cancels deletion when Keep Entity is clicked in ConfirmationModal', () => {
       render(<SidebarInspector />);
-      const deleteButtons = screen.getAllByTitle('Delete Entity');
-      fireEvent.click(deleteButtons[4]);
+      const entityRow = screen.getByText('Aurelius Maritime Holdings Corp').closest('[role="treeitem"]');
+      expect(entityRow).toBeInTheDocument();
+      const deleteButton = entityRow!.querySelector('button[title="Delete Entity"]') as HTMLButtonElement;
+      fireEvent.click(deleteButton);
 
-      expect(window.confirm).toHaveBeenCalled();
+      expect(screen.getByText('Delete Fiduciary Entity')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Keep Entity' }));
+
+      expect(screen.queryByText('Delete Fiduciary Entity')).not.toBeInTheDocument();
       const exists = useStructureStore.getState().entities.some((e) => e.id === 'entity-5');
       expect(exists).toBe(true);
+    });
+
+    it('collapses and expands tree branches via chevron toggle', () => {
+      render(<SidebarInspector />);
+
+      // Aurelius Global Holdings Ltd has children (entity-3, entity-4, entity-5)
+      expect(screen.getByText('Aurelius Capital Singapore Pte Ltd')).toBeInTheDocument();
+
+      const collapseBtn = screen.getByRole('button', { name: 'Collapse Aurelius Global Holdings Ltd' });
+      expect(collapseBtn).toBeInTheDocument();
+
+      // Click to collapse
+      fireEvent.click(collapseBtn);
+      expect(screen.queryByText('Aurelius Capital Singapore Pte Ltd')).not.toBeInTheDocument();
+
+      // Now button should be expand
+      const expandBtn = screen.getByRole('button', { name: 'Expand Aurelius Global Holdings Ltd' });
+      expect(expandBtn).toBeInTheDocument();
+
+      // Click to expand again
+      fireEvent.click(expandBtn);
+      expect(screen.getByText('Aurelius Capital Singapore Pte Ltd')).toBeInTheDocument();
+    });
+
+    it('displays co-ownership badge when an entity has multiple parents', () => {
+      // Add a single additional parent to entity-4 (+1 parent singular)
+      const currentRels = useStructureStore.getState().relationships;
+      act(() => {
+        useStructureStore.setState({
+          relationships: [
+            ...currentRels,
+            { id: 'rel-extra-1', source: 'entity-1', target: 'entity-4', ownershipPercentage: 15 },
+          ],
+        });
+      });
+
+      const { rerender } = render(<SidebarInspector />);
+      expect(screen.getByText('+1 parent')).toBeInTheDocument();
+
+      // Add another additional parent to entity-4 (+2 parents plural)
+      act(() => {
+        useStructureStore.setState({
+          relationships: [
+            ...currentRels,
+            { id: 'rel-extra-1', source: 'entity-1', target: 'entity-4', ownershipPercentage: 15 },
+            { id: 'rel-extra-2', source: 'entity-3', target: 'entity-4', ownershipPercentage: 10 },
+          ],
+        });
+      });
+      rerender(<SidebarInspector />);
+      expect(screen.getByText('+2 parents')).toBeInTheDocument();
     });
   });
 

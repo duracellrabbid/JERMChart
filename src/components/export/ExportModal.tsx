@@ -9,6 +9,7 @@ import {
   parseJsonBackup,
 } from '../../utils/exportService';
 import { FileDown, Image, FileText, Upload, Check, X, Presentation, FileSpreadsheet } from 'lucide-react';
+import { AlertModal } from '../common/AlertModal';
 
 interface ExportModalProps {
   onClose: () => void;
@@ -27,7 +28,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
 
   const [isExporting, setIsExporting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorAlert, setErrorAlert] = useState<{ title: string; message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showError = (title: string, message: string) => {
+    try {
+      window.alert(message);
+    } catch {
+      // noop
+    }
+    setErrorAlert({ title, message });
+  };
 
   const runExportWithMode = async (exportFn: () => Promise<void>, successMessage: string) => {
     setIsExporting(true);
@@ -37,7 +48,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
       await exportFn();
       setSuccessMsg(successMessage);
     } catch (err) {
-      alert(`Export failed: ${formatExportError(err)}`);
+      showError('Export Failed', `Export failed: ${formatExportError(err)}`);
     } finally {
       setExportMode(false);
       setIsExporting(false);
@@ -95,7 +106,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
           loadStructure(parsed);
           setSuccessMsg(`Loaded ${parsed.entities.length} entities from backup.`);
         } else {
-          alert('Invalid or corrupted structure file.');
+          showError('Invalid Backup File', 'Invalid or corrupted structure file.');
         }
       } finally {
         if (fileInputRef.current) {
@@ -279,6 +290,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
           </div>
         </div>
       </div>
+
+      {errorAlert && (
+        <AlertModal
+          isOpen={true}
+          title={errorAlert.title}
+          message={errorAlert.message}
+          buttonLabel="Acknowledge"
+          onClose={() => setErrorAlert(null)}
+        />
+      )}
     </div>
   );
 };

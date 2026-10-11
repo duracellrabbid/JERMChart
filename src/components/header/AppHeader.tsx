@@ -13,6 +13,7 @@ import {
   Camera,
   Settings,
 } from 'lucide-react';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 
 interface AppHeaderProps {
   onOpenExport: () => void;
@@ -42,6 +43,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const [initialTitle, setInitialTitle] = useState('');
   const [isResetMenuOpen, setIsResetMenuOpen] = useState(false);
   const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
+
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const resetMenuRef = useRef<HTMLDivElement>(null);
   const importMenuRef = useRef<HTMLDivElement>(null);
@@ -77,9 +85,35 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     setIsEditingTitle(true);
   };
 
+  const requestClearCanvas = () => {
+    setIsResetMenuOpen(false);
+    setConfirmModalConfig({
+      title: 'Clear Structure Canvas',
+      message: 'Are you sure you want to clear all entities, relationships, and parties? You will start with a blank canvas.',
+      confirmLabel: 'Clear Canvas',
+      onConfirm: () => {
+        clearCanvas();
+        setConfirmModalConfig(null);
+      },
+    });
+  };
+
+  const requestResetToSample = () => {
+    setIsResetMenuOpen(false);
+    setConfirmModalConfig({
+      title: 'Load Sample Template',
+      message: 'Reset current chart to the Aurelius Dynasty Trust structure? Any unsaved edits will be replaced by the default template.',
+      confirmLabel: 'Load Template',
+      onConfirm: () => {
+        resetToSample();
+        setConfirmModalConfig(null);
+      },
+    });
+  };
+
   return (
     <header className="h-14 bg-slate-900 text-white flex items-center justify-between px-4 border-b border-slate-800 flex-shrink-0 z-20">
-      {/* Title & Reference */}
+      {/* Cluster 1: Document & Trust Metadata */}
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center font-black text-white text-sm shadow">
           JC
@@ -131,10 +165,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
       </div>
 
-      {/* Action Toolbar */}
+      {/* Cluster 2 & 3: View Options and Action Clusters */}
       <div className="flex items-center gap-2">
-        {/* Sibling Sorting Controls */}
-        <div className="flex items-center gap-1.5 mr-2">
+        {/* Sibling Sorting Controls (Direct Quick Access) */}
+        <div className="flex items-center gap-1.5 mr-1">
           <label htmlFor="sibling-sort-select" className="text-xs text-slate-400 font-medium">
             Sort Siblings:
           </label>
@@ -160,7 +194,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
 
         {/* Visible Directors Cap Selector */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-300">
+        <div className="flex items-center gap-1.5 text-xs text-slate-300 mr-1">
           <label htmlFor="director-cap-select" className="text-slate-400 font-medium">
             Directors:
           </label>
@@ -182,6 +216,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </select>
         </div>
 
+        {/* Association Line Style Toggle */}
+        <button
+          data-testid="line-style-toggle-btn"
+          onClick={() => setAssociationLineStyle(associationLineStyle === 'dotted' ? 'solid' : 'dotted')}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-md border border-slate-700 transition cursor-pointer"
+          title={`Toggle association line style (Current: ${associationLineStyle})`}
+        >
+          <span className="text-slate-400 font-medium">Lines:</span>
+          <span className="font-semibold text-sky-400 capitalize">{associationLineStyle}</span>
+        </button>
+
         {/* Auto-Tidy Layout Trigger */}
         <button
           onClick={() => {
@@ -194,17 +239,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           title="Recalculate neat top-down layout"
         >
           <Sparkles className="w-3.5 h-3.5" /> Auto-Tidy
-        </button>
-
-        {/* Association Line Style Toggle */}
-        <button
-          data-testid="line-style-toggle-btn"
-          onClick={() => setAssociationLineStyle(associationLineStyle === 'dotted' ? 'solid' : 'dotted')}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-md border border-slate-700 transition cursor-pointer"
-          title={`Toggle association line style (Current: ${associationLineStyle})`}
-        >
-          <span className="text-slate-400 font-medium">Lines:</span>
-          <span className="font-semibold text-sky-400 capitalize">{associationLineStyle}</span>
         </button>
 
         {/* Reset / New Dropdown */}
@@ -224,24 +258,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           {isResetMenuOpen && (
             <div className="absolute right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-30">
               <button
-                onClick={() => {
-                  setIsResetMenuOpen(false);
-                  if (window.confirm('Clear all entities and start with a blank canvas?')) {
-                    clearCanvas();
-                  }
-                }}
+                onClick={requestClearCanvas}
                 className="w-full text-left px-3 py-2 text-xs text-rose-300 hover:bg-rose-950/40 hover:text-rose-200 flex items-center gap-2 transition cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
                 <span>Clear Canvas (Blank)</span>
               </button>
               <button
-                onClick={() => {
-                  setIsResetMenuOpen(false);
-                  if (window.confirm('Reset chart to Aurelius Dynasty Trust sample template?')) {
-                    resetToSample();
-                  }
-                }}
+                onClick={requestResetToSample}
                 className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2 transition cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
@@ -320,6 +344,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <Settings className="w-4 h-4 text-slate-400 hover:text-sky-400" />
         </button>
       </div>
+
+      {confirmModalConfig && (
+        <ConfirmationModal
+          isOpen={true}
+          title={confirmModalConfig.title}
+          message={confirmModalConfig.message}
+          confirmLabel={confirmModalConfig.confirmLabel}
+          cancelLabel="Cancel"
+          variant="danger"
+          onConfirm={confirmModalConfig.onConfirm}
+          onCancel={() => setConfirmModalConfig(null)}
+        />
+      )}
     </header>
   );
 };

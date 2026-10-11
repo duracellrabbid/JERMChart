@@ -153,8 +153,6 @@ describe('AppHeader', () => {
   });
 
   it('opens reset dropdown, prompts confirmation, and resets store to sample when confirmed', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-
     act(() => {
       useStructureStore.getState().setMetadata({ chartTitle: 'Modified Title' });
     });
@@ -169,15 +167,13 @@ describe('AppHeader', () => {
     expect(loadSampleBtn).toBeInTheDocument();
     fireEvent.click(loadSampleBtn);
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Reset chart to Aurelius Dynasty Trust sample template?')
-    );
+    expect(screen.getByText('Load Sample Template')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Load Template' }));
+
     expect(useStructureStore.getState().metadata.chartTitle).toBe('The Aurelius Dynasty Trust Structure');
   });
 
   it('does not reset store when reset sample confirmation is cancelled', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-
     act(() => {
       useStructureStore.getState().setMetadata({ chartTitle: 'Custom Unsaved Trust' });
     });
@@ -190,13 +186,14 @@ describe('AppHeader', () => {
     const loadSampleBtn = screen.getByRole('button', { name: /Load Sample Template/i });
     fireEvent.click(loadSampleBtn);
 
-    expect(confirmSpy).toHaveBeenCalled();
+    expect(screen.getByText('Load Sample Template')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText('Load Sample Template')).not.toBeInTheDocument();
     expect(useStructureStore.getState().metadata.chartTitle).toBe('Custom Unsaved Trust');
   });
 
   it('prompts confirmation and clears canvas when Clear Canvas (Blank) is selected', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-
     expect(useStructureStore.getState().entities.length).toBeGreaterThan(0);
 
     renderHeader();
@@ -208,17 +205,15 @@ describe('AppHeader', () => {
     expect(clearCanvasBtn).toBeInTheDocument();
     fireEvent.click(clearCanvasBtn);
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Clear all entities and start with a blank canvas?')
-    );
+    expect(screen.getByText('Clear Structure Canvas')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Canvas' }));
+
     expect(useStructureStore.getState().entities).toEqual([]);
     expect(useStructureStore.getState().relationships).toEqual([]);
     expect(useStructureStore.getState().metadata.chartTitle).toBe('New Trust Structure');
   });
 
   it('does not clear canvas when Clear Canvas (Blank) confirmation is cancelled', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-
     const initialCount = useStructureStore.getState().entities.length;
     expect(initialCount).toBeGreaterThan(0);
 
@@ -230,7 +225,10 @@ describe('AppHeader', () => {
     const clearCanvasBtn = screen.getByRole('button', { name: /Clear Canvas \(Blank\)/i });
     fireEvent.click(clearCanvasBtn);
 
-    expect(confirmSpy).toHaveBeenCalled();
+    expect(screen.getByText('Clear Structure Canvas')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText('Clear Structure Canvas')).not.toBeInTheDocument();
     expect(useStructureStore.getState().entities.length).toBe(initialCount);
   });
 
@@ -363,5 +361,24 @@ describe('AppHeader', () => {
     fireEvent.click(toggleBtn);
     expect(useStructureStore.getState().associationLineStyle).toBe('dotted');
     expect(screen.getByText(/dotted/i)).toBeInTheDocument();
+  });
+
+  it('opens and confirms Load Sample Template via ConfirmationModal', () => {
+    useStructureStore.getState().clearCanvas();
+    expect(useStructureStore.getState().entities.length).toBe(0);
+
+    renderHeader();
+
+    const resetTrigger = screen.getByRole('button', { name: /Reset \/ New/i });
+    fireEvent.click(resetTrigger);
+
+    const sampleBtn = screen.getByRole('button', { name: /Load Sample Template/i });
+    fireEvent.click(sampleBtn);
+
+    expect(screen.getByText('Load Sample Template')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Load Template' }));
+
+    expect(screen.queryByText('Load Sample Template')).not.toBeInTheDocument();
+    expect(useStructureStore.getState().entities.length).toBeGreaterThan(0);
   });
 });

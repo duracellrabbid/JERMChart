@@ -218,8 +218,12 @@ describe('ExportModal Component', () => {
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith('Invalid or corrupted structure file.');
+      expect(screen.getByText('Invalid Backup File')).toBeInTheDocument();
       expect(fileInput.value).toBe('');
     });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge' }));
+    expect(screen.queryByText('Invalid Backup File')).not.toBeInTheDocument();
   });
 
   it('handles finally block when file input ref is null (modal unmounted during read)', async () => {
