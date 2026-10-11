@@ -5,7 +5,7 @@
 export function trimTrailingSlashes(url: string): string {
   const trimmed = String(url || '').trim();
   let end = trimmed.length;
-  while (end > 0 && trimmed.charCodeAt(end - 1) === 47 /* '/' */) {
+  while (end > 0 && trimmed.codePointAt(end - 1) === 47 /* '/' */) {
     end--;
   }
   return trimmed.slice(0, end);
@@ -19,7 +19,7 @@ export function trimLeadingSlashes(path: string): string {
   const trimmed = String(path || '').trim();
   let start = 0;
   const len = trimmed.length;
-  while (start < len && trimmed.charCodeAt(start) === 47 /* '/' */) {
+  while (start < len && trimmed.codePointAt(start) === 47 /* '/' */) {
     start++;
   }
   return trimmed.slice(start);

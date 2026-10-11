@@ -58,12 +58,12 @@ export interface ExportBounds {
 export function parseTranslateCoordinates(transform: string): { x: number; y: number } | null {
   const match = /translate(?:3d)?\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px/i.exec(transform);
   if (!match) return null;
-  return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+  return { x: Number.parseFloat(match[1]), y: Number.parseFloat(match[2]) };
 }
 
 export function getNodeDimensions(el: HTMLElement): { width: number; height: number } {
-  const styleW = parseFloat(el.style.width);
-  const styleH = parseFloat(el.style.height);
+  const styleW = Number.parseFloat(el.style.width);
+  const styleH = Number.parseFloat(el.style.height);
   if (styleW > 0 && styleH > 0) {
     return { width: styleW, height: styleH };
   }
@@ -74,8 +74,8 @@ export function getNodeDimensions(el: HTMLElement): { width: number; height: num
   }
   const firstChild = el.firstElementChild as HTMLElement | null;
   if (firstChild) {
-    const childW = parseFloat(firstChild.style.width) || firstChild.offsetWidth;
-    const childH = parseFloat(firstChild.style.height) || firstChild.offsetHeight;
+    const childW = Number.parseFloat(firstChild.style.width) || firstChild.offsetWidth;
+    const childH = Number.parseFloat(firstChild.style.height) || firstChild.offsetHeight;
     if (childW > 0 && childH > 0) {
       return { width: childW, height: childH };
     }

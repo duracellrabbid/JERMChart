@@ -70,6 +70,24 @@ describe('EntityCardNode', () => {
     expect(screen.getByText('Single Beneficiary')).toBeInTheDocument();
   });
 
+  it('positions left-in and right-in handles directly on triangle boundary for Trust cards', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <EntityCardNode {...(createProps() as any)} />
+      </ReactFlowProvider>
+    );
+
+    const leftHandle = container.querySelector('[data-handleid="left-in"]');
+    const rightHandle = container.querySelector('[data-handleid="right-in"]');
+
+    expect(leftHandle).toBeInTheDocument();
+    expect(rightHandle).toBeInTheDocument();
+
+    // At y = 50% (95px), boundary on 260x190 triangle is at 68px and 192px
+    expect(leftHandle).toHaveStyle({ left: '68px', top: '50%' });
+    expect(rightHandle).toHaveStyle({ left: '192px', top: '50%' });
+  });
+
   it('renders SubsidiarySquareCard for corporate entity types', () => {
     const props = createProps({
       data: {

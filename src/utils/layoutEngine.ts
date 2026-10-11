@@ -12,11 +12,11 @@ export const CARD_WIDTH = 280;
 export const BASE_CARD_HEIGHT = 160;
 export const DIRECTOR_ROW_HEIGHT = 24;
 
-export const TRUST_ASPECT_RATIO = 1.25;
-export const TRUST_CARD_WIDTH = 300;
-export const TRUST_CARD_HEIGHT = 240;
+export const TRUST_ASPECT_RATIO = 1.368;
+export const TRUST_CARD_WIDTH = 260;
+export const TRUST_CARD_HEIGHT = 190;
 export const SUBSIDIARY_CARD_SIZE = 220;
-export const SUBSIDIARY_CARD_HEIGHT = 160;
+export const SUBSIDIARY_CARD_HEIGHT = 110;
 export const BANK_CARD_SIZE = 180;
 
 export const SATELLITE_CARD_WIDTH = 150;
@@ -101,12 +101,22 @@ export function groupPartiesByRole(parties?: AssociatedParty[]): RoleGroup[] {
   }));
 }
 
-export function distributeRoleGroups(groups: RoleGroup[]): {
+export function distributeRoleGroups(
+  groups: RoleGroup[],
+  preference: 'balanced' | 'left-only' | 'right-only' = 'balanced'
+): {
   left: RoleGroup[];
   right: RoleGroup[];
 } {
   const total = groups.length;
   if (total === 0) return { left: [], right: [] };
+
+  if (preference === 'left-only') {
+    return { left: groups, right: [] };
+  }
+  if (preference === 'right-only') {
+    return { left: [], right: groups };
+  }
 
   const leftCount = Math.ceil(total / 2);
   return {
@@ -170,8 +180,6 @@ function buildSatelliteColumn(
   edges: Edge[]
 ): void {
   const { entityId, side, anchorX, centerY, groups } = ctx;
-  if (groups.length === 0) return;
-
   const totalH = calculateColumnTotalHeight(groups);
   let currentY = centerY - totalH / 2;
 
@@ -220,6 +228,61 @@ function buildSatelliteColumn(
   });
 }
 
+export type FlankPreference = 'balanced' | 'left-only' | 'right-only';
+
+export interface EntityFlanks {
+  left: RoleGroup[];
+  right: RoleGroup[];
+  leftWidth: number;
+  rightWidth: number;
+  totalWidth: number;
+  totalHeight: number;
+}
+
+export function determineFlankPreference(
+  entityId: string,
+  siblingList?: EntityNodeData[]
+): FlankPreference {
+  if (!siblingList || siblingList.length <= 1) {
+    return 'balanced';
+  }
+  const idx = siblingList.findIndex((s) => s.id === entityId);
+  if (idx === 0) {
+    return 'left-only';
+  }
+  if (idx === siblingList.length - 1) {
+    return 'right-only';
+  }
+  return 'balanced';
+}
+
+export function calculateEntityFlanks(
+  entity: EntityNodeData,
+  preference: FlankPreference
+): EntityFlanks {
+  const groups = groupPartiesByRole(entity.associatedParties);
+  const { left, right } = distributeRoleGroups(groups, preference);
+  const dims = getEntityDimensions(entity.type, entity);
+
+  const leftWidth = left.length > 0 ? SATELLITE_CARD_WIDTH + HORIZONTAL_SATELLITE_GAP : 0;
+  const rightWidth = right.length > 0 ? SATELLITE_CARD_WIDTH + HORIZONTAL_SATELLITE_GAP : 0;
+
+  const leftHeight = calculateColumnTotalHeight(left);
+  const rightHeight = calculateColumnTotalHeight(right);
+
+  const totalWidth = dims.width + leftWidth + rightWidth;
+  const totalHeight = Math.max(dims.height, leftHeight, rightHeight);
+
+  return {
+    left,
+    right,
+    leftWidth,
+    rightWidth,
+    totalWidth,
+    totalHeight,
+  };
+}
+
 export function calculateSortedLayout(
   entities: EntityNodeData[],
   relationships: OwnershipEdgeData[],
@@ -256,11 +319,24 @@ export function calculateSortedLayout(
     );
   });
 
+  // Map parent ID to sorted siblings list and find sibling list for each entity
+  const entitySiblingMap = new Map<string, EntityNodeData[]>();
+  parentToChildren.forEach((children) => {
+    children.forEach((child) => {
+      entitySiblingMap.set(child.id, children);
+    });
+  });
+
+  const entityFlanksMap = new Map<string, EntityFlanks>();
   entities.forEach((entity) => {
-    const dims = getEntityDimensions(entity.type, entity);
+    const siblings = entitySiblingMap.get(entity.id);
+    const pref = determineFlankPreference(entity.id, siblings);
+    const flanks = calculateEntityFlanks(entity, pref);
+    entityFlanksMap.set(entity.id, flanks);
+
     dagreGraph.setNode(entity.id, {
-      width: dims.width,
-      height: dims.height,
+      width: flanks.totalWidth,
+      height: flanks.totalHeight,
     });
   });
 
@@ -286,17 +362,24 @@ export function calculateSortedLayout(
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  // Register main hierarchy entities
+  // Register main hierarchy entities within compound bounding box
   entities.forEach((entity) => {
     const nodePos = dagreGraph.node(entity.id);
     const dims = getEntityDimensions(entity.type, entity);
-    const posX = nodePos.x - dims.width / 2;
-    const posY = nodePos.y - dims.height / 2;
+    const flanks = entityFlanksMap.get(entity.id)!;
+
+    // Compound box top-left
+    const compoundLeft = nodePos.x - flanks.totalWidth / 2;
+    const compoundTop = nodePos.y - flanks.totalHeight / 2;
+
+    // Core entity is placed inside compound box, offset by left flank width
+    const coreX = compoundLeft + flanks.leftWidth;
+    const coreY = compoundTop + (flanks.totalHeight - dims.height) / 2;
 
     nodes.push({
       id: entity.id,
       type: 'entityNode',
-      position: { x: posX, y: posY },
+      position: { x: coreX, y: coreY },
       data: {
         ...entity,
         computedHeight: dims.height,
@@ -304,31 +387,31 @@ export function calculateSortedLayout(
       },
     });
 
-    // Generate hybrid satellite role cards
-    const groups = groupPartiesByRole(entity.associatedParties);
-    if (groups.length > 0) {
-      const { left, right } = distributeRoleGroups(groups);
-      const centerY = posY + dims.height / 2;
+    // Generate hybrid satellite role cards within compound bounding box
+    const centerY = coreY + dims.height / 2;
 
+    if (flanks.left.length > 0) {
       buildSatelliteColumn(
         {
           entityId: entity.id,
           side: 'left',
-          anchorX: posX - SATELLITE_CARD_WIDTH - HORIZONTAL_SATELLITE_GAP,
+          anchorX: coreX - SATELLITE_CARD_WIDTH - HORIZONTAL_SATELLITE_GAP,
           centerY,
-          groups: left,
+          groups: flanks.left,
         },
         nodes,
         edges
       );
+    }
 
+    if (flanks.right.length > 0) {
       buildSatelliteColumn(
         {
           entityId: entity.id,
           side: 'right',
-          anchorX: posX + dims.width + HORIZONTAL_SATELLITE_GAP,
+          anchorX: coreX + dims.width + HORIZONTAL_SATELLITE_GAP,
           centerY,
-          groups: right,
+          groups: flanks.right,
         },
         nodes,
         edges

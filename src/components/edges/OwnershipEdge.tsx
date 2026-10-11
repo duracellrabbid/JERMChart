@@ -5,6 +5,7 @@ import {
   EdgeProps,
   getSmoothStepPath,
 } from '@xyflow/react';
+import { useStructureStore } from '../../store/useStructureStore';
 
 export const OwnershipEdge = memo((props: EdgeProps) => {
   const {
@@ -16,6 +17,8 @@ export const OwnershipEdge = memo((props: EdgeProps) => {
     targetPosition,
     data,
   } = props;
+
+  const storeAssociationLineStyle = useStructureStore((state) => state.associationLineStyle);
 
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
@@ -29,13 +32,14 @@ export const OwnershipEdge = memo((props: EdgeProps) => {
 
   const isAssociation = Boolean(data?.isAssociationEdge);
   if (isAssociation) {
+    const lineStyle = (data?.associationLineStyle as string | undefined) ?? storeAssociationLineStyle;
     return (
       <BaseEdge
         path={edgePath}
         style={{
           stroke: '#94a3b8',
           strokeWidth: 1.5,
-          strokeDasharray: '4,4',
+          ...(lineStyle === 'dotted' ? { strokeDasharray: '4,4' } : {}),
         }}
       />
     );

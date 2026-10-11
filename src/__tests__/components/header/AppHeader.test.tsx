@@ -347,4 +347,21 @@ describe('AppHeader', () => {
 
     expect(onOpenExportMock).toHaveBeenCalledTimes(1);
   });
+
+  it('toggles associationLineStyle between dotted and solid when line style button is clicked', () => {
+    renderHeader();
+
+    const toggleBtn = screen.getByTestId('line-style-toggle-btn');
+    expect(toggleBtn).toBeInTheDocument();
+    expect(screen.getByText(/dotted/i)).toBeInTheDocument();
+    expect(useStructureStore.getState().associationLineStyle).toBe('dotted');
+
+    fireEvent.click(toggleBtn);
+    expect(useStructureStore.getState().associationLineStyle).toBe('solid');
+    expect(screen.getByText(/solid/i)).toBeInTheDocument();
+
+    fireEvent.click(toggleBtn);
+    expect(useStructureStore.getState().associationLineStyle).toBe('dotted');
+    expect(screen.getByText(/dotted/i)).toBeInTheDocument();
+  });
 });

@@ -13,6 +13,8 @@ export type EntityStatus = 'Active' | 'Dormant' | 'In Liquidation' | 'Nominee';
 
 export type SiblingSortCriteria = 'alphabetical' | 'ownership' | 'jurisdiction' | 'manual';
 
+export type AssociationLineStyle = 'dotted' | 'solid';
+
 export type AssociatedRole =
   | 'Director'
   | 'Enforcer'

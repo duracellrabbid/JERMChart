@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { AssociatedParty, EntityNodeData } from '../../types/structure';
 import { getEntityTypeColor, getStatusDotClass, getRoleBadgeStyle } from '../../utils/entityStyle';
-import { calculateTrustDimensions, SUBSIDIARY_CARD_SIZE } from '../../utils/layoutEngine';
+import { calculateTrustDimensions, SUBSIDIARY_CARD_SIZE, SUBSIDIARY_CARD_HEIGHT } from '../../utils/layoutEngine';
 import { useStructureStore } from '../../store/useStructureStore';
 import { User, Landmark, ShieldCheck } from 'lucide-react';
 
@@ -82,19 +82,26 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
         className="!w-3 !h-3 !bg-slate-700 !border-2 !border-white"
         style={{ top: 0, left: '50%' }}
       />
+      {/* Exact boundary handles positioned on triangle sloped borders at y = 50% (height / 2) */}
       <Handle
         type="target"
         position={Position.Left}
         id="left-in"
         className="!w-2.5 !h-2.5 !bg-slate-700 !border-2 !border-white"
-        style={{ top: '50%' }}
+        style={{
+          top: '50%',
+          left: `${Math.round(width / 2 - ((height / 2 - strokePadding) / (height - 2 * strokePadding)) * (width / 2 - strokePadding))}px`,
+        }}
       />
       <Handle
         type="target"
         position={Position.Right}
         id="right-in"
         className="!w-2.5 !h-2.5 !bg-slate-700 !border-2 !border-white"
-        style={{ top: '50%' }}
+        style={{
+          top: '50%',
+          left: `${Math.round(width / 2 + ((height / 2 - strokePadding) / (height - 2 * strokePadding)) * (width / 2 - strokePadding))}px`,
+        }}
       />
 
       <div className="absolute inset-0 flex flex-col items-center justify-between pt-7 pb-4 px-4 text-center">
@@ -164,7 +171,7 @@ const SubsidiarySquareCard: React.FC<ShapeNodeProps> = ({
 }) => {
   const colors = getEntityTypeColor(entity.type);
   const statusDot = getStatusDotClass(entity.status);
-  const height = computedHeight ?? SUBSIDIARY_CARD_SIZE;
+  const height = computedHeight ?? SUBSIDIARY_CARD_HEIGHT;
 
   return (
     <div

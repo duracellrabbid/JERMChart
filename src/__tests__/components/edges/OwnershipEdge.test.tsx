@@ -73,4 +73,19 @@ describe('OwnershipEdge', () => {
     expect(path).toBeInTheDocument();
     expect(path?.getAttribute('style')).toContain('stroke-dasharray: 4,4');
   });
+
+  it('renders solid association edge when associationLineStyle is solid', () => {
+    const { container } = render(
+      <svg>
+        <OwnershipEdge
+          {...(baseEdgeProps as any)}
+          data={{ isAssociationEdge: true, associationLineStyle: 'solid' }}
+        />
+      </svg>
+    );
+
+    const path = container.querySelector('path.react-flow__edge-path');
+    expect(path).toBeInTheDocument();
+    expect(path?.getAttribute('style')).not.toContain('stroke-dasharray');
+  });
 });

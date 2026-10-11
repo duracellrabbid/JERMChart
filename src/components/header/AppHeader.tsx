@@ -33,6 +33,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const setSortCriteria = useStructureStore((state) => state.setSortCriteria);
   const directorCap = useStructureStore((state) => state.directorCap);
   const setDirectorCap = useStructureStore((state) => state.setDirectorCap);
+  const associationLineStyle = useStructureStore((state) => state.associationLineStyle);
+  const setAssociationLineStyle = useStructureStore((state) => state.setAssociationLineStyle);
   const resetToSample = useStructureStore((state) => state.resetToSample);
   const clearCanvas = useStructureStore((state) => state.clearCanvas);
 
@@ -192,6 +194,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           title="Recalculate neat top-down layout"
         >
           <Sparkles className="w-3.5 h-3.5" /> Auto-Tidy
+        </button>
+
+        {/* Association Line Style Toggle */}
+        <button
+          data-testid="line-style-toggle-btn"
+          onClick={() => setAssociationLineStyle(associationLineStyle === 'dotted' ? 'solid' : 'dotted')}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-md border border-slate-700 transition cursor-pointer"
+          title={`Toggle association line style (Current: ${associationLineStyle})`}
+        >
+          <span className="text-slate-400 font-medium">Lines:</span>
+          <span className="font-semibold text-sky-400 capitalize">{associationLineStyle}</span>
         </button>
 
         {/* Reset / New Dropdown */}

@@ -369,4 +369,15 @@ describe('useStructureStore', () => {
     store.setExportMode(false);
     expect(useStructureStore.getState().isExportMode).toBe(false);
   });
+
+  it('manages associationLineStyle state and mutations', () => {
+    const store = useStructureStore.getState();
+    expect(store.associationLineStyle).toBe('dotted');
+
+    store.setAssociationLineStyle('solid');
+    expect(useStructureStore.getState().associationLineStyle).toBe('solid');
+
+    store.setAssociationLineStyle('dotted');
+    expect(useStructureStore.getState().associationLineStyle).toBe('dotted');
+  });
 });

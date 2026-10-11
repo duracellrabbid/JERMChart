@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import {
   AssociatedParty,
+  AssociationLineStyle,
   ChartMetadata,
   EntityNodeData,
   OwnershipEdgeData,
@@ -26,6 +27,7 @@ export interface StructureState {
   ocrReviewState: OcrReviewState | null;
   directorCap: number | 'all';
   isExportMode: boolean;
+  associationLineStyle: AssociationLineStyle;
 
   // Actions
   setMetadata: (meta: Partial<ChartMetadata>) => void;
@@ -35,6 +37,7 @@ export interface StructureState {
   setSortCriteria: (criteria: SiblingSortCriteria) => void;
   setDirectorCap: (cap: number | 'all') => void;
   setExportMode: (isExport: boolean) => void;
+  setAssociationLineStyle: (style: AssociationLineStyle) => void;
   setUndoSnapshot: (snapshot: TrustStructureChart | null) => void;
   restoreUndoSnapshot: () => boolean;
   setOcrReviewState: (state: OcrReviewState | null) => void;
@@ -76,6 +79,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   ocrReviewState: null,
   directorCap: 3,
   isExportMode: false,
+  associationLineStyle: 'dotted',
 
   setMetadata: (meta) =>
     set((state) => ({ metadata: { ...state.metadata, ...meta } })),
@@ -88,6 +92,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   setSortCriteria: (criteria) => set({ sortCriteria: criteria }),
   setDirectorCap: (cap) => set({ directorCap: cap }),
   setExportMode: (isExport) => set({ isExportMode: isExport }),
+  setAssociationLineStyle: (style) => set({ associationLineStyle: style }),
 
   setUndoSnapshot: (snapshot) => set({ undoSnapshot: snapshot }),
 
