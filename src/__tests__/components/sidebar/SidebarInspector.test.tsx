@@ -305,7 +305,7 @@ describe('SidebarInspector', () => {
       fireEvent.click(addPartyBtn);
 
       const entity = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
-      expect(entity?.associatedParties.length).toBe(4);
+      expect(entity?.associatedParties.length).toBe(5);
     });
 
     it('renders entity details form with empty fallbacks for missing registration, taxId, notes, and non-resident director', () => {

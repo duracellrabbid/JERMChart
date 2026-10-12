@@ -108,6 +108,8 @@ describe('layoutEngine', () => {
       expect(formatRoleTitle('Director', 1)).toBe('Director');
       expect(formatRoleTitle('Director', 2)).toBe('Directors');
       expect(formatRoleTitle('Enforcer', 2)).toBe('Enforcers');
+      expect(formatRoleTitle('Trustee', 2)).toBe('Trustees');
+      expect(formatRoleTitle('Beneficiary', 2)).toBe('Beneficiaries');
       expect(formatRoleTitle('Authorised Signatory', 2)).toBe('Authorised Signatories');
       expect(formatRoleTitle('Directors', 3)).toBe('Directors');
       expect(formatRoleTitle('Advisor', 2)).toBe('Advisors');

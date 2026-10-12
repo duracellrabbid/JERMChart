@@ -55,10 +55,11 @@ describe('EntityCardNode', () => {
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByTestId('trust-triangle-card-node')).toBeInTheDocument();
 
-    // Trust with a single beneficiary (branch coverage for +N badge)
+    // Subsidiary with a single beneficiary (branch coverage for +N badge)
     const singleUboProps = createProps({
       data: {
         ...baseEntityData,
+        type: 'Operating Company',
         ubosOrBeneficiaries: ['Single Beneficiary'],
       },
     });

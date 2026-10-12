@@ -20,6 +20,7 @@ export const sampleTrustStructure: TrustStructureChart = {
         { id: 'party-2', name: 'Marcus Aurelius', role: 'Settlor', isCorporate: false, isResident: true },
         { id: 'party-3', name: 'Helena Sterling', role: 'Protector', isCorporate: false, isResident: false },
         { id: 'party-4', name: 'Fiduciary Enforcers Ltd', role: 'Enforcer', isCorporate: true, isResident: true },
+        { id: 'party-10', name: 'Vance Family Descendants', role: 'Beneficiary', isCorporate: false, isResident: false },
       ],
       ubosOrBeneficiaries: ['Marcus Aurelius (Settlor)', 'Vance Family Descendants (Beneficiaries)'],
       notes: 'Discretionary irrevocable settlement governed by Jersey Law.',

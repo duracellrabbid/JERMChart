@@ -66,9 +66,9 @@ export const OwnershipEdge = memo((props: EdgeProps) => {
           }}
           className="flex flex-col items-center justify-center bg-white border border-slate-300 px-2 py-0.5 rounded-full shadow-sm text-[10px] font-semibold text-slate-700 hover:border-sky-500 hover:shadow transition-all cursor-default"
         >
-          <span>{ownership !== undefined ? `${ownership}%` : 'Owns'}</span>
+          <span className="font-tabular tracking-tight">{ownership !== undefined ? `${ownership}%` : 'Owns'}</span>
           {shareClass && (
-            <span className="text-[8px] text-slate-400 -mt-0.5 font-normal max-w-[90px] truncate">
+            <span className="text-[9px] text-slate-400 -mt-0.5 font-normal max-w-[90px] truncate">
               {shareClass}
             </span>
           )}

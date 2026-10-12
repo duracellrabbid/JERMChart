@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStructureStore } from '../../store/useStructureStore';
 import { EntityType, EntityStatus, AssociatedRole } from '../../types/structure';
 import { Trash2, UserPlus } from 'lucide-react';
+import { getRoleBadgeStyle } from '../../utils/entityStyle';
 
 const ENTITY_TYPES: EntityType[] = [
   'Trust',
@@ -20,6 +21,7 @@ const COMMON_ROLES: AssociatedRole[] = [
   'Enforcer',
   'Settlor',
   'Protector',
+  'Beneficiary',
   'Asset Contributor',
   'Authorised Signatory',
   'Fund Manager',
@@ -153,7 +155,7 @@ export const EntityDetailsTab: React.FC = () => {
             value={entity.registrationNumber || ''}
             onChange={(e) => updateEntity(entity.id, { registrationNumber: e.target.value })}
             placeholder="e.g. BVI-BC-123"
-            className="w-full px-2 py-1.5 border border-slate-300 rounded font-mono text-[11px]"
+            className="w-full px-2 py-1.5 border border-slate-300 rounded font-mono font-tabular text-[11px] tracking-tight"
           />
         </div>
         <div>
@@ -163,7 +165,7 @@ export const EntityDetailsTab: React.FC = () => {
             value={entity.taxId || ''}
             onChange={(e) => updateEntity(entity.id, { taxId: e.target.value })}
             placeholder="Optional"
-            className="w-full px-2 py-1.5 border border-slate-300 rounded font-mono text-[11px]"
+            className="w-full px-2 py-1.5 border border-slate-300 rounded font-mono font-tabular text-[11px] tracking-tight"
           />
         </div>
       </div>
@@ -175,28 +177,33 @@ export const EntityDetailsTab: React.FC = () => {
         </label>
 
         <div className="space-y-1.5 mb-3">
-          {parties.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center justify-between p-1.5 bg-slate-50 border border-slate-200 rounded text-[11px]"
-            >
-              <div className="truncate">
-                <span className="font-semibold text-sky-800 mr-1">[{p.role}]</span>
-                <span className="font-medium text-slate-800">{p.name}</span>
-                <span className="ml-1 text-slate-400">
-                  ({p.isCorporate ? 'Corp' : 'Indiv'}
-                  {p.isResident ? ', Res' : ''})
-                </span>
-              </div>
-              <button
-                onClick={() => removeAssociatedParty(entity.id, p.id)}
-                className="text-slate-400 hover:text-rose-600 p-1"
-                title={`Remove ${p.name}`}
+          {parties.map((p) => {
+            const roleStyle = getRoleBadgeStyle(p.role);
+            return (
+              <div
+                key={p.id}
+                className="flex items-center justify-between p-1.5 bg-slate-50 border border-slate-200 rounded text-[11px]"
               >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
+                <div className="truncate flex items-center gap-1.5">
+                  <span className={`px-1.5 py-0.2 rounded font-semibold text-[9px] uppercase tracking-wider ${roleStyle.bg} ${roleStyle.text} border ${roleStyle.border}`}>
+                    {p.role}
+                  </span>
+                  <span className="font-medium text-slate-800">{p.name}</span>
+                  <span className="text-slate-400 text-[10px]">
+                    ({p.isCorporate ? 'Corp' : 'Indiv'}
+                    {p.isResident ? ', Res' : ''})
+                  </span>
+                </div>
+                <button
+                  onClick={() => removeAssociatedParty(entity.id, p.id)}
+                  className="text-slate-400 hover:text-rose-600 p-1"
+                  title={`Remove ${p.name}`}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {/* Add Associated Party Form */}

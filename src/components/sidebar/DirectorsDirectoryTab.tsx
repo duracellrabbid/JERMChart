@@ -74,16 +74,16 @@ export const DirectorsDirectoryTab: React.FC = () => {
                     <span className="truncate">{item.name}</span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${badgeStyle.bg} ${badgeStyle.text}`}>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${badgeStyle.bg} ${badgeStyle.text}`}>
                       {item.roles.join(', ')}
                     </span>
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold" title={`${item.entities.length} entities`}>
+                    <span className="font-tabular text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold" title={`${item.entities.length} entities`}>
                       {item.entities.length}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-1 text-[10px] text-slate-500 truncate">
+                <div className="mt-1 text-[11px] text-slate-500 truncate leading-snug">
                   Entities: {item.entities.map((e) => `${e.name} (${e.role})`).join('; ')}
                 </div>
               </div>

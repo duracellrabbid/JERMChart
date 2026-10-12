@@ -73,6 +73,8 @@ export function formatRoleTitle(role: string, count: number): string {
   if (trimmed.endsWith('s') || trimmed.endsWith('S')) return trimmed;
   if (trimmed.toLowerCase() === 'director') return 'Directors';
   if (trimmed.toLowerCase() === 'enforcer') return 'Enforcers';
+  if (trimmed.toLowerCase() === 'trustee') return 'Trustees';
+  if (trimmed.toLowerCase() === 'beneficiary') return 'Beneficiaries';
   if (trimmed.toLowerCase() === 'authorised signatory' || trimmed.toLowerCase() === 'authorized signatory') {
     return 'Authorised Signatories';
   }

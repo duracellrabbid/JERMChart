@@ -110,20 +110,20 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
             <Landmark className="w-3.5 h-3.5" />
           </div>
           <div className="px-2 py-0.5 rounded-full bg-amber-100/90 border border-amber-200 text-amber-900 flex items-center justify-center">
-            <span className="text-[8px] font-bold tracking-wider uppercase">
+            <span className="text-[9px] font-bold tracking-wider uppercase">
               {entity.type}
             </span>
           </div>
         </div>
 
         <div style={{ maxWidth: `${Math.min(190, Math.floor(width * 0.58))}px` }} className="my-auto px-1 flex flex-col items-center">
-          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-50/80 border border-amber-200/60 text-slate-700 text-[8px] mb-1">
+          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-50/80 border border-amber-200/60 text-slate-700 text-[9px] mb-1">
             <span className={`inline-block w-1.5 h-1.5 rounded-full ${statusDot}`} />
             <span className="font-medium">{entity.status}</span>
           </div>
 
           <h3
-            className="font-bold text-slate-900 text-xs sm:text-[13px] leading-snug break-words line-clamp-3"
+            className="font-bold text-slate-900 text-xs sm:text-[13px] leading-snug break-words line-clamp-3 tracking-tight"
             title={entity.name}
           >
             {entity.name}
@@ -133,21 +133,11 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
             {entity.jurisdiction}
           </div>
           {entity.registrationNumber && (
-            <div className="font-mono text-[8px] text-slate-400 mt-0.5">
+            <div className="font-mono font-tabular text-[9px] text-slate-400 mt-0.5 tracking-tight">
               {entity.registrationNumber}
             </div>
           )}
         </div>
-
-        {entity.ubosOrBeneficiaries && entity.ubosOrBeneficiaries.length > 0 && (
-          <div className="mt-1 pt-1 border-t border-amber-200/40 text-[9px] text-slate-600 flex items-center justify-center gap-1 max-w-[200px] truncate">
-            <ShieldCheck className="w-2.5 h-2.5 text-amber-600 flex-shrink-0" />
-            <span className="truncate font-medium">
-              {entity.ubosOrBeneficiaries[0]}
-              {entity.ubosOrBeneficiaries.length > 1 ? ` +${entity.ubosOrBeneficiaries.length - 1}` : ''}
-            </span>
-          </div>
-        )}
       </div>
 
       <Handle
@@ -221,7 +211,7 @@ const SubsidiarySquareCard: React.FC<ShapeNodeProps> = ({
             </div>
           </div>
 
-          <h3 className="font-semibold text-slate-900 text-xs leading-tight line-clamp-3 break-words">
+          <h3 className="font-semibold text-slate-900 text-xs leading-tight line-clamp-3 break-words tracking-tight">
             {entity.name}
           </h3>
 
@@ -230,7 +220,7 @@ const SubsidiarySquareCard: React.FC<ShapeNodeProps> = ({
               {entity.jurisdiction}
             </span>
             {entity.registrationNumber && (
-              <span className="font-mono text-[9px] text-slate-400 truncate max-w-[80px]">
+              <span className="font-mono font-tabular text-[9px] text-slate-400 truncate max-w-[80px] tracking-tight">
                 {entity.registrationNumber}
               </span>
             )}
@@ -308,7 +298,7 @@ export const BankCircleCard: React.FC<ShapeNodeProps> = ({
         Bank
       </div>
 
-      <h3 className="font-bold text-slate-900 text-xs leading-tight line-clamp-2 px-1 max-w-[150px] break-words" title={entity.name}>
+      <h3 className="font-bold text-slate-900 text-xs leading-tight line-clamp-2 px-1 max-w-[150px] break-words tracking-tight" title={entity.name}>
         {entity.name}
       </h3>
 
@@ -320,7 +310,7 @@ export const BankCircleCard: React.FC<ShapeNodeProps> = ({
         <span className={`inline-block w-1.5 h-1.5 rounded-full ${statusDot}`} />
         <span>{entity.status}</span>
         {entity.registrationNumber && (
-          <span className="font-mono text-slate-400">· {entity.registrationNumber}</span>
+          <span className="font-mono font-tabular text-slate-400 tracking-tight">· {entity.registrationNumber}</span>
         )}
       </div>
 
@@ -400,7 +390,7 @@ export const SatelliteRoleCard = memo(({ data, selected }: SatelliteRoleCardProp
         >
           {satData.role}
         </span>
-        <span className="text-[8px] text-slate-400 font-medium">
+        <span className="font-tabular text-[9px] text-slate-400 font-medium">
           {parties.length}
         </span>
       </div>
@@ -429,7 +419,7 @@ export const SatelliteRoleCard = memo(({ data, selected }: SatelliteRoleCardProp
                 <span className="truncate">{p.name}</span>
               </div>
               {p.isResident && (
-                <span className="ml-1 text-[7px] px-0.5 bg-emerald-100 text-emerald-700 font-bold rounded">
+                <span className="ml-1 text-[8px] px-1 py-0.5 bg-emerald-100 text-emerald-800 font-bold tracking-wide rounded">
                   RES
                 </span>
               )}

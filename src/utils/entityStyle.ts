@@ -99,6 +99,12 @@ export function getRoleBadgeStyle(role: string): { bg: string; text: string; bor
     case 'authorised signatories':
     case 'authorized signatories':
       return { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' };
+    case 'trustee':
+    case 'trustees':
+      return { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' };
+    case 'beneficiary':
+    case 'beneficiaries':
+      return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
     default:
       return { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200' };
   }

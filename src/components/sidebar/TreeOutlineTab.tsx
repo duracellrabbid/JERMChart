@@ -3,6 +3,7 @@ import { useStructureStore } from '../../store/useStructureStore';
 import { Plus, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { buildEntityHierarchy, HierarchyNode } from '../../utils/treeHierarchy';
+import { getEntityTypeColor } from '../../utils/entityStyle';
 
 interface TreeItemRowProps {
   node: HierarchyNode;
@@ -25,6 +26,7 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
 }) => {
   const { entity, depth, ownershipPercentage, additionalParentsCount, children } = node;
   const hasChildren = children.length > 0;
+  const entityColors = getEntityTypeColor(entity.type);
   // Visual indent: 16px per depth level
   const indentPaddingLeft = `${depth * 16}px`;
 
@@ -68,20 +70,22 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
             {additionalParentsCount > 0 && (
               <span
                 title={`Co-owned by ${additionalParentsCount} additional parent entity`}
-                className="text-[10px] bg-slate-100 text-slate-600 font-medium px-1.5 py-0.2 rounded border border-slate-200 flex-shrink-0"
+                className="font-tabular text-[10px] bg-slate-100 text-slate-600 font-medium px-1.5 py-0.2 rounded border border-slate-200 flex-shrink-0"
               >
                 +{additionalParentsCount} parent{additionalParentsCount > 1 ? 's' : ''}
               </span>
             )}
           </div>
           <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-            <span className="font-medium text-sky-700">{entity.type}</span>
-            <span>•</span>
+            <span className={`font-semibold px-1 py-0.2 rounded text-[10px] ${entityColors.badgeBg} ${entityColors.badgeText}`}>
+              {entity.type}
+            </span>
+            <span className="text-slate-300">•</span>
             <span className="truncate">{entity.jurisdiction}</span>
             {ownershipPercentage !== undefined && (
               <>
-                <span>•</span>
-                <span className="text-emerald-700 font-bold">{ownershipPercentage}%</span>
+                <span className="text-slate-300">•</span>
+                <span className="font-tabular text-emerald-700 font-bold">{ownershipPercentage}%</span>
               </>
             )}
           </div>

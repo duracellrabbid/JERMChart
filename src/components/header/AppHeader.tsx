@@ -160,17 +160,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 }
               }}
               title="Click to edit structure title"
-              className="font-bold text-sm text-slate-100 hover:text-sky-300 cursor-pointer flex items-center gap-2 focus:outline-none focus:ring-1 focus:ring-sky-400 rounded px-1"
+              className="font-bold text-sm tracking-tight text-slate-100 hover:text-sky-300 cursor-pointer flex items-center gap-2 focus:outline-none focus:ring-1 focus:ring-sky-400 rounded px-1"
             >
               {metadata.chartTitle}
-              <span className="text-[10px] text-slate-400 font-normal">
+              <span className="text-xs text-slate-400 font-normal">
                 ({metadata.clientReference || 'Ref: Trust'})
               </span>
             </h1>
           )}
-          <div className="text-[10px] text-slate-400 flex items-center gap-2">
-            <span>Effective: {metadata.effectiveDate}</span>
-            <span>•</span>
+          <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+            <span className="font-tabular">Effective: {metadata.effectiveDate}</span>
+            <span className="text-slate-600">•</span>
             <span className="text-amber-400/90 flex items-center gap-1 font-medium">
               <ShieldAlert className="w-3 h-3 inline" /> Confidential Fiduciary Document
             </span>
