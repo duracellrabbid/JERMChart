@@ -190,8 +190,6 @@ async function callGeminiVision(
   return text;
 }
 
-export { trimTrailingSlashes } from '../../utils/urlUtils';
-
 export async function analyzeChartImage(
   base64Image: string,
   mimeType: string,

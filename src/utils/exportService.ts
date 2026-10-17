@@ -208,13 +208,13 @@ export async function exportToPdf(
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(14);
   pdf.setTextColor(15, 23, 42); // slate-900
-  pdf.text(metadata.chartTitle, 15, 14);
+  pdf.text(metadata.chartTitle || 'Trust Structure Chart', 15, 14);
 
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(9);
   pdf.setTextColor(100, 116, 139); // slate-500
   pdf.text(
-    `Matter Ref: ${metadata.clientReference || 'N/A'}  |  Effective Date: ${metadata.effectiveDate}`,
+    `Matter Ref: ${metadata.clientReference || 'N/A'}  |  Effective Date: ${metadata.effectiveDate || 'N/A'}`,
     15,
     19
   );

@@ -6,19 +6,15 @@ Provides a configurable director visibility cap for structure charts to maintain
 ## Requirements
 
 ### Requirement: Global Director Visibility Cap
-The application state MUST maintain a configurable `directorCap` (default: 3; options: 2, 3, 4, 5, 'all') that limits the number of rendered director rows across both Trust triangles and Subsidiary cards on the live canvas.
+Entities SHALL NOT render internal director rows inside the entity shapes. Instead, associated parties SHALL be displayed as external satellite cards outside the entity card, and any party truncation SHALL occur within satellite cards or be governed by satellite card display limits.
 
-#### Scenario: Entity with director count below cap
-- **WHEN** an entity has 2 directors and `directorCap` is 3
-- **THEN** both directors are rendered and no overflow indicator is shown.
+#### Scenario: Entity cards rendered without internal director rows
+- **WHEN** an entity card (Trust triangle, Subsidiary square, or Bank circle) is rendered on canvas
+- **THEN** it renders without internal director rows or embedded director overflow badges, displaying strictly entity governance data.
 
-#### Scenario: Entity with director count exceeding cap
-- **WHEN** an entity has 6 directors and `directorCap` is 3
-- **THEN** exactly the first 3 directors are rendered followed by an overflow indicator displaying `+3 more directors...`.
-
-#### Scenario: Global cap changed via header control
-- **WHEN** the user selects a new cap value in the `AppHeader` dropdown
-- **THEN** the store updates `directorCap`, and the layout engine recalculates node dimensions and positions for all entities.
+#### Scenario: Satellite role card overflow handling
+- **WHEN** a satellite role card contains more individuals than the visible satellite threshold
+- **THEN** the satellite card displays an overflow badge disclosing the remaining individuals.
 
 ### Requirement: Interactive Overflow Badge
 The overflow indicator badge MUST provide progressive disclosure of remaining director details on the live canvas.

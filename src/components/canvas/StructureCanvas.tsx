@@ -62,10 +62,17 @@ export const StructureCanvas: React.FC = () => {
     (connection: Connection) => {
       if (isReadOnly) return;
       if (
-        connection.source &&
-        connection.target &&
-        connection.source !== connection.target
+        !connection.source ||
+        !connection.target ||
+        connection.source === connection.target
       ) {
+        return;
+      }
+
+      const isValidEntity = (id: string) =>
+        !id.startsWith('sat-') && entities.some((e) => e.id === id);
+
+      if (isValidEntity(connection.source) && isValidEntity(connection.target)) {
         addRelationship({
           source: connection.source,
           target: connection.target,
@@ -75,6 +82,7 @@ export const StructureCanvas: React.FC = () => {
       }
     },
     [isReadOnly, addRelationship]
+
   );
 
   const onPaneClick = useCallback(() => {

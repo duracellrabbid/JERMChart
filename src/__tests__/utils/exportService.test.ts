@@ -346,13 +346,13 @@ describe('exportService', () => {
       await exportToPdf('test-canvas', {
         chartTitle: '',
         clientReference: '',
-        effectiveDate: '2026-09-20',
+        effectiveDate: '',
         confidentialityNotice: '',
       });
 
-      expect(mockText).toHaveBeenCalledWith('', 15, 14);
+      expect(mockText).toHaveBeenCalledWith('Trust Structure Chart', 15, 14);
       expect(mockText).toHaveBeenCalledWith(
-        'Matter Ref: N/A  |  Effective Date: 2026-09-20',
+        'Matter Ref: N/A  |  Effective Date: N/A',
         15,
         19
       );

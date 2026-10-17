@@ -260,7 +260,7 @@ describe('layoutEngine', () => {
       expect(crossEdge?.data?.isCrossLink).toBe(true);
     });
 
-    it('handles relationships from unregistered source IDs and unregistered target IDs', () => {
+    it('prunes orphan relationships referencing unregistered source IDs or target IDs', () => {
       const extraEdge: OwnershipEdgeData = {
         id: 'e-orphan',
         source: 'unregistered-source',
@@ -276,8 +276,8 @@ describe('layoutEngine', () => {
         [...mockEdges, extraEdge, extraTargetEdge],
         'alphabetical'
       );
-      const orphan = edges.find((e) => e.id === 'e-orphan');
-      expect(orphan).toBeDefined();
+      expect(edges.find((e) => e.id === 'e-orphan')).toBeUndefined();
+      expect(edges.find((e) => e.id === 'e-orphan-target')).toBeUndefined();
     });
 
     it('calculates extra height for long trust names and handles roleless parties and missing ownership pct', () => {

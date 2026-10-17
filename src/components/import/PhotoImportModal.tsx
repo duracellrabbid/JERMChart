@@ -103,9 +103,19 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   const [showConfirmReplace, setShowConfirmReplace] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     setHasKey(hasValidApiKey());
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -122,9 +132,16 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
     setFile(selectedFile);
     setErrorMsg(null);
 
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+
     // If it's a regular browser-displayable image, show preview
     if (!isHeicFile(selectedFile.name)) {
-      setPreviewUrl(URL.createObjectURL(selectedFile));
+      const url = URL.createObjectURL(selectedFile);
+      previewUrlRef.current = url;
+      setPreviewUrl(url);
     } else {
       setPreviewUrl(null);
     }

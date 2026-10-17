@@ -210,4 +210,27 @@ describe('PhotoImportModal', () => {
       ).toBeInTheDocument();
     });
   });
+
+  it('revokes previous object URL on re-selection and on modal unmount', () => {
+    aiConfig.saveAIConfig({ apiKey: 'valid-test-key-12345' });
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    const { unmount } = render(<PhotoImportModal onClose={vi.fn()} onOpenSettings={vi.fn()} />);
+
+    const fileInput = screen.getByLabelText(/upload photo/i, { selector: 'input' });
+    const file1 = new File(['mock-1'], 'photo1.png', { type: 'image/png' });
+    fireEvent.change(fileInput, { target: { files: [file1] } });
+
+    expect(screen.getByText('photo1.png')).toBeInTheDocument();
+
+    const file2 = new File(['mock-2'], 'photo2.png', { type: 'image/png' });
+    fireEvent.change(fileInput, { target: { files: [file2] } });
+
+    expect(revokeSpy).toHaveBeenCalledTimes(1);
+
+    unmount();
+    expect(revokeSpy).toHaveBeenCalledTimes(2);
+
+    revokeSpy.mockRestore();
+  });
 });

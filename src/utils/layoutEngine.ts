@@ -306,12 +306,11 @@ export function calculateSortedLayout(
   entities.forEach((e) => entityMap.set(e.id, e));
 
   relationships.forEach((rel) => {
-    const child = entityMap.get(rel.target);
-    if (child) {
-      const existing = parentToChildren.get(rel.source) || [];
-      existing.push(child);
-      parentToChildren.set(rel.source, existing);
-    }
+    if (!entityMap.has(rel.source) || !entityMap.has(rel.target)) return;
+    const child = entityMap.get(rel.target)!;
+    const existing = parentToChildren.get(rel.source) || [];
+    existing.push(child);
+    parentToChildren.set(rel.source, existing);
   });
 
   parentToChildren.forEach((children, parentId) => {
@@ -342,21 +341,11 @@ export function calculateSortedLayout(
     });
   });
 
-  const registeredEdgeKeys = new Set<string>();
-
   entities.forEach((parent) => {
     const sortedChildren = parentToChildren.get(parent.id) || [];
     sortedChildren.forEach((child) => {
       dagreGraph.setEdge(parent.id, child.id);
-      registeredEdgeKeys.add(`${parent.id}->${child.id}`);
     });
-  });
-
-  relationships.forEach((rel) => {
-    const key = `${rel.source}->${rel.target}`;
-    if (!registeredEdgeKeys.has(key)) {
-      dagreGraph.setEdge(rel.source, rel.target);
-    }
   });
 
   dagre.layout(dagreGraph);
@@ -423,6 +412,7 @@ export function calculateSortedLayout(
 
   // Register ownership edges
   relationships.forEach((rel) => {
+    if (!entityMap.has(rel.source) || !entityMap.has(rel.target)) return;
     edges.push({
       id: rel.id,
       source: rel.source,

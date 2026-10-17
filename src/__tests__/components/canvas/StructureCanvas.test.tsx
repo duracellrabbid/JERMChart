@@ -134,6 +134,44 @@ describe('StructureCanvas', () => {
     expect(useStructureStore.getState().relationships.length).toBe(initialRelCount);
   });
 
+  it('does not add relationship if source or target is a satellite node or invalid entity', () => {
+    render(<StructureCanvas />);
+    const initialRelCount = useStructureStore.getState().relationships.length;
+
+    // Connect from satellite node
+    act(() => {
+      capturedOnConnect?.({
+        source: 'sat-entity-1-left-0',
+        target: 'entity-4',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+    expect(useStructureStore.getState().relationships.length).toBe(initialRelCount);
+
+    // Connect to satellite node
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-1',
+        target: 'sat-entity-4-right-0',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+    expect(useStructureStore.getState().relationships.length).toBe(initialRelCount);
+
+    // Connect to non-existent entity
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-1',
+        target: 'ghost-entity-999',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+    expect(useStructureStore.getState().relationships.length).toBe(initialRelCount);
+  });
+
   it('updates layout when sort criteria changes', () => {
     render(<StructureCanvas />);
 

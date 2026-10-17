@@ -364,4 +364,37 @@ describe('excelParser', () => {
     expect(chart.entities.find((e) => e.name === 'Part')?.type).toBe('Partnership');
     expect(chart.entities.find((e) => e.name === 'Ind')?.type).toBe('Individual');
   });
+
+  it('disambiguates edge IDs when an entity has multiple share classes from the same parent', () => {
+    const rows = [
+      {
+        'Entity Name': 'Parent HoldCo',
+        'Parent Entity': '',
+        'Entity Type': 'Holding Company',
+      },
+      {
+        'Entity Name': 'Operating Sub',
+        'Parent Entity': 'Parent HoldCo',
+        'Ownership %': 70,
+        'Share Class': 'Ordinary Class A',
+      },
+      {
+        'Entity Name': 'Operating Sub',
+        'Parent Entity': 'Parent HoldCo',
+        'Ownership %': 30,
+        'Share Class': 'Preference Class B',
+      },
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+    const { chart } = parseExcelWorkbook(buffer);
+    expect(chart.entities).toHaveLength(2);
+    expect(chart.relationships).toHaveLength(2);
+    expect(chart.relationships[0].id).not.toBe(chart.relationships[1].id);
+    expect(chart.relationships[0].shareClass).toBe('Ordinary Class A');
+    expect(chart.relationships[1].shareClass).toBe('Preference Class B');
+  });
 });

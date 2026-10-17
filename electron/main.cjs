@@ -59,6 +59,15 @@ function setupSecurityFirewall(sessionInstance, isDevelopment) {
   }
 }
 
+function handleWindowOpen({ url }) {
+  if (url && (url.startsWith('https://') || url.startsWith('http://'))) {
+    shell.openExternal(url);
+  } else {
+    // Deny non-http/https schemes
+  }
+  return { action: 'deny' };
+}
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1400,
@@ -121,10 +130,7 @@ function createWindow() {
   Menu.setApplicationMenu(menu);
 
   // Handle external links safely
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: 'deny' };
-  });
+  mainWindow.webContents.setWindowOpenHandler(handleWindowOpen);
 
   if (isDev) {
     const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
@@ -157,6 +163,7 @@ app.on('window-all-closed', () => {
 
 module.exports = {
   createWindow,
+  handleWindowOpen,
   isAllowedUrl,
   setupSecurityFirewall,
   PRIVACY_SWITCHES,

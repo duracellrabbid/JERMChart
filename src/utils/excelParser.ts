@@ -248,7 +248,7 @@ export function parseExcelWorkbook(
       const parentEntry = entityMap.get(parent.name.toLowerCase());
       if (parentEntry) {
         relationships.push({
-          id: `rel-${parentEntry.entity.id}-${entity.id}`,
+          id: `rel-${parentEntry.entity.id}-${entity.id}-${relationships.length}`,
           source: parentEntry.entity.id,
           target: entity.id,
           ownershipPercentage: parent.pct,

@@ -250,6 +250,32 @@ describe('electron/main.cjs', () => {
     const openResult = openHandler({ url: 'https://example.com/ext' });
     expect(mockShell.openExternal).toHaveBeenCalledWith('https://example.com/ext');
     expect(openResult).toEqual({ action: 'deny' });
+
+    // http:// protocol should be allowed
+    mockShell.openExternal.mockClear();
+    const httpResult = openHandler({ url: 'http://example.com/insecure' });
+    expect(mockShell.openExternal).toHaveBeenCalledWith('http://example.com/insecure');
+    expect(httpResult).toEqual({ action: 'deny' });
+
+    // Empty or undefined url should be denied
+    mockShell.openExternal.mockClear();
+    const emptyResult = openHandler({ url: '' });
+    expect(mockShell.openExternal).not.toHaveBeenCalled();
+    expect(emptyResult).toEqual({ action: 'deny' });
+
+    // Non-web schemes should be denied and NOT passed to shell.openExternal
+    mockShell.openExternal.mockClear();
+    const fileResult = openHandler({ url: 'file:///etc/passwd' });
+    expect(mockShell.openExternal).not.toHaveBeenCalled();
+    expect(fileResult).toEqual({ action: 'deny' });
+
+    const jsResult = openHandler({ url: 'javascript:alert(1)' });
+    expect(mockShell.openExternal).not.toHaveBeenCalled();
+    expect(jsResult).toEqual({ action: 'deny' });
+
+    const customResult = openHandler({ url: 'ms-calculator:launch' });
+    expect(mockShell.openExternal).not.toHaveBeenCalled();
+    expect(customResult).toEqual({ action: 'deny' });
   });
 
   it('uses custom VITE_DEV_SERVER_URL when defined in development', () => {
