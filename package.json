@@ -15,6 +15,7 @@
     "lint:fix": "eslint src --fix",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:ai": "node scripts/test-ai-connection.mjs",
     "audit:security": "npm audit --audit-level=moderate",
     "verify:pre-commit": "npm run lint && npm run test:coverage",
     "verify:pre-push": "npm run build && npm run audit:security",

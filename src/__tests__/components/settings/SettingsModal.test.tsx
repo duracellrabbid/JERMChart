@@ -158,6 +158,34 @@ describe('SettingsModal', () => {
     });
   });
 
+  it('handles connection test failures with JSON error payload from Google GenAI', async () => {
+    mockGenerateContent.mockRejectedValueOnce(
+      new Error(
+        JSON.stringify({
+          error: {
+            code: 400,
+            message: 'API key not valid. Please pass a valid API key.',
+            status: 'INVALID_ARGUMENT',
+          },
+        })
+      )
+    );
+
+    render(<SettingsModal onClose={vi.fn()} />);
+
+    const keyInput = screen.getByPlaceholderText(/enter gemini api key/i);
+    fireEvent.change(keyInput, { target: { value: 'bad-key' } });
+
+    const testBtn = screen.getByRole('button', { name: /test connection/i });
+    fireEvent.click(testBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/connection test failed: api key not valid\. please pass a valid api key\./i)
+      ).toBeInTheDocument();
+    });
+  });
+
   it('handles connection test failures when error has no message', async () => {
     mockGenerateContent.mockRejectedValueOnce({});
 

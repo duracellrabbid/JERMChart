@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI } from '@google/genai';
 import {
   AIConfig,
   getAIConfig,
   saveAIConfig,
 } from '../../services/ai/aiConfig';
+import { testAIConnection } from '../../services/ai/connectionTestService';
 import {
   CUSTOM_MODEL_VALUE,
   getModelsForProvider,
@@ -73,37 +73,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   };
 
   const handleTestConnection = async () => {
-    if (!config.apiKey.trim()) {
-      setTestResult({
-        success: false,
-        message: 'Please enter an API key first.',
-      });
-      return;
-    }
-
     setIsTesting(true);
     setTestResult(null);
-
-    try {
-      const model = config.model || 'gemini-3.8-flash';
-      const ai = new GoogleGenAI({ apiKey: config.apiKey.trim() });
-      await ai.models.generateContent({
-        model,
-        contents: 'Ping',
-      });
-
-      setTestResult({
-        success: true,
-        message: 'Connection verified successfully! The model is responsive.',
-      });
-    } catch (err: any) {
-      setTestResult({
-        success: false,
-        message: `Connection test failed: ${err.message || 'Network error'}`,
-      });
-    } finally {
-      setIsTesting(false);
-    }
+    const result = await testAIConnection(config.apiKey, config.model);
+    setTestResult(result);
+    setIsTesting(false);
   };
 
   const availableModels = getModelsForProvider(config.provider);
