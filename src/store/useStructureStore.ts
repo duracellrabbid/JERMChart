@@ -30,9 +30,13 @@ export interface StructureState {
   associationLineStyle: AssociationLineStyle;
   undoHistory: TrustStructureChart[];
   redoHistory: TrustStructureChart[];
+  isReadOnly: boolean;
+  allowJsonBackup: boolean;
 
   // Actions
   setMetadata: (meta: Partial<ChartMetadata>) => void;
+  setReadOnly: (isReadOnly: boolean) => void;
+  setAllowJsonBackup: (allow: boolean) => void;
   setSelectedEntityId: (id: string | null) => void;
   setHighlightedParty: (partyName: string | null) => void;
   setHighlightedDirector: (directorName: string | null) => void;
@@ -87,9 +91,16 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   associationLineStyle: 'dotted',
   undoHistory: [],
   redoHistory: [],
+  isReadOnly: false,
+  allowJsonBackup: true,
 
-  setMetadata: (meta) =>
-    set((state) => ({ metadata: { ...state.metadata, ...meta } })),
+  setReadOnly: (isReadOnly) => set({ isReadOnly }),
+  setAllowJsonBackup: (allow) => set({ allowJsonBackup: allow }),
+
+  setMetadata: (meta) => {
+    if (get().isReadOnly) return;
+    set((state) => ({ metadata: { ...state.metadata, ...meta } }));
+  },
 
   setSelectedEntityId: (id) => set({ selectedEntityId: id }),
   setHighlightedParty: (partyName) =>
@@ -104,6 +115,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   setUndoSnapshot: (snapshot) => set({ undoSnapshot: snapshot }),
 
   pushHistory: () => {
+    if (get().isReadOnly) return;
     const { metadata, entities, relationships, undoHistory } = get();
     const current: TrustStructureChart = {
       metadata: structuredClone(metadata),
@@ -115,6 +127,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   undo: () => {
+    if (get().isReadOnly) return false;
     const { undoHistory, redoHistory, metadata, entities, relationships } = get();
     if (undoHistory.length === 0) return false;
     const previous = undoHistory[undoHistory.length - 1];
@@ -135,6 +148,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   redo: () => {
+    if (get().isReadOnly) return false;
     const { undoHistory, redoHistory, metadata, entities, relationships } = get();
     if (redoHistory.length === 0) return false;
     const next = redoHistory[0];
@@ -155,6 +169,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   restoreUndoSnapshot: () => {
+    if (get().isReadOnly) return false;
     const snapshot = get().undoSnapshot;
     if (!snapshot) return false;
     set({
@@ -175,6 +190,14 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   dismissOcrReview: () => set({ ocrReviewState: null }),
 
   addEntity: (entityData, parentId, ownershipPct = 100) => {
+    if (get().isReadOnly) {
+      return {
+        ...entityData,
+        id: '',
+        associatedParties: entityData.associatedParties || [],
+        ubosOrBeneficiaries: entityData.ubosOrBeneficiaries || [],
+      };
+    }
     get().pushHistory();
     const newId = `entity-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const newEntity: EntityNodeData = {
@@ -206,6 +229,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   updateEntity: (id, updates) => {
+    if (get().isReadOnly) return;
     get().pushHistory();
     set((state) => ({
       entities: state.entities.map((e) => (e.id === id ? { ...e, ...updates } : e)),
@@ -213,6 +237,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   deleteEntity: (id) => {
+    if (get().isReadOnly) return;
     get().pushHistory();
     set((state) => ({
       entities: state.entities.filter((e) => e.id !== id),
@@ -222,6 +247,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   addAssociatedParty: (entityId, party) => {
+    if (get().isReadOnly) return;
     get().pushHistory();
     set((state) => ({
       entities: state.entities.map((e) => {
@@ -237,6 +263,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   removeAssociatedParty: (entityId, partyId) => {
+    if (get().isReadOnly) return;
     get().pushHistory();
     set((state) => ({
       entities: state.entities.map((e) => {
@@ -259,6 +286,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
     get().removeAssociatedParty(entityId, directorId),
 
   addRelationship: (rel) => {
+    if (get().isReadOnly) return;
     const exists = get().relationships.some((r) => r.source === rel.source && r.target === rel.target);
     if (exists) return;
     get().pushHistory();
@@ -270,6 +298,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   updateRelationship: (id, updates) => {
+    if (get().isReadOnly) return;
     get().pushHistory();
     set((state) => ({
       relationships: state.relationships.map((r) => (r.id === id ? { ...r, ...updates } : r)),
@@ -277,6 +306,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   deleteRelationship: (id) => {
+    if (get().isReadOnly) return;
     get().pushHistory();
     set((state) => ({
       relationships: state.relationships.filter((r) => r.id !== id),
@@ -296,6 +326,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   resetToSample: () => {
+    if (get().isReadOnly) return;
     const sample = structuredClone(sampleTrustStructure);
     set({
       metadata: sample.metadata,
@@ -310,6 +341,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   clearCanvas: () => {
+    if (get().isReadOnly) return;
     get().pushHistory();
     set({
       metadata: {
