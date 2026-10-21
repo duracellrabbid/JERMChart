@@ -34,6 +34,7 @@ export const StructureCanvas: React.FC = () => {
   const sortCriteria = useStructureStore((state) => state.sortCriteria);
   const directorCap = useStructureStore((state) => state.directorCap);
   const isExportMode = useStructureStore((state) => state.isExportMode);
+  const isReadOnly = useStructureStore((state) => state.isReadOnly);
   const addRelationship = useStructureStore((state) => state.addRelationship);
   const setSelectedEntityId = useStructureStore((state) => state.setSelectedEntityId);
 
@@ -59,6 +60,7 @@ export const StructureCanvas: React.FC = () => {
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      if (isReadOnly) return;
       if (
         connection.source &&
         connection.target &&
@@ -72,7 +74,7 @@ export const StructureCanvas: React.FC = () => {
         });
       }
     },
-    [addRelationship]
+    [isReadOnly, addRelationship]
   );
 
   const onPaneClick = useCallback(() => {
@@ -85,6 +87,7 @@ export const StructureCanvas: React.FC = () => {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodesConnectable={!isReadOnly}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}

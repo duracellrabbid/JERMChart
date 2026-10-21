@@ -4,6 +4,7 @@ import { StructureCanvas } from '../../../components/canvas/StructureCanvas';
 import { useStructureStore } from '../../../store/useStructureStore';
 
 let capturedOnConnect: ((connection: any) => void) | undefined;
+let capturedProps: any = {};
 
 vi.mock('@xyflow/react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@xyflow/react')>();
@@ -11,6 +12,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
     ...actual,
     ReactFlow: (props: any) => {
       capturedOnConnect = props.onConnect;
+      capturedProps = props;
       return (
         <div data-testid="react-flow-wrapper">
           <actual.ReactFlow {...props} />
@@ -23,6 +25,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
 describe('StructureCanvas', () => {
   beforeEach(() => {
     act(() => {
+      useStructureStore.setState({ isReadOnly: false, allowJsonBackup: true });
       useStructureStore.getState().resetToSample();
     });
   });
@@ -84,6 +87,27 @@ describe('StructureCanvas', () => {
     act(() => {
       capturedOnConnect?.({
         source: null,
+        target: 'entity-4',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    expect(useStructureStore.getState().relationships.length).toBe(initialRelCount);
+  });
+
+  it('disables node connections and guards onConnect when isReadOnly is true', () => {
+    act(() => {
+      useStructureStore.setState({ isReadOnly: true });
+    });
+
+    render(<StructureCanvas />);
+    expect(capturedProps.nodesConnectable).toBe(false);
+
+    const initialRelCount = useStructureStore.getState().relationships.length;
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-1',
         target: 'entity-4',
         sourceHandle: null,
         targetHandle: null,

@@ -8,7 +8,17 @@ import { PhotoImportModal } from './components/import/PhotoImportModal';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { useStructureStore } from './store/useStructureStore';
 
-export default function App() {
+export interface AppProps {
+  headerLeftSlot?: React.ReactNode;
+  headerRightSlot?: React.ReactNode;
+  hideSettingsButton?: boolean;
+}
+
+export default function App({
+  headerLeftSlot,
+  headerRightSlot,
+  hideSettingsButton,
+}: AppProps = {}) {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
   const [isPhotoImportOpen, setIsPhotoImportOpen] = useState(false);
@@ -54,6 +64,9 @@ export default function App() {
         onOpenExcelImport={() => setIsExcelImportOpen(true)}
         onOpenPhotoImport={() => setIsPhotoImportOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        headerLeftSlot={headerLeftSlot}
+        headerRightSlot={headerRightSlot}
+        hideSettingsButton={hideSettingsButton}
       />
       <div className="flex-1 flex overflow-hidden relative">
         <SidebarInspector />

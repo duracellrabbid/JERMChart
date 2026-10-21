@@ -5,6 +5,7 @@ import { useStructureStore } from '../../../store/useStructureStore';
 
 describe('SidebarInspector', () => {
   beforeEach(() => {
+    useStructureStore.setState({ isReadOnly: false, allowJsonBackup: true });
     useStructureStore.getState().resetToSample();
     vi.restoreAllMocks();
   });
@@ -184,6 +185,17 @@ describe('SidebarInspector', () => {
       rerender(<SidebarInspector />);
       expect(screen.getByText('+2 parents')).toBeInTheDocument();
     });
+
+    it('hides add entity, add subsidiary, and delete entity buttons when isReadOnly is true', () => {
+      act(() => {
+        useStructureStore.setState({ isReadOnly: true });
+      });
+
+      render(<SidebarInspector />);
+      expect(screen.queryByRole('button', { name: /Add Entity/i })).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Add Subsidiary to this entity')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Delete Entity')).not.toBeInTheDocument();
+    });
   });
 
   describe('EntityDetailsTab', () => {
@@ -332,6 +344,39 @@ describe('SidebarInspector', () => {
       expect(screen.getByPlaceholderText('e.g. BVI-BC-123')).toHaveValue('');
       expect(screen.getByPlaceholderText('Optional')).toHaveValue('');
       expect(screen.getByPlaceholderText(/Settlor, protector/i)).toHaveValue('');
+    });
+
+    it('disables all inputs and hides party mutating controls when isReadOnly is true', () => {
+      act(() => {
+        useStructureStore.setState({ isReadOnly: true });
+      });
+
+      render(<SidebarInspector />);
+      fireEvent.click(screen.getByRole('button', { name: /Details/i }));
+
+      const nameInput = screen.getByDisplayValue('The Aurelius Dynasty Trust');
+      expect(nameInput).toBeDisabled();
+
+      const typeSelect = screen.getByDisplayValue('Trust');
+      expect(typeSelect).toBeDisabled();
+
+      const statusSelect = screen.getByDisplayValue('Active');
+      expect(statusSelect).toBeDisabled();
+
+      const jurInput = screen.getByDisplayValue('Jersey, Channel Islands');
+      expect(jurInput).toBeDisabled();
+
+      const regInput = screen.getByDisplayValue('TR-JER-2018-912');
+      expect(regInput).toBeDisabled();
+
+      const taxInput = screen.getByPlaceholderText('Optional');
+      expect(taxInput).toBeDisabled();
+
+      const notesTextarea = screen.getByPlaceholderText(/e\.g\. Settlor, protector, or governing trust deed dates/i);
+      expect(notesTextarea).toBeDisabled();
+
+      expect(screen.queryByTitle(/Remove Apex Trust Corp/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Add Associated Party/i })).not.toBeInTheDocument();
     });
   });
 

@@ -5,10 +5,11 @@ import { ConfirmationModal } from '../common/ConfirmationModal';
 import { buildEntityHierarchy, HierarchyNode } from '../../utils/treeHierarchy';
 import { getEntityTypeColor } from '../../utils/entityStyle';
 
-interface TreeItemRowProps {
+export interface TreeItemRowProps {
   node: HierarchyNode;
   isCollapsed: boolean;
   isSelected: boolean;
+  isReadOnly?: boolean;
   onToggleCollapse: (id: string) => void;
   onSelect: (id: string) => void;
   onAddChild: (id: string) => void;
@@ -19,6 +20,7 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
   node,
   isCollapsed,
   isSelected,
+  isReadOnly,
   onToggleCollapse,
   onSelect,
   onAddChild,
@@ -92,30 +94,32 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          type="button"
-          title="Add Subsidiary to this entity"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddChild(entity.id);
-          }}
-          className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-sky-600 transition"
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
-        <button
-          type="button"
-          title="Delete Entity"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(entity.id, entity.name);
-          }}
-          className="p-1 hover:bg-rose-50 rounded text-slate-400 hover:text-rose-600 transition"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
+      {!isReadOnly && (
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            type="button"
+            title="Add Subsidiary to this entity"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddChild(entity.id);
+            }}
+            className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-sky-600 transition"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            title="Delete Entity"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(entity.id, entity.name);
+            }}
+            className="p-1 hover:bg-rose-50 rounded text-slate-400 hover:text-rose-600 transition"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -127,6 +131,7 @@ export const TreeOutlineTab: React.FC = () => {
   const setSelectedEntityId = useStructureStore((state) => state.setSelectedEntityId);
   const addEntity = useStructureStore((state) => state.addEntity);
   const deleteEntity = useStructureStore((state) => state.deleteEntity);
+  const isReadOnly = useStructureStore((state) => state.isReadOnly);
 
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [deletingEntity, setDeletingEntity] = useState<{ id: string; name: string } | null>(null);
@@ -183,6 +188,7 @@ export const TreeOutlineTab: React.FC = () => {
             node={node}
             isCollapsed={isCollapsed}
             isSelected={selectedEntityId === node.entity.id}
+            isReadOnly={isReadOnly}
             onToggleCollapse={handleToggleCollapse}
             onSelect={setSelectedEntityId}
             onAddChild={handleAddChild}
@@ -200,12 +206,14 @@ export const TreeOutlineTab: React.FC = () => {
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
           Entities ({entities.length})
         </span>
-        <button
-          onClick={handleAddNewRoot}
-          className="flex items-center gap-1 text-xs bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 rounded font-medium transition"
-        >
-          <Plus className="w-3 h-3" /> Add Entity
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={handleAddNewRoot}
+            className="flex items-center gap-1 text-xs bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 rounded font-medium transition"
+          >
+            <Plus className="w-3 h-3" /> Add Entity
+          </button>
+        )}
       </div>
 
       <div

@@ -18,11 +18,14 @@ import {
 } from 'lucide-react';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 
-interface AppHeaderProps {
+export interface AppHeaderProps {
   onOpenExport: () => void;
   onOpenExcelImport: () => void;
   onOpenPhotoImport: () => void;
   onOpenSettings: () => void;
+  headerLeftSlot?: React.ReactNode;
+  headerRightSlot?: React.ReactNode;
+  hideSettingsButton?: boolean;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -30,6 +33,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenExcelImport,
   onOpenPhotoImport,
   onOpenSettings,
+  headerLeftSlot,
+  headerRightSlot,
+  hideSettingsButton,
 }) => {
   const metadata = useStructureStore((state) => state.metadata);
   const setMetadata = useStructureStore((state) => state.setMetadata);
@@ -45,6 +51,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const redo = useStructureStore((state) => state.redo);
   const undoHistory = useStructureStore((state) => state.undoHistory);
   const redoHistory = useStructureStore((state) => state.redoHistory);
+  const isReadOnly = useStructureStore((state) => state.isReadOnly);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [initialTitle, setInitialTitle] = useState('');
@@ -94,8 +101,25 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   }, []);
 
   const handleStartEditing = () => {
+    if (isReadOnly) return;
     setInitialTitle(metadata.chartTitle);
     setIsEditingTitle(true);
+  };
+
+  const handleTitleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      setIsEditingTitle(false);
+    } else if (e.key === 'Escape') {
+      setMetadata({ chartTitle: initialTitle });
+      setIsEditingTitle(false);
+    }
+  };
+
+  const handleHeadingKeyDown = (e: React.KeyboardEvent) => {
+    if (!isReadOnly && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      handleStartEditing();
+    }
   };
 
   const requestClearCanvas = () => {
@@ -128,39 +152,32 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     <header className="h-14 bg-slate-900 text-white flex items-center justify-between px-4 border-b border-slate-800 flex-shrink-0 z-20">
       {/* Cluster 1: Document & Trust Metadata */}
       <div className="flex items-center gap-3">
+        {headerLeftSlot}
         <div className="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center font-black text-white text-sm shadow">
           JC
         </div>
         <div>
-          {isEditingTitle ? (
+          {isEditingTitle && !isReadOnly ? (
             <input
               type="text"
               autoFocus
               value={metadata.chartTitle}
               onBlur={() => setIsEditingTitle(false)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  setIsEditingTitle(false);
-                } else if (e.key === 'Escape') {
-                  setMetadata({ chartTitle: initialTitle });
-                  setIsEditingTitle(false);
-                }
-              }}
+              onKeyDown={handleTitleInputKeyDown}
               onChange={(e) => setMetadata({ chartTitle: e.target.value })}
               className="bg-slate-800 text-white font-bold text-sm px-2 py-0.5 rounded border border-sky-500 focus:outline-none"
             />
           ) : (
             <h1
-              tabIndex={0}
+              tabIndex={isReadOnly ? -1 : 0}
               onClick={handleStartEditing}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleStartEditing();
-                }
-              }}
-              title="Click to edit structure title"
-              className="font-bold text-sm tracking-tight text-slate-100 hover:text-sky-300 cursor-pointer flex items-center gap-2 focus:outline-none focus:ring-1 focus:ring-sky-400 rounded px-1"
+              onKeyDown={handleHeadingKeyDown}
+              title={isReadOnly ? undefined : 'Click to edit structure title'}
+              className={`font-bold text-sm tracking-tight text-slate-100 flex items-center gap-2 rounded px-1 ${
+                isReadOnly
+                  ? 'cursor-default'
+                  : 'hover:text-sky-300 cursor-pointer focus:outline-none focus:ring-1 focus:ring-sky-400'
+              }`}
             >
               {metadata.chartTitle}
               <span className="text-xs text-slate-400 font-normal">
@@ -181,34 +198,36 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       {/* Center/Right Clusters: Undo/Redo History, View & Layout, Document Actions */}
       <div className="flex items-center gap-2">
         {/* History Controls (Undo / Redo) */}
-        <div className="flex items-center bg-slate-800 rounded-md border border-slate-700 p-0.5 mr-1">
-          <button
-            onClick={() => undo()}
-            disabled={undoHistory.length === 0}
-            className={`p-1.5 rounded transition ${
-              undoHistory.length > 0
-                ? 'text-slate-200 hover:text-white hover:bg-slate-700 cursor-pointer'
-                : 'text-slate-600 cursor-not-allowed'
-            }`}
-            title="Undo (Ctrl+Z)"
-            aria-label="Undo"
-          >
-            <Undo2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => redo()}
-            disabled={redoHistory.length === 0}
-            className={`p-1.5 rounded transition ${
-              redoHistory.length > 0
-                ? 'text-slate-200 hover:text-white hover:bg-slate-700 cursor-pointer'
-                : 'text-slate-600 cursor-not-allowed'
-            }`}
-            title="Redo (Ctrl+Y)"
-            aria-label="Redo"
-          >
-            <Redo2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        {!isReadOnly && (
+          <div className="flex items-center bg-slate-800 rounded-md border border-slate-700 p-0.5 mr-1">
+            <button
+              onClick={() => undo()}
+              disabled={undoHistory.length === 0}
+              className={`p-1.5 rounded transition ${
+                undoHistory.length > 0
+                  ? 'text-slate-200 hover:text-white hover:bg-slate-700 cursor-pointer'
+                  : 'text-slate-600 cursor-not-allowed'
+              }`}
+              title="Undo (Ctrl+Z)"
+              aria-label="Undo"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => redo()}
+              disabled={redoHistory.length === 0}
+              className={`p-1.5 rounded transition ${
+                redoHistory.length > 0
+                  ? 'text-slate-200 hover:text-white hover:bg-slate-700 cursor-pointer'
+                  : 'text-slate-600 cursor-not-allowed'
+              }`}
+              title="Redo (Ctrl+Y)"
+              aria-label="Redo"
+            >
+              <Redo2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Layout & View Controls Cluster */}
         <div className="relative" ref={viewMenuRef}>
@@ -310,89 +329,93 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </button>
 
         {/* Reset / New Dropdown */}
-        <div className="relative" ref={resetMenuRef}>
-          <button
-            onClick={() => setIsResetMenuOpen((prev) => !prev)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-md border border-slate-700 transition cursor-pointer"
-            title="Reset or clear structure canvas"
-            aria-expanded={isResetMenuOpen}
-            aria-haspopup="true"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Reset / New</span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
-          </button>
+        {!isReadOnly && (
+          <div className="relative" ref={resetMenuRef}>
+            <button
+              onClick={() => setIsResetMenuOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-md border border-slate-700 transition cursor-pointer"
+              title="Reset or clear structure canvas"
+              aria-expanded={isResetMenuOpen}
+              aria-haspopup="true"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset / New</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
 
-          {isResetMenuOpen && (
-            <div className="absolute right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-30">
-              <button
-                onClick={requestClearCanvas}
-                className="w-full text-left px-3 py-2 text-xs text-rose-300 hover:bg-rose-950/40 hover:text-rose-200 flex items-center gap-2 transition cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
-                <span>Clear Canvas (Blank)</span>
-              </button>
-              <button
-                onClick={requestResetToSample}
-                className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2 transition cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
-                <span>Load Sample Template</span>
-              </button>
-            </div>
-          )}
-        </div>
+            {isResetMenuOpen && (
+              <div className="absolute right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-30">
+                <button
+                  onClick={requestClearCanvas}
+                  className="w-full text-left px-3 py-2 text-xs text-rose-300 hover:bg-rose-950/40 hover:text-rose-200 flex items-center gap-2 transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+                  <span>Clear Canvas (Blank)</span>
+                </button>
+                <button
+                  onClick={requestResetToSample}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2 transition cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
+                  <span>Load Sample Template</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Import Dropdown */}
-        <div className="relative" ref={importMenuRef}>
-          <button
-            onClick={() => setIsImportMenuOpen((prev) => !prev)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-md border border-slate-700 shadow transition cursor-pointer"
-            title="Import structure into canvas"
-            aria-expanded={isImportMenuOpen}
-            aria-haspopup="true"
-          >
-            <Upload className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Import</span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
-          </button>
+        {!isReadOnly && (
+          <div className="relative" ref={importMenuRef}>
+            <button
+              onClick={() => setIsImportMenuOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-md border border-slate-700 shadow transition cursor-pointer"
+              title="Import structure into canvas"
+              aria-expanded={isImportMenuOpen}
+              aria-haspopup="true"
+            >
+              <Upload className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Import</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
 
-          {isImportMenuOpen && (
-            <div className="absolute right-0 mt-1 w-64 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-30 animate-in fade-in duration-100">
-              <button
-                onClick={() => {
-                  setIsImportMenuOpen(false);
-                  onOpenExcelImport();
-                }}
-                className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition cursor-pointer"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <div>
-                  <div className="font-semibold text-slate-100">Import Excel (.xlsx)</div>
-                  <div className="text-[10px] text-slate-400">Load structured table template</div>
-                </div>
-              </button>
-              <button
-                onClick={() => {
-                  setIsImportMenuOpen(false);
-                  onOpenPhotoImport();
-                }}
-                className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition cursor-pointer border-t border-slate-700/60"
-              >
-                <Camera className="w-4 h-4 text-sky-400 flex-shrink-0" />
-                <div>
-                  <div className="font-semibold text-slate-100 flex items-center gap-1.5">
-                    <span>Import from Photo</span>
-                    <span className="px-1.5 py-0.2 bg-sky-500/20 text-sky-300 text-[9px] font-bold rounded">
-                      AI OCR
-                    </span>
+            {isImportMenuOpen && (
+              <div className="absolute right-0 mt-1 w-64 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-30 animate-in fade-in duration-100">
+                <button
+                  onClick={() => {
+                    setIsImportMenuOpen(false);
+                    onOpenExcelImport();
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <div>
+                    <div className="font-semibold text-slate-100">Import Excel (.xlsx)</div>
+                    <div className="text-[10px] text-slate-400">Load structured table template</div>
                   </div>
-                  <div className="text-[10px] text-slate-400">Transcribe hand-drawn chart photo</div>
-                </div>
-              </button>
-            </div>
-          )}
-        </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsImportMenuOpen(false);
+                    onOpenPhotoImport();
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition cursor-pointer border-t border-slate-700/60"
+                >
+                  <Camera className="w-4 h-4 text-sky-400 flex-shrink-0" />
+                  <div>
+                    <div className="font-semibold text-slate-100 flex items-center gap-1.5">
+                      <span>Import from Photo</span>
+                      <span className="px-1.5 py-0.2 bg-sky-500/20 text-sky-300 text-[9px] font-bold rounded">
+                        AI OCR
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400">Transcribe hand-drawn chart photo</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Export Trigger */}
         <button
@@ -403,14 +426,18 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </button>
 
         {/* Settings Trigger */}
-        <button
-          onClick={onOpenSettings}
-          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-md border border-slate-700 shadow transition cursor-pointer"
-          title="AI Provider & Settings"
-          aria-label="AI Settings"
-        >
-          <Settings className="w-4 h-4 text-slate-400 hover:text-sky-400" />
-        </button>
+        {!hideSettingsButton && (
+          <button
+            onClick={onOpenSettings}
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-md border border-slate-700 shadow transition cursor-pointer"
+            title="AI Provider & Settings"
+            aria-label="AI Settings"
+          >
+            <Settings className="w-4 h-4 text-slate-400 hover:text-sky-400" />
+          </button>
+        )}
+
+        {headerRightSlot}
       </div>
 
       {confirmModalConfig && (

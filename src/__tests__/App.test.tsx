@@ -188,4 +188,18 @@ describe('App Integration', () => {
     fireEvent.keyDown(window, { key: 'a', ctrlKey: true });
     expect(useStructureStore.getState().entities.length).toBe(initialCount + 1);
   });
+
+  it('renders headerLeftSlot, headerRightSlot, and respects hideSettingsButton', () => {
+    render(
+      <App
+        headerLeftSlot={<div data-testid="app-left-slot">App Left Slot</div>}
+        headerRightSlot={<div data-testid="app-right-slot">App Right Slot</div>}
+        hideSettingsButton={true}
+      />
+    );
+
+    expect(screen.getByTestId('app-left-slot')).toBeInTheDocument();
+    expect(screen.getByTestId('app-right-slot')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/AI Settings/i)).not.toBeInTheDocument();
+  });
 });
