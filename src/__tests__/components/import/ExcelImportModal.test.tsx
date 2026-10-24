@@ -28,6 +28,7 @@ describe('ExcelImportModal Component', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -57,7 +58,8 @@ describe('ExcelImportModal Component', () => {
     expect(mockOnClose).toHaveBeenCalledTimes(2);
   });
 
-  it('downloads Excel template when Download Excel Template button is clicked', () => {
+  it('downloads Excel template when Download Excel Template button is clicked and defers revocation', () => {
+    vi.useFakeTimers();
     render(<ExcelImportModal onClose={mockOnClose} />);
 
     const downloadBtn = screen.getByRole('button', { name: /Download Excel Template/i });
@@ -66,7 +68,11 @@ describe('ExcelImportModal Component', () => {
     expect(excelParser.generateExcelTemplate).toHaveBeenCalledTimes(1);
     expect(createObjectURLSpy).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
+    expect(revokeObjectURLSpy).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1000);
     expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-template-url');
+    vi.useRealTimers();
   });
 
   it('parses uploaded Excel file and displays preview summary cards and entities table', async () => {

@@ -21,17 +21,27 @@ export function parseJsonBackup(jsonString: string): TrustStructureChart | null 
   }
 }
 
+export function sanitizeDownloadFilename(filename?: string, fallback = 'Chart'): string {
+  return (filename || fallback).replace(/[^a-z0-9]/gi, '_');
+}
+
+export function revokeObjectURLDeferred(url: string, delayMs = 1000): void {
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, delayMs);
+}
+
 export function downloadJsonBackup(chart: TrustStructureChart): void {
   const blob = new Blob([JSON.stringify(chart, null, 2)], {
     type: 'application/json',
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  const safeTitle = (chart.metadata?.chartTitle || 'Trust').replace(/[^a-z0-9]/gi, '_');
+  const safeTitle = sanitizeDownloadFilename(chart.metadata?.chartTitle, 'Trust');
   link.download = `${safeTitle}_Structure.json`;
   link.href = url;
   link.click();
-  URL.revokeObjectURL(url);
+  revokeObjectURLDeferred(url);
 }
 
 export function downloadExcelStructure(chart: TrustStructureChart): void {
@@ -41,11 +51,11 @@ export function downloadExcelStructure(chart: TrustStructureChart): void {
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  const safeTitle = (chart.metadata?.chartTitle || 'Trust').replace(/[^a-z0-9]/gi, '_');
+  const safeTitle = sanitizeDownloadFilename(chart.metadata?.chartTitle, 'Trust');
   link.download = `${safeTitle}_Structure.xlsx`;
   link.href = url;
   link.click();
-  URL.revokeObjectURL(url);
+  revokeObjectURLDeferred(url);
 }
 
 export interface ExportBounds {
@@ -173,8 +183,9 @@ export async function exportToImage(
     });
   }
 
+  const safeTitle = sanitizeDownloadFilename(filename, 'Chart');
   const link = document.createElement('a');
-  link.download = `${filename}.${format}`;
+  link.download = `${safeTitle}.${format}`;
   link.href = dataUrl;
   link.click();
 }
@@ -247,7 +258,7 @@ export async function exportToPdf(
     { align: 'center' }
   );
 
-  const safeTitle = (metadata.chartTitle || 'Trust').replace(/[^a-z0-9]/gi, '_');
+  const safeTitle = sanitizeDownloadFilename(metadata.chartTitle, 'Trust');
   pdf.save(`${safeTitle}_Structure.pdf`);
 }
 
@@ -328,7 +339,7 @@ export async function exportToPptx(
     }
   );
 
-  const safeTitle = (metadata.chartTitle || 'Trust').replace(/[^a-z0-9]/gi, '_');
+  const safeTitle = sanitizeDownloadFilename(metadata.chartTitle, 'Trust');
   await pptx.writeFile({ fileName: `${safeTitle}_Structure.pptx` });
 }
 

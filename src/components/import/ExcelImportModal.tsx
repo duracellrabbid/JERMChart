@@ -52,7 +52,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose }) =
     a.href = url;
     a.download = 'Trust_Structure_Template.xlsx';
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
   };
 
   const processFile = async (file: File) => {

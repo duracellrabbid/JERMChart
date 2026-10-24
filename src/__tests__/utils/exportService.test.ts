@@ -10,6 +10,8 @@ import {
   getNodeDimensions,
   calculateViewportExportBounds,
   getViewportExportConfig,
+  sanitizeDownloadFilename,
+  revokeObjectURLDeferred,
 } from '../../utils/exportService';
 import { sampleTrustStructure } from '../../data/sampleStructure';
 
@@ -163,6 +165,63 @@ describe('exportService', () => {
     });
   });
 
+  describe('sanitizeDownloadFilename', () => {
+    it('replaces non-alphanumeric characters with underscores', () => {
+      expect(sanitizeDownloadFilename('Smith / Jones: Special *Trust*?')).toBe(
+        'Smith___Jones__Special__Trust__'
+      );
+    });
+
+    it('falls back to default fallback "Chart" when filename is undefined or empty', () => {
+      expect(sanitizeDownloadFilename(undefined)).toBe('Chart');
+      expect(sanitizeDownloadFilename('')).toBe('Chart');
+    });
+
+    it('uses custom fallback when provided', () => {
+      expect(sanitizeDownloadFilename(undefined, 'Trust')).toBe('Trust');
+      expect(sanitizeDownloadFilename('', 'CustomFallback')).toBe('CustomFallback');
+    });
+
+    it('preserves alphanumeric characters', () => {
+      expect(sanitizeDownloadFilename('Trust123')).toBe('Trust123');
+    });
+  });
+
+  describe('revokeObjectURLDeferred', () => {
+    beforeEach(() => {
+      window.URL.revokeObjectURL = vi.fn();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it('defers URL.revokeObjectURL call by specified delay', () => {
+      vi.useFakeTimers();
+      const spy = vi.spyOn(window.URL, 'revokeObjectURL');
+      revokeObjectURLDeferred('blob:test-url', 1000);
+
+      expect(spy).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(999);
+      expect(spy).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(spy).toHaveBeenCalledWith('blob:test-url');
+      vi.useRealTimers();
+    });
+
+    it('defaults to 1000ms delay if delayMs is omitted', () => {
+      vi.useFakeTimers();
+      const spy = vi.spyOn(window.URL, 'revokeObjectURL');
+      revokeObjectURLDeferred('blob:test-default-url');
+
+      expect(spy).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1000);
+      expect(spy).toHaveBeenCalledWith('blob:test-default-url');
+      vi.useRealTimers();
+    });
+  });
+
   describe('downloadJsonBackup', () => {
     let createObjectURLSpy: any;
     let revokeObjectURLSpy: any;
@@ -177,15 +236,21 @@ describe('exportService', () => {
     });
 
     afterEach(() => {
+      vi.useRealTimers();
       vi.restoreAllMocks();
     });
 
-    it('triggers file download with correct filename and format', () => {
+    it('triggers file download with correct filename and format with deferred revocation', () => {
+      vi.useFakeTimers();
       downloadJsonBackup(sampleTrustStructure);
 
       expect(createObjectURLSpy).toHaveBeenCalled();
       expect(clickSpy).toHaveBeenCalled();
+      expect(revokeObjectURLSpy).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1000);
       expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url');
+      vi.useRealTimers();
     });
 
     it('falls back to default title "Trust" when chartTitle is missing or undefined', () => {
@@ -221,15 +286,21 @@ describe('exportService', () => {
     });
 
     afterEach(() => {
+      vi.useRealTimers();
       vi.restoreAllMocks();
     });
 
-    it('triggers Excel file download with correct filename and cleans up object URL', () => {
+    it('triggers Excel file download with correct filename and cleans up object URL after delay', () => {
+      vi.useFakeTimers();
       downloadExcelStructure(sampleTrustStructure);
 
       expect(createObjectURLSpy).toHaveBeenCalled();
       expect(clickSpy).toHaveBeenCalled();
+      expect(revokeObjectURLSpy).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1000);
       expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-excel-url');
+      vi.useRealTimers();
     });
 
     it('falls back to default title "Trust" when chartTitle is missing', () => {
@@ -293,6 +364,28 @@ describe('exportService', () => {
       const { toPng } = await import('html-to-image');
       await exportToImage('test-canvas', 'png', 'no_viewport');
       expect(toPng).toHaveBeenCalledWith(container, expect.anything());
+    });
+
+    it('sanitizes illegal filename characters in exportToImage', async () => {
+      let capturedDownload = '';
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        capturedDownload = this.download;
+      });
+
+      await exportToImage('test-canvas', 'png', 'Smith / Jones: Special *Trust*?');
+
+      expect(capturedDownload).toBe('Smith___Jones__Special__Trust__.png');
+    });
+
+    it('falls back to "Chart" when filename is empty or undefined in exportToImage', async () => {
+      let capturedDownload = '';
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        capturedDownload = this.download;
+      });
+
+      await exportToImage('test-canvas', 'svg', '');
+
+      expect(capturedDownload).toBe('Chart.svg');
     });
   });
 
