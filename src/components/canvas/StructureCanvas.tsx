@@ -89,6 +89,11 @@ export const StructureCanvasContent: React.FC = () => {
     position: { x: number; y: number };
   } | null>(null);
   const [cycleWarning, setCycleWarning] = useState<string | null>(null);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number }>({ x: 400, y: 250 });
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    setCursorPos({ x: e.clientX, y: e.clientY });
+  }, []);
 
   // Calculate layout on structure, sort criteria, director cap, export mode, or staged nodes change
   const refreshLayout = useCallback(() => {
@@ -232,10 +237,9 @@ export const StructureCanvasContent: React.FC = () => {
   const onConnect = useCallback(
     (connection: Connection) => {
       if (isReadOnly) return;
-      // Default release position to approximate center or fallback
-      resolveConnectionAttempt(connection, { x: 400, y: 250 });
+      resolveConnectionAttempt(connection, cursorPos);
     },
-    [isReadOnly, resolveConnectionAttempt]
+    [isReadOnly, resolveConnectionAttempt, cursorPos]
   );
 
   const handleConfirmConnection = useCallback(
@@ -273,6 +277,7 @@ export const StructureCanvasContent: React.FC = () => {
     <div
       className="relative w-full h-full bg-slate-100"
       id="trust-structure-canvas"
+      onPointerMove={handlePointerMove}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >

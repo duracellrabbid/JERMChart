@@ -391,5 +391,29 @@ describe('StructureCanvas', () => {
     fireEvent.click(closeBtn);
     expect(screen.queryByText(/circular ownership loops are not permitted/i)).toBeNull();
   });
+
+  it('positions connection quick picker at pointer coordinates when connecting nodes', () => {
+    const { container } = render(<StructureCanvas />);
+    const canvas = container.querySelector('#trust-structure-canvas')!;
+    expect(canvas).toBeInTheDocument();
+
+    // Move pointer to (500, 350)
+    fireEvent.pointerMove(canvas, { clientX: 500, clientY: 350 });
+
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-1',
+        target: 'entity-4',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    // With cursorPos = { x: 500, y: 350 }, dialog left should be 500 - 140 = 360, top should be 350 - 120 = 230
+    expect(dialog.style.left).toBe('360px');
+    expect(dialog.style.top).toBe('230px');
+  });
 });
 

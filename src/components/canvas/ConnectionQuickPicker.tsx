@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Link as LinkIcon, UserCheck } from 'lucide-react';
 
 export type ConnectionKind = 'entity-to-entity' | 'person-to-entity';
@@ -51,6 +51,16 @@ export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
   const [isResident, setIsResident] = useState<boolean>(false);
   const [isCorporate, setIsCorporate] = useState<boolean>(false);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
+
   const handleEntitySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onConfirm({
@@ -71,13 +81,16 @@ export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
     });
   };
 
+  const modalLeft = Math.min(Math.max(16, position.x - 140), Math.max(16, window.innerWidth - 320));
+  const modalTop = Math.min(Math.max(16, position.y - 120), Math.max(16, window.innerHeight - 340));
+
   return (
     <div
       role="dialog"
       aria-label={connection.connectionKind === 'entity-to-entity' ? 'Connect Ownership' : 'Assign Fiduciary Role'}
       style={{
-        top: Math.max(16, position.y - 120),
-        left: Math.max(16, position.x - 140),
+        top: modalTop,
+        left: modalLeft,
       }}
       className="absolute z-50 w-72 bg-white rounded-xl shadow-2xl border border-slate-200 p-4 text-xs select-none"
     >

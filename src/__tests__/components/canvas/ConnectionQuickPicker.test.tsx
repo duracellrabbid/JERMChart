@@ -167,4 +167,82 @@ describe('ConnectionQuickPicker Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  it('calls onCancel when Escape key is pressed', () => {
+    const onCancel = vi.fn();
+    render(
+      <ConnectionQuickPicker
+        connection={defaultEntityConnection}
+        position={{ x: 300, y: 300 }}
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />
+    );
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onCancel when other keys are pressed', () => {
+    const onCancel = vi.fn();
+    render(
+      <ConnectionQuickPicker
+        connection={defaultEntityConnection}
+        position={{ x: 300, y: 300 }}
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />
+    );
+
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('cleans up Escape key listener on unmount', () => {
+    const onCancel = vi.fn();
+    const { unmount } = render(
+      <ConnectionQuickPicker
+        connection={defaultEntityConnection}
+        position={{ x: 300, y: 300 }}
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />
+    );
+
+    unmount();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('clamps modal position within viewport boundaries when overflowing bottom-right', () => {
+    render(
+      <ConnectionQuickPicker
+        connection={defaultEntityConnection}
+        position={{ x: 2000, y: 2000 }}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    const dialog = screen.getByRole('dialog');
+    const expectedLeft = `${Math.max(16, window.innerWidth - 320)}px`;
+    const expectedTop = `${Math.max(16, window.innerHeight - 340)}px`;
+    expect(dialog.style.left).toBe(expectedLeft);
+    expect(dialog.style.top).toBe(expectedTop);
+  });
+
+  it('clamps modal position to minimum margin when near top-left boundary', () => {
+    render(
+      <ConnectionQuickPicker
+        connection={defaultEntityConnection}
+        position={{ x: 10, y: 10 }}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.style.left).toBe('16px');
+    expect(dialog.style.top).toBe('16px');
+  });
 });
