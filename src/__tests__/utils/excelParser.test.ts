@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   parseDirectorString,
   normalizeColumnHeader,
+  normalizeOwnershipPercentage,
   parseExcelWorkbook,
   generateExcelTemplate,
 } from '../../utils/excelParser';
@@ -396,5 +397,54 @@ describe('excelParser', () => {
     expect(chart.relationships[0].id).not.toBe(chart.relationships[1].id);
     expect(chart.relationships[0].shareClass).toBe('Ordinary Class A');
     expect(chart.relationships[1].shareClass).toBe('Preference Class B');
+  });
+
+  it('normalizes decimal Excel percentages and respects literal percent strings in parseExcelWorkbook', () => {
+    const rows = [
+      { 'Entity Name': 'Parent', 'Entity Type': 'Holding Company' },
+      { 'Entity Name': 'Sub A', 'Parent Entity': 'Parent', 'Ownership %': 0.5 },
+      { 'Entity Name': 'Sub B', 'Parent Entity': 'Parent', 'Ownership %': 1 },
+      { 'Entity Name': 'Sub C', 'Parent Entity': 'Parent', 'Ownership %': '0.5%' },
+      { 'Entity Name': 'Sub D', 'Parent Entity': 'Parent', 'Ownership %': 80 },
+      { 'Entity Name': 'Sub E', 'Parent Entity': 'Parent', 'Ownership %': '80%' },
+      { 'Entity Name': 'Sub F', 'Parent Entity': 'Parent', 'Ownership %': '100%' },
+      { 'Entity Name': 'Sub G', 'Parent Entity': 'Parent', 'Ownership %': '100' },
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+    const { chart } = parseExcelWorkbook(buffer);
+    const getPct = (targetName: string) => {
+      const target = chart.entities.find((e) => e.name === targetName);
+      return chart.relationships.find((r) => r.target === target?.id)?.ownershipPercentage;
+    };
+
+    expect(getPct('Sub A')).toBe(50);
+    expect(getPct('Sub B')).toBe(100);
+    expect(getPct('Sub C')).toBe(0.5);
+    expect(getPct('Sub D')).toBe(80);
+    expect(getPct('Sub E')).toBe(80);
+    expect(getPct('Sub F')).toBe(100);
+    expect(getPct('Sub G')).toBe(100);
+  });
+
+  it('normalizes ownership percentages directly via normalizeOwnershipPercentage', () => {
+    expect(normalizeOwnershipPercentage(0.5)).toBe(50);
+    expect(normalizeOwnershipPercentage(1)).toBe(100);
+    expect(normalizeOwnershipPercentage('0.5%')).toBe(0.5);
+    expect(normalizeOwnershipPercentage('1%')).toBe(1);
+    expect(normalizeOwnershipPercentage(80)).toBe(80);
+    expect(normalizeOwnershipPercentage('80%')).toBe(80);
+    expect(normalizeOwnershipPercentage('100%')).toBe(100);
+    expect(normalizeOwnershipPercentage('100')).toBe(100);
+    expect(normalizeOwnershipPercentage(0)).toBe(0);
+    expect(normalizeOwnershipPercentage(1.5)).toBe(1.5);
+    expect(normalizeOwnershipPercentage(null)).toBe(100);
+    expect(normalizeOwnershipPercentage(undefined)).toBe(100);
+    expect(normalizeOwnershipPercentage('')).toBe(100);
+    expect(normalizeOwnershipPercentage('invalid')).toBe(100);
+    expect(normalizeOwnershipPercentage(0.125)).toBe(12.5);
   });
 });

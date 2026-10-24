@@ -146,6 +146,18 @@ function resolveEntityStatus(rawStatus: any): EntityStatus {
   return 'Active';
 }
 
+export function normalizeOwnershipPercentage(rawVal: unknown): number {
+  const rawStr = String(rawVal ?? '').trim();
+  let pct = Number.parseFloat(rawStr);
+  if (Number.isNaN(pct)) return 100;
+
+  // If input was a raw numeric decimal without literal % (e.g. 0.5 or 1 from Excel percentage formatting)
+  if (pct > 0 && pct <= 1 && !rawStr.includes('%')) {
+    pct = Math.round(pct * 100 * 100) / 100;
+  }
+  return pct;
+}
+
 export function parseExcelWorkbook(
   fileBuffer: ArrayBuffer | Uint8Array
 ): { chart: TrustStructureChart; warnings: string[] } {
@@ -188,8 +200,7 @@ export function parseExcelWorkbook(
     if (!entityName) return;
 
     const parentName = String(mapped.parent || '').trim();
-    let ownershipPct = Number.parseFloat(String(mapped.ownership));
-    if (Number.isNaN(ownershipPct)) ownershipPct = 100;
+    const ownershipPct = normalizeOwnershipPercentage(mapped.ownership);
 
     const parties = parseAssociatedPartiesString(String(mapped.directors || ''));
     const ubos = String(mapped.ubos || '')
