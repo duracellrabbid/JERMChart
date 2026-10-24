@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-24T18:45:00.000Z",
+  "title": "Design System: JERMChart",
+  "extensions": {
+    "colorMeta": {
+      "obsidian-navy": {
+        "role": "primary",
+        "displayName": "Obsidian Navy",
+        "canonical": "oklch(20.5% 0.04 265)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#f1f5f9"
+        ]
+      },
+      "sovereign-sky": {
+        "role": "primary",
+        "displayName": "Sovereign Sky",
+        "canonical": "oklch(58.8% 0.16 235)",
+        "tonalRamp": [
+          "#082f49",
+          "#075985",
+          "#0369a1",
+          "#0284c7",
+          "#0ea5e9",
+          "#38bdf8",
+          "#7dd3fc",
+          "#e0f2fe"
+        ]
+      },
+      "trust-amber": {
+        "role": "secondary",
+        "displayName": "Trust Amber",
+        "canonical": "oklch(66.5% 0.16 75)",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fbbf24",
+          "#fef3c7"
+        ]
+      },
+      "ledger-emerald": {
+        "role": "secondary",
+        "displayName": "Ledger Emerald",
+        "canonical": "oklch(62.7% 0.15 155)",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#065f46",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#d1fae5"
+        ]
+      },
+      "custodian-cyan": {
+        "role": "tertiary",
+        "displayName": "Custodian Cyan",
+        "canonical": "oklch(60.1% 0.13 210)",
+        "tonalRamp": [
+          "#083344",
+          "#155e75",
+          "#0e7490",
+          "#0891b2",
+          "#06b6d4",
+          "#22d3ee",
+          "#67e8f9",
+          "#cffafe"
+        ]
+      },
+      "paper-white": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "oklch(100% 0 0)",
+        "tonalRamp": [
+          "#0f172a",
+          "#334155",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#e2e8f0",
+          "#f8fafc",
+          "#ffffff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display Title",
+        "purpose": "Structure chart title in main header and dialog headings."
+      },
+      "headline": {
+        "displayName": "Section Headline",
+        "purpose": "Modal section groups, drawer headers, and export presets."
+      },
+      "title": {
+        "displayName": "Entity Name",
+        "purpose": "Legal entity names on cards, nodes, and outliner rows."
+      },
+      "body": {
+        "displayName": "Standard Body",
+        "purpose": "Form fields, inspector details, notes, and instructions."
+      },
+      "label": {
+        "displayName": "Fiduciary Label",
+        "purpose": "Entity type badges, role indicators, and column headers."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-rest",
+        "value": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)",
+        "purpose": "Resting elevation for entity cards and canvas nodes."
+      },
+      {
+        "name": "panel-elevation",
+        "value": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)",
+        "purpose": "Dropdown menus, action flyouts, and floating notation key."
+      },
+      {
+        "name": "modal-scrim",
+        "value": "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        "purpose": "High-contrast dialogs over backdrop scrim."
+      },
+      {
+        "name": "spotlight-halo",
+        "value": "0 0 0 4px #f59e0b, 0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+        "purpose": "Active director or associated party spotlight across hierarchy."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-executive",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Precision motion curve for drawer sliding and modal entry."
+      },
+      {
+        "name": "transition-instant",
+        "value": "150ms ease-out",
+        "purpose": "Node selection, button hover, and badge state shifts."
+      }
+    ],
+    "breakpoints": [
+      { "name": "min-desktop", "value": "1280px" },
+      { "name": "wide-boardroom", "value": "1920px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Export Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary call-to-action button for initiating chart exports.",
+      "html": "<button class=\"ds-btn-primary\"><svg class=\"ds-btn-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M12 18v-6\"/><path d=\"m9 15 3 3 3-3\"/></svg><span>Export Chart</span></button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 6px; background-color: #059669; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; font-weight: 600; padding: 6px 12px; border: none; border-radius: 6px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); cursor: pointer; transition: background-color 0.15s ease-out; } .ds-btn-primary:hover { background-color: #047857; } .ds-btn-primary:focus-visible { outline: 2px solid #059669; outline-offset: 2px; } .ds-btn-icon { width: 14px; height: 14px; stroke-width: 2; }"
+    },
+    {
+      "name": "Secondary Tool Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Dark toolbar action button for view controls and import options.",
+      "html": "<button class=\"ds-btn-secondary\"><svg class=\"ds-btn-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><polyline points=\"17 8 12 3 7 8\"/><line x1=\"12\" x2=\"12\" y1=\"3\" y2=\"15\"/></svg><span>Import</span></button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; gap: 6px; background-color: #1e293b; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; font-weight: 500; padding: 6px 12px; border: 1px solid #334155; border-radius: 6px; cursor: pointer; transition: background-color 0.15s ease-out, color 0.15s ease-out; } .ds-btn-secondary:hover { background-color: #334155; color: #ffffff; } .ds-btn-secondary:focus-visible { outline: 2px solid #0284c7; outline-offset: 2px; } .ds-btn-icon { width: 14px; height: 14px; color: #10b981; }"
+    },
+    {
+      "name": "Subsidiary Entity Card",
+      "kind": "card",
+      "refersTo": "card-entity",
+      "description": "Deterministic 220px corporate entity card with color-coded accent bar and legal metadata.",
+      "html": "<div class=\"ds-card-entity\"><div class=\"ds-accent-bar\"></div><div class=\"ds-card-body\"><div class=\"ds-card-header\"><span class=\"ds-badge-pill\">HOLDING COMPANY</span><div class=\"ds-status\"><span class=\"ds-status-dot\"></span><span>Active</span></div></div><h3 class=\"ds-card-title\">Aurelius Global Holdings Ltd</h3><div class=\"ds-card-meta\"><span>Cayman Islands</span><span class=\"ds-mono-id\">CR-204911</span></div></div></div>",
+      "css": ".ds-card-entity { width: 220px; background-color: #ffffff; border: 2px solid #0ea5e9; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); overflow: hidden; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-accent-bar { height: 6px; width: 100%; background-color: #0284c7; } .ds-card-body { padding: 12px; display: flex; flex-direction: column; gap: 6px; } .ds-card-header { display: flex; align-items: center; justify-content: space-between; } .ds-badge-pill { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 6px; border-radius: 9999px; background-color: #e0f2fe; color: #0369a1; } .ds-status { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #64748b; font-weight: 500; } .ds-status-dot { width: 8px; height: 8px; border-radius: 9999px; background-color: #10b981; } .ds-card-title { font-size: 12px; font-weight: 600; color: #0f172a; margin: 0; line-height: 1.35; letter-spacing: -0.01em; } .ds-card-meta { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #64748b; font-weight: 500; margin-top: 4px; } .ds-mono-id { font-family: ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums lining-nums; font-size: 9px; color: #94a3b8; }"
+    },
+    {
+      "name": "Bank Custodian Circle",
+      "kind": "custom",
+      "refersTo": "card-bank",
+      "description": "180px circular banking and custodian node with institutional iconography.",
+      "html": "<div class=\"ds-card-bank\"><div class=\"ds-bank-icon-wrap\"><svg class=\"ds-bank-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"3\" x2=\"21\" y1=\"22\" y2=\"22\"/><line x1=\"6\" x2=\"6\" y1=\"18\" y2=\"11\"/><line x1=\"10\" x2=\"10\" y1=\"18\" y2=\"11\"/><line x1=\"14\" x2=\"14\" y1=\"18\" y2=\"11\"/><line x1=\"18\" x2=\"18\" y1=\"18\" y2=\"11\"/><polygon points=\"12 2 20 7 4 7\"/></svg></div><span class=\"ds-bank-badge\">BANK</span><h3 class=\"ds-bank-title\">LGT Bank AG</h3><span class=\"ds-bank-sub\">Liechtenstein</span></div>",
+      "css": ".ds-card-bank { width: 180px; height: 180px; border-radius: 9999px; background-color: #ffffff; border: 2px solid #0891b2; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; text-align: center; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-bank-icon-wrap { width: 28px; height: 28px; border-radius: 9999px; background-color: #ecfeff; border: 1px solid #cffafe; display: flex; align-items: center; justify-content: center; color: #0891b2; margin-bottom: 4px; } .ds-bank-icon { width: 16px; height: 16px; } .ds-bank-badge { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 6px; border-radius: 9999px; background-color: #cffafe; color: #155e75; margin-bottom: 4px; } .ds-bank-title { font-size: 12px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.25; } .ds-bank-sub { font-size: 9px; color: #64748b; font-weight: 500; margin-top: 2px; }"
+    },
+    {
+      "name": "Satellite Officer Card",
+      "kind": "card",
+      "refersTo": "card-entity",
+      "description": "Satellite card displaying associated parties and cross-structure board directors.",
+      "html": "<div class=\"ds-sat-card\"><div class=\"ds-sat-header\"><span class=\"ds-sat-badge\">DIRECTORS</span><span class=\"ds-sat-count\">2</span></div><div class=\"ds-sat-list\"><div class=\"ds-sat-row\"><svg class=\"ds-sat-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\"/><circle cx=\"12\" cy=\"7\" r=\"4\"/></svg><span class=\"ds-sat-name\">Alexander Aurelius</span><span class=\"ds-res-badge\">RES</span></div><div class=\"ds-sat-row\"><svg class=\"ds-sat-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\"/><circle cx=\"12\" cy=\"7\" r=\"4\"/></svg><span class=\"ds-sat-name\">Helena Vance</span></div></div></div>",
+      "css": ".ds-sat-card { width: 170px; background-color: #ffffff; border: 1px solid #bae6fd; border-radius: 6px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-sat-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; margin-bottom: 6px; } .ds-sat-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 4px; border-radius: 4px; background-color: #f0f9ff; color: #0369a1; } .ds-sat-count { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 9px; color: #94a3b8; font-weight: 600; } .ds-sat-list { display: flex; flex-direction: column; gap: 4px; } .ds-sat-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 2px 4px; border-radius: 4px; font-size: 10px; color: #334155; cursor: pointer; transition: background-color 0.15s ease-out; } .ds-sat-row:hover { background-color: #f8fafc; } .ds-sat-icon { width: 10px; height: 10px; color: #94a3b8; flex-shrink: 0; } .ds-sat-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; } .ds-res-badge { font-size: 8px; font-weight: 700; background-color: #d1fae5; color: #065f46; padding: 1px 3px; border-radius: 2px; }"
+    },
+    {
+      "name": "Standard Field Input",
+      "kind": "input",
+      "refersTo": "button-secondary",
+      "description": "Compact form input for entity parameters, identifiers, and tax IDs.",
+      "html": "<input type=\"text\" class=\"ds-input\" value=\"Aurelius Dynasty Settlement\" placeholder=\"Enter entity name...\" />",
+      "css": ".ds-input { width: 100%; box-sizing: border-box; background-color: #ffffff; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; font-weight: 500; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out; } .ds-input:focus { outline: none; border-color: #0284c7; box-shadow: 0 0 0 1px #0284c7; } .ds-input:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Fiduciary Vault",
+    "overview": "JERMChart is an executive-grade structure charting and fiduciary governance workbench. Built for trust officers, private wealth managers, and corporate secretarial teams, the visual system commands quiet authority, mathematical precision, and uncompromising legal clarity. The environment conveys the gravitas of a sovereign private bank vault: deep obsidian steel headers anchoring the workspace, crisp paper-white entity cards floating upon an infinite architectural canvas, and laser-precise orthogonal connector routing.\n\nEvery pixel serves fiduciary comprehension. Dense tabular figures, standardized legal taxonomy badges, and unambiguous ownership percentages displace consumer fluff. JERMChart explicitly rejects playful SaaS cliches—there are no pastel gradients, bouncy micro-interactions, cartoonish mascots, or oversized rounded pills. Instead, the interface balances dense desktop productivity with boardroom-ready executive presentation elegance.",
+    "keyCharacteristics": [
+      "Institutional Gravitas: Deep slate toolbar chrome paired with crisp, high-contrast light work surfaces for zero eye fatigue during multi-hour structuring reviews.",
+      "Strict Information Density: Compact 12px typography, 6px-8px geometric radii, and tabular lining numerals aligned for instant financial and regulatory auditing.",
+      "Fiduciary Geometry: Distinct entity silhouettes (Apex Triangles for Trusts/Foundations, Circles for Banking/Custodians, Rectangular Cards for SPVs/Operating Companies) establish immediate structural comprehension.",
+      "Zero Decorative Noise: Color is strictly semantic; every hue maps 1:1 to entity legal classification, governance roles, or operational validation."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Accent Rule",
+        "body": "Color is never applied purely as decoration. Every color swatch on the canvas conveys either an entity legal classification, a fiduciary officer role, or an active governance spotlight.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sovereign Contrast Rule",
+        "body": "All text elements must preserve a minimum contrast ratio of 4.5:1 against their direct container background; badge pills always pair a deep saturated glyph with an 8-15% tonal background wash.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Precision Rule",
+        "body": "Every numeric figure, ownership percentage, registration code, and monetary/share value must enforce font-variant-numeric: tabular-nums lining-nums to guarantee vertical column alignment.",
+        "section": "typography"
+      },
+      {
+        "name": "The Case Doctrine Rule",
+        "body": "Entity type pills and fiduciary governance indicators (RES, DIR, UBO) must be rendered in uppercase with expanded letter-spacing (tracking-wider / 0.05em) to ensure instant scanability at zoom scale.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Canvas nodes and outliner rows remain planar at rest. Shadows and elevation shifts occur exclusively as an explicit response to user interaction (hover, selection, drag, or spotlighting).",
+        "section": "elevation"
+      },
+      {
+        "name": "The Focus Isolation Rule",
+        "body": "Modals and overlay dialogs must always pair a deep 60% obsidian backdrop with a subtle backdrop blur (backdrop-blur-sm) to visually isolate fiduciary decision-making from canvas clutter.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do format all financial ownership percentages and company registration numbers with .font-tabular (tabular-nums lining-nums).",
+      "Do enforce 220px fixed width on subsidiary entity cards to maintain deterministic dagre layout alignment.",
+      "Do preserve the 3 distinct geometric silhouettes (Triangle for Trusts, Circle for Banks, Rectangle for Companies) across all diagram themes.",
+      "Do use uppercase tracking (tracking-wider text-[9px] font-bold) for governance and role badge labels.",
+      "Do pair destructive dialog actions with an explicit confirmation modal and a distinct rose visual cue."
+    ],
+    "donts": [
+      "Don't use pastel neon gradients, decorative cartoon illustrations, or bubbly oversized pill buttons.",
+      "Don't introduce floating ambient box-shadows on canvas nodes at rest; elevation must be functional and state-driven.",
+      "Don't allow entity names to wrap beyond 3 lines on cards; truncate with ellipsis to prevent layout breakage.",
+      "Don't mix arbitrary rounded corner values; strictly adhere to the 4px (inputs), 6px (buttons), and 8px (cards) scale.",
+      "Don't use unanchored or decorative animation curves; keep UI transitions bounded to 150ms-200ms ease-out."
+    ]
+  }
+}

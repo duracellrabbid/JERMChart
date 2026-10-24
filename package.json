@@ -42,7 +42,7 @@
   },
   "overrides": {
     "image-size": "^2.0.4",
-    "dompurify": "^3.4.15"
+    "dompurify": "^3.4.17"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

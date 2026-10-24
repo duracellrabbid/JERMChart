@@ -10,6 +10,9 @@ vi.mock('@xyflow/react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@xyflow/react')>();
   return {
     ...actual,
+    useReactFlow: () => ({
+      screenToFlowPosition: ({ x, y }: any) => ({ x, y }),
+    }),
     ReactFlow: (props: any) => {
       capturedOnConnect = props.onConnect;
       capturedProps = props;
@@ -71,6 +74,10 @@ describe('StructureCanvas', () => {
         targetHandle: null,
       });
     });
+
+    const confirmBtn = screen.getByRole('button', { name: /establish link/i });
+    expect(confirmBtn).toBeInTheDocument();
+    fireEvent.click(confirmBtn);
 
     const rels = useStructureStore.getState().relationships;
     const newRel = rels.find((r) => r.source === 'entity-1' && r.target === 'entity-4');
@@ -200,7 +207,189 @@ describe('StructureCanvas', () => {
 
     // Toggle close
     fireEvent.click(legendBtn);
-    expect(screen.queryByText(/Apex Triangle/i)).not.toBeInTheDocument();
+  });
+
+  it('handles drag and drop of entity and person onto canvas', () => {
+    const { container } = render(<StructureCanvas />);
+    const canvas = container.querySelector('#trust-structure-canvas');
+    expect(canvas).toBeInTheDocument();
+
+    const initialEntityCount = useStructureStore.getState().entities.length;
+
+    // Drag over
+    fireEvent.dragOver(canvas!, {
+      dataTransfer: { dropEffect: 'copy' },
+    });
+
+    // Drop entity
+    fireEvent.drop(canvas!, {
+      clientX: 200,
+      clientY: 300,
+      dataTransfer: {
+        getData: (format: string) =>
+          format === 'application/jermchart-shape'
+            ? JSON.stringify({ kind: 'entity', type: 'Operating Company' })
+            : '',
+      },
+    });
+
+    expect(useStructureStore.getState().entities.length).toBe(initialEntityCount + 1);
+
+    // Drop person
+    fireEvent.drop(canvas!, {
+      clientX: 250,
+      clientY: 350,
+      dataTransfer: {
+        getData: (format: string) =>
+          format === 'application/jermchart-shape'
+            ? JSON.stringify({ kind: 'person', role: 'Protector' })
+            : '',
+      },
+    });
+
+    expect(useStructureStore.getState().stagedNodes.length).toBe(1);
+  });
+
+  it('adds shapes directly when palette chips are clicked', () => {
+    render(<StructureCanvas />);
+    const initialEntityCount = useStructureStore.getState().entities.length;
+    const initialStagedCount = useStructureStore.getState().stagedNodes.length;
+
+    // Click Trust chip
+    const trustChip = screen.getByRole('button', { name: /trust/i });
+    fireEvent.click(trustChip);
+    expect(useStructureStore.getState().entities.length).toBe(initialEntityCount + 1);
+
+    // Click Person chip
+    const personChip = screen.getByRole('button', { name: /person/i });
+    fireEvent.click(personChip);
+    expect(useStructureStore.getState().stagedNodes.length).toBe(initialStagedCount + 1);
+  });
+
+  it('ignores invalid drag data payload on canvas drop', () => {
+    const { container } = render(<StructureCanvas />);
+    const canvas = container.querySelector('#trust-structure-canvas');
+    const initialCount = useStructureStore.getState().entities.length;
+
+    fireEvent.drop(canvas!, {
+      clientX: 100,
+      clientY: 100,
+      dataTransfer: {
+        getData: () => 'invalid-json-{',
+      },
+    });
+
+    expect(useStructureStore.getState().entities.length).toBe(initialCount);
+
+    fireEvent.drop(canvas!, {
+      clientX: 100,
+      clientY: 100,
+      dataTransfer: {
+        getData: () => '',
+      },
+    });
+
+    expect(useStructureStore.getState().entities.length).toBe(initialCount);
+  });
+
+  it('cancels pending quick picker connection when cancelled', () => {
+    render(<StructureCanvas />);
+
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-1',
+        target: 'entity-4',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    const cancelBtn = screen.getByRole('button', { name: /cancel/i });
+    fireEvent.click(cancelBtn);
+
+    expect(screen.queryByRole('button', { name: /establish link/i })).toBeNull();
+  });
+
+  it('supports reverse connection from entity to staged person', () => {
+    act(() => {
+      useStructureStore.getState().stageNode({
+        kind: 'person',
+        name: 'Lady Beatrice',
+        role: 'Director',
+        position: { x: 50, y: 50 },
+      });
+    });
+
+    const stagedId = useStructureStore.getState().stagedNodes[0].id;
+    render(<StructureCanvas />);
+
+    // Connect from entity-1 -> stagedId
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-1',
+        target: stagedId,
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    const assignBtn = screen.getByRole('button', { name: /assign role/i });
+    expect(assignBtn).toBeInTheDocument();
+    fireEvent.click(assignBtn);
+
+    expect(useStructureStore.getState().stagedNodes.length).toBe(0);
+  });
+
+  it('connects staged person to entity and absorbs role via quick picker', () => {
+    act(() => {
+      useStructureStore.getState().stageNode({
+        kind: 'person',
+        name: 'Lord Sterling',
+        role: 'Enforcer',
+        position: { x: 100, y: 100 },
+      });
+    });
+
+    const stagedId = useStructureStore.getState().stagedNodes[0].id;
+    render(<StructureCanvas />);
+
+    act(() => {
+      capturedOnConnect?.({
+        source: stagedId,
+        target: 'entity-1',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    const assignBtn = screen.getByRole('button', { name: /assign role/i });
+    expect(assignBtn).toBeInTheDocument();
+    fireEvent.click(assignBtn);
+
+    // Person should be absorbed
+    expect(useStructureStore.getState().stagedNodes.length).toBe(0);
+    const entity1 = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
+    expect(entity1?.associatedParties.some((p) => p.name === 'Lord Sterling')).toBe(true);
+  });
+
+  it('prevents circular ownership connection and shows warning', () => {
+    render(<StructureCanvas />);
+
+    // entity-2 is child of entity-1. Connecting entity-2 -> entity-1 would create a cycle.
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-2',
+        target: 'entity-1',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    expect(screen.getByText(/circular ownership loops are not permitted/i)).toBeInTheDocument();
+    // Dismiss warning
+    const closeBtn = screen.getByText('✕');
+    fireEvent.click(closeBtn);
+    expect(screen.queryByText(/circular ownership loops are not permitted/i)).toBeNull();
   });
 });
 

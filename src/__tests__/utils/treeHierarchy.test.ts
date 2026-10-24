@@ -3,6 +3,7 @@ import {
   buildEntityHierarchy,
   getPrimaryParentRelationship,
   getAdditionalParentsCount,
+  deriveLineageHierarchy,
 } from '../../utils/treeHierarchy';
 import { EntityNodeData, OwnershipEdgeData } from '../../types/structure';
 
@@ -254,5 +255,21 @@ describe('treeHierarchy', () => {
     const nodeA = hierarchy.find((n) => n.entity.id === 'pa');
     expect(nodeA?.children.length).toBe(1);
     expect(nodeA?.children[0].additionalParentsCount).toBe(2);
+  });
+
+  describe('deriveLineageHierarchy', () => {
+    it('flattens hierarchy into lineage order (roots -> children)', () => {
+      const relationships: OwnershipEdgeData[] = [
+        { id: 'r-1', source: 'e-1', target: 'e-2', ownershipPercentage: 100 },
+        { id: 'r-2', source: 'e-2', target: 'e-3', ownershipPercentage: 100 },
+      ];
+
+      const ordered = deriveLineageHierarchy(mockEntities, relationships);
+      expect(ordered.map((e) => e.id)).toEqual(['e-1', 'e-2', 'e-3']);
+    });
+
+    it('returns empty array when entities list is empty', () => {
+      expect(deriveLineageHierarchy([], [])).toEqual([]);
+    });
   });
 });

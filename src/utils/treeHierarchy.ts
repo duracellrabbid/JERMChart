@@ -118,3 +118,29 @@ export function buildEntityHierarchy(
 
   return forest;
 }
+
+/**
+ * Flattens the hierarchy forest into a lineage-ordered list of entities.
+ * Returns entities ordered from fiduciary roots down to operating subsidiaries.
+ * Cognitive complexity strictly < 15.
+ */
+export function deriveLineageHierarchy(
+  entities: EntityNodeData[],
+  relationships: OwnershipEdgeData[]
+): EntityNodeData[] {
+  const forest = buildEntityHierarchy(entities, relationships);
+  const ordered: EntityNodeData[] = [];
+
+  function traverse(nodes: HierarchyNode[]) {
+    for (const node of nodes) {
+      ordered.push(node.entity);
+      if (node.children.length > 0) {
+        traverse(node.children);
+      }
+    }
+  }
+
+  traverse(forest);
+  return ordered;
+}
+

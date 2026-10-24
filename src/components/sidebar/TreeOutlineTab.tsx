@@ -127,6 +127,8 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
 export const TreeOutlineTab: React.FC = () => {
   const entities = useStructureStore((state) => state.entities);
   const relationships = useStructureStore((state) => state.relationships);
+  const stagedNodes = useStructureStore((state) => state.stagedNodes);
+  const unstageNode = useStructureStore((state) => state.unstageNode);
   const selectedEntityId = useStructureStore((state) => state.selectedEntityId);
   const setSelectedEntityId = useStructureStore((state) => state.setSelectedEntityId);
   const addEntity = useStructureStore((state) => state.addEntity);
@@ -219,10 +221,38 @@ export const TreeOutlineTab: React.FC = () => {
       <div
         role="tree"
         aria-label="Fiduciary Entity Hierarchy"
-        className="space-y-0.5 overflow-y-auto max-h-[calc(100vh-220px)] pr-1"
+        className="space-y-0.5 overflow-y-auto max-h-[calc(100vh-260px)] pr-1"
       >
         {renderTreeNodes(hierarchyForest)}
       </div>
+
+      {stagedNodes && stagedNodes.length > 0 && (
+        <div className="pt-2 border-t border-slate-200">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-purple-600 mb-1 flex items-center justify-between">
+            <span>Staged Tokens ({stagedNodes.length})</span>
+          </div>
+          <div className="space-y-1">
+            {stagedNodes.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center justify-between px-2 py-1 bg-purple-50 rounded border border-purple-200 text-xs text-purple-900"
+              >
+                <span className="font-medium truncate">{s.name} ({s.role || 'Unassigned'})</span>
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => unstageNode(s.id)}
+                    className="text-purple-400 hover:text-red-500 font-bold px-1"
+                    title="Remove token"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {deletingEntity && (
         <ConfirmationModal

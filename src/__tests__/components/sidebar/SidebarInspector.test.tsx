@@ -196,11 +196,61 @@ describe('SidebarInspector', () => {
       expect(screen.queryByTitle('Add Subsidiary to this entity')).not.toBeInTheDocument();
       expect(screen.queryByTitle('Delete Entity')).not.toBeInTheDocument();
     });
+
+    it('renders and allows removing staged tokens from tree outliner', () => {
+      act(() => {
+        useStructureStore.getState().stageNode({
+          kind: 'person',
+          name: 'Staged Advisor',
+          role: 'Protector',
+          position: { x: 10, y: 10 },
+        });
+        useStructureStore.getState().stageNode({
+          kind: 'person',
+          name: 'Staged Without Role',
+          position: { x: 20, y: 20 },
+        });
+      });
+
+      render(<SidebarInspector />);
+      expect(screen.getByText(/Staged Tokens/i)).toBeInTheDocument();
+      expect(screen.getByText(/Staged Advisor/i)).toBeInTheDocument();
+      expect(screen.getByText(/Unassigned/i)).toBeInTheDocument();
+
+      const removeTokenBtns = screen.getAllByTitle('Remove token');
+      fireEvent.click(removeTokenBtns[0]);
+      fireEvent.click(removeTokenBtns[1]);
+
+      expect(useStructureStore.getState().stagedNodes.length).toBe(0);
+    });
   });
 
   describe('EntityDetailsTab', () => {
     beforeEach(() => {
       useStructureStore.getState().setSelectedEntityId('entity-1');
+    });
+
+    it('renders lineage list when no entity is selected and allows selecting one', () => {
+      useStructureStore.getState().setSelectedEntityId(null);
+      render(<SidebarInspector />);
+      fireEvent.click(screen.getByRole('button', { name: /Details/i }));
+
+      expect(screen.getByText(/Select an entity from the canvas or choose below/i)).toBeInTheDocument();
+      const entityButton = screen.getByRole('button', { name: /The Aurelius Dynasty Trust/i });
+      fireEvent.click(entityButton);
+
+      expect(useStructureStore.getState().selectedEntityId).toBe('entity-1');
+    });
+
+    it('switches entity using the active entity selector dropdown', () => {
+      useStructureStore.getState().setSelectedEntityId('entity-1');
+      render(<SidebarInspector />);
+      fireEvent.click(screen.getByRole('button', { name: /Details/i }));
+
+      const select = screen.getByLabelText(/Active Entity/i);
+      fireEvent.change(select, { target: { value: 'entity-2' } });
+
+      expect(useStructureStore.getState().selectedEntityId).toBe('entity-2');
     });
 
     it('renders entity details form for selected entity', () => {

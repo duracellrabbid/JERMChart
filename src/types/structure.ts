@@ -63,8 +63,18 @@ export interface ChartMetadata {
   confidentialityNotice: string;
 }
 
+export interface StagedNodeData extends Record<string, unknown> {
+  id: string;
+  kind: 'person' | 'entity';
+  name: string;
+  role?: string;
+  entityType?: EntityType;
+  position: { x: number; y: number };
+}
+
 export interface TrustStructureChart {
   metadata: ChartMetadata;
   entities: EntityNodeData[];
   relationships: OwnershipEdgeData[];
+  stagedNodes?: StagedNodeData[];
 }

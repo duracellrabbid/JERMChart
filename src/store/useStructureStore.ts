@@ -6,6 +6,7 @@ import {
   EntityNodeData,
   OwnershipEdgeData,
   SiblingSortCriteria,
+  StagedNodeData,
   TrustStructureChart,
 } from '../types/structure';
 import { sampleTrustStructure } from '../data/sampleStructure';
@@ -32,6 +33,7 @@ export interface StructureState {
   redoHistory: TrustStructureChart[];
   isReadOnly: boolean;
   allowJsonBackup: boolean;
+  stagedNodes: StagedNodeData[];
 
   // Actions
   setMetadata: (meta: Partial<ChartMetadata>) => void;
@@ -63,6 +65,15 @@ export interface StructureState {
   addDirector: (entityId: string, director: Omit<AssociatedParty, 'id'>) => void;
   removeDirector: (entityId: string, directorId: string) => void;
 
+  // Staged node mutations
+  stageNode: (node: Omit<StagedNodeData, 'id'>) => StagedNodeData;
+  unstageNode: (id: string) => void;
+  connectStagedPersonToEntity: (
+    stagedId: string,
+    targetEntityId: string,
+    roleData: { role: string; isResident?: boolean; isCorporate?: boolean }
+  ) => void;
+
   // Relationship mutations
   addRelationship: (rel: Omit<OwnershipEdgeData, 'id'>) => void;
   updateRelationship: (id: string, updates: Partial<OwnershipEdgeData>) => void;
@@ -93,6 +104,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   redoHistory: [],
   isReadOnly: false,
   allowJsonBackup: true,
+  stagedNodes: [],
 
   setReadOnly: (isReadOnly) => set({ isReadOnly }),
   setAllowJsonBackup: (allow) => set({ allowJsonBackup: allow }),
@@ -116,11 +128,12 @@ export const useStructureStore = create<StructureState>((set, get) => ({
 
   pushHistory: () => {
     if (get().isReadOnly) return;
-    const { metadata, entities, relationships, undoHistory } = get();
+    const { metadata, entities, relationships, stagedNodes, undoHistory } = get();
     const current: TrustStructureChart = {
       metadata: structuredClone(metadata),
       entities: structuredClone(entities),
       relationships: structuredClone(relationships),
+      stagedNodes: structuredClone(stagedNodes),
     };
     const nextHistory = [...undoHistory.slice(-19), current];
     set({ undoHistory: nextHistory, redoHistory: [] });
@@ -128,7 +141,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
 
   undo: () => {
     if (get().isReadOnly) return false;
-    const { undoHistory, redoHistory, metadata, entities, relationships } = get();
+    const { undoHistory, redoHistory, metadata, entities, relationships, stagedNodes } = get();
     if (undoHistory.length === 0) return false;
     const previous = undoHistory[undoHistory.length - 1];
     const newUndo = undoHistory.slice(0, -1);
@@ -136,11 +149,13 @@ export const useStructureStore = create<StructureState>((set, get) => ({
       metadata: structuredClone(metadata),
       entities: structuredClone(entities),
       relationships: structuredClone(relationships),
+      stagedNodes: structuredClone(stagedNodes),
     };
     set({
       metadata: { ...previous.metadata },
       entities: [...previous.entities],
       relationships: [...previous.relationships],
+      stagedNodes: previous.stagedNodes ? [...previous.stagedNodes] : [],
       undoHistory: newUndo,
       redoHistory: [current, ...redoHistory.slice(0, 19)],
     });
@@ -149,7 +164,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
 
   redo: () => {
     if (get().isReadOnly) return false;
-    const { undoHistory, redoHistory, metadata, entities, relationships } = get();
+    const { undoHistory, redoHistory, metadata, entities, relationships, stagedNodes } = get();
     if (redoHistory.length === 0) return false;
     const next = redoHistory[0];
     const newRedo = redoHistory.slice(1);
@@ -157,11 +172,13 @@ export const useStructureStore = create<StructureState>((set, get) => ({
       metadata: structuredClone(metadata),
       entities: structuredClone(entities),
       relationships: structuredClone(relationships),
+      stagedNodes: structuredClone(stagedNodes),
     };
     set({
       metadata: { ...next.metadata },
       entities: [...next.entities],
       relationships: [...next.relationships],
+      stagedNodes: next.stagedNodes ? [...next.stagedNodes] : [],
       undoHistory: [...undoHistory.slice(-19), current],
       redoHistory: newRedo,
     });
@@ -176,6 +193,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
       metadata: { ...snapshot.metadata },
       entities: [...snapshot.entities],
       relationships: [...snapshot.relationships],
+      stagedNodes: snapshot.stagedNodes ? [...snapshot.stagedNodes] : [],
       undoSnapshot: null,
       ocrReviewState: null,
       selectedEntityId: null,
@@ -285,6 +303,53 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   removeDirector: (entityId, directorId) =>
     get().removeAssociatedParty(entityId, directorId),
 
+  stageNode: (node) => {
+    if (get().isReadOnly) {
+      return { ...node, id: '' } as StagedNodeData;
+    }
+    get().pushHistory();
+    const newId = `staged-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newNode: StagedNodeData = {
+      ...node,
+      id: newId,
+    } as StagedNodeData;
+    set((state) => ({ stagedNodes: [...state.stagedNodes, newNode] }));
+    return newNode;
+  },
+
+  unstageNode: (id) => {
+    if (get().isReadOnly) return;
+    get().pushHistory();
+    set((state) => ({ stagedNodes: state.stagedNodes.filter((n) => n.id !== id) }));
+  },
+
+  connectStagedPersonToEntity: (stagedId, targetEntityId, roleData) => {
+    if (get().isReadOnly) return;
+    const staged = get().stagedNodes.find((n) => n.id === stagedId);
+    if (!staged) return;
+    get().pushHistory();
+
+    const partyName = staged.name;
+    const newParty: AssociatedParty = {
+      id: `party-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      name: partyName,
+      role: roleData.role,
+      isResident: Boolean(roleData.isResident),
+      isCorporate: Boolean(roleData.isCorporate),
+    };
+
+    set((state) => ({
+      stagedNodes: state.stagedNodes.filter((n) => n.id !== stagedId),
+      entities: state.entities.map((e) => {
+        if (e.id !== targetEntityId) return e;
+        return {
+          ...e,
+          associatedParties: [...(e.associatedParties || []), newParty],
+        };
+      }),
+    }));
+  },
+
   addRelationship: (rel) => {
     if (get().isReadOnly) return;
     const exists = get().relationships.some((r) => r.source === rel.source && r.target === rel.target);
@@ -319,6 +384,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
       metadata: { ...chart.metadata },
       entities: [...chart.entities],
       relationships: [...chart.relationships],
+      stagedNodes: chart.stagedNodes ? [...chart.stagedNodes] : [],
       selectedEntityId: null,
       highlightedParty: null,
       highlightedDirector: null,
@@ -332,6 +398,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
       metadata: sample.metadata,
       entities: sample.entities,
       relationships: sample.relationships,
+      stagedNodes: [],
       selectedEntityId: null,
       highlightedParty: null,
       highlightedDirector: null,
@@ -351,6 +418,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
       },
       entities: [],
       relationships: [],
+      stagedNodes: [],
       selectedEntityId: null,
       highlightedParty: null,
       highlightedDirector: null,

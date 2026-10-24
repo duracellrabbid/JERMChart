@@ -260,6 +260,13 @@ describe('useStructureStore', () => {
     expect(useStructureStore.getState().metadata.chartTitle).toBe('Custom Chart');
     expect(useStructureStore.getState().entities.length).toBe(1);
 
+    // Also load chart with stagedNodes present
+    useStructureStore.getState().loadStructure({
+      ...customChart,
+      stagedNodes: [{ id: 'staged-load', kind: 'person', name: 'Loaded Person', position: { x: 0, y: 0 } }],
+    });
+    expect(useStructureStore.getState().stagedNodes.length).toBe(1);
+
     useStructureStore.getState().resetToSample();
     expect(useStructureStore.getState().entities.length).toBe(6);
     expect(useStructureStore.getState().metadata.chartTitle).toContain('Aurelius');

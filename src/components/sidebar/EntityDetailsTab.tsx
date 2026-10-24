@@ -3,6 +3,7 @@ import { useStructureStore } from '../../store/useStructureStore';
 import { EntityType, EntityStatus, AssociatedRole } from '../../types/structure';
 import { Trash2, UserPlus } from 'lucide-react';
 import { getRoleBadgeStyle } from '../../utils/entityStyle';
+import { deriveLineageHierarchy } from '../../utils/treeHierarchy';
 
 const ENTITY_TYPES: EntityType[] = [
   'Trust',
@@ -47,7 +48,9 @@ const COMMON_JURISDICTIONS = [
 
 export const EntityDetailsTab: React.FC = () => {
   const selectedEntityId = useStructureStore((state) => state.selectedEntityId);
+  const setSelectedEntityId = useStructureStore((state) => state.setSelectedEntityId);
   const entities = useStructureStore((state) => state.entities);
+  const relationships = useStructureStore((state) => state.relationships);
   const updateEntity = useStructureStore((state) => state.updateEntity);
   const addAssociatedParty = useStructureStore((state) => state.addAssociatedParty);
   const removeAssociatedParty = useStructureStore((state) => state.removeAssociatedParty);
@@ -58,12 +61,27 @@ export const EntityDetailsTab: React.FC = () => {
   const [isCorporate, setIsCorporate] = useState(false);
   const [isResident, setIsResident] = useState(false);
 
+  const lineageEntities = deriveLineageHierarchy(entities, relationships);
   const entity = entities.find((e) => e.id === selectedEntityId);
 
   if (!entity) {
     return (
-      <div className="p-8 text-center text-slate-400 text-xs">
-        Select an entity from the canvas or outliner to edit its details and associated parties.
+      <div className="space-y-3 p-2 text-xs">
+        <div className="text-center text-slate-400 text-xs py-2">
+          Select an entity from the canvas or choose below:
+        </div>
+        <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
+          {lineageEntities.map((ent) => (
+            <button
+              key={ent.id}
+              onClick={() => setSelectedEntityId(ent.id)}
+              className="w-full text-left px-2.5 py-1.5 rounded border border-slate-200 hover:border-sky-300 hover:bg-sky-50 transition flex items-center justify-between"
+            >
+              <span className="font-semibold text-slate-800 truncate">{ent.name}</span>
+              <span className="text-[10px] text-slate-500 uppercase">{ent.type}</span>
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
@@ -86,6 +104,25 @@ export const EntityDetailsTab: React.FC = () => {
 
   return (
     <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-220px)] pr-1 text-xs">
+      {/* Active Entity Selector */}
+      <div className="flex items-center justify-between gap-1 pb-2 border-b border-slate-100">
+        <label htmlFor="entity-select" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          Active Entity
+        </label>
+        <select
+          id="entity-select"
+          value={entity.id}
+          onChange={(e) => setSelectedEntityId(e.target.value)}
+          className="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 max-w-[200px] font-medium text-slate-700 truncate"
+        >
+          {lineageEntities.map((ent) => (
+            <option key={ent.id} value={ent.id}>
+              {ent.name} ({ent.type})
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Name */}
       <div>
         <label className="block font-medium text-slate-700 mb-1">Entity Name</label>
