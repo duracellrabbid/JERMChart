@@ -120,10 +120,6 @@ export function parseAssociatedPartiesString(raw: string): AssociatedParty[] {
   return parties;
 }
 
-export function parseDirectorString(raw: string): AssociatedParty[] {
-  return parseAssociatedPartiesString(raw);
-}
-
 function resolveEntityType(rawType: any): EntityType {
   const str = String(rawType || '').trim().toLowerCase();
   if (str.includes('bank')) return 'Bank';

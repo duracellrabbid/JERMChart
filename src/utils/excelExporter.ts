@@ -15,10 +15,6 @@ export function formatAssociatedPartiesString(parties: AssociatedParty[]): strin
     .join('; ');
 }
 
-export function formatDirectorsString(directors: AssociatedParty[]): string {
-  return formatAssociatedPartiesString(directors);
-}
-
 export function buildExcelRowsFromChart(chart: TrustStructureChart): Record<string, any>[] {
   const entityIdMap = new Map(chart.entities.map((e) => [e.id, e]));
   const incomingEdgesMap = new Map<string, typeof chart.relationships>();
@@ -115,5 +111,3 @@ export function exportChartToExcel(chart: TrustStructureChart): Uint8Array {
   const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
   return new Uint8Array(excelBuffer);
 }
-
-export const exportStructureToExcel = exportChartToExcel;

@@ -33,7 +33,7 @@ const ApiKeyRequiredNotice: React.FC<{ onConfigure: () => void }> = ({ onConfigu
     </div>
     <p className="leading-relaxed">
       To transcribe hand-drawn diagrams into digital structure charts, this feature uses
-      multimodal vision AI (Google Gemini or OpenAI). Please configure your API key in Settings first.
+      multimodal vision AI (Google Gemini). Please configure your API key in Settings first.
     </p>
     <button
       type="button"

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  parseDirectorString,
+  parseAssociatedPartiesString,
   normalizeColumnHeader,
   normalizeOwnershipPercentage,
   parseExcelWorkbook,
@@ -35,7 +35,7 @@ vi.mock('xlsx', async (importOriginal) => {
 describe('excelParser', () => {
   it('parses director string with corporate and resident tags', () => {
     const raw = 'Apex Trust Corp (Corp, Res); Julian Vance; Helena Sterling (Resident); Pacific Nominees [Corporate]';
-    const directors = parseDirectorString(raw);
+    const directors = parseAssociatedPartiesString(raw);
 
     expect(directors.length).toBe(4);
     expect(directors[0]).toMatchObject({ name: 'Apex Trust Corp', isCorporate: true, isResident: true });
@@ -194,15 +194,15 @@ describe('excelParser', () => {
   });
 
   it('handles empty director string and malformed input gracefully', () => {
-    expect(parseDirectorString('')).toEqual([]);
-    expect(parseDirectorString(null as any)).toEqual([]);
-    expect(parseDirectorString(undefined as any)).toEqual([]);
+    expect(parseAssociatedPartiesString('')).toEqual([]);
+    expect(parseAssociatedPartiesString(null as any)).toEqual([]);
+    expect(parseAssociatedPartiesString(undefined as any)).toEqual([]);
   });
 
   it('splits comma-delimited director strings while respecting nested parentheses and empty segments', () => {
     // Tests comma splitting at depth 0, empty segments, and stripping of standalone tag annotations
     const input = 'Alice Smith (Director, Res), , Bob Jones [Corp], (Resident)';
-    const parsed = parseDirectorString(input);
+    const parsed = parseAssociatedPartiesString(input);
     expect(parsed.length).toBe(2);
     expect(parsed[0].name).toBe('Alice Smith');
     expect(parsed[0].isResident).toBe(true);
@@ -285,7 +285,7 @@ describe('excelParser', () => {
 
   it('handles director string with empty parts or trailing commas', () => {
     const raw = 'Alice Smith, , Bob Jones, ';
-    const directors = parseDirectorString(raw);
+    const directors = parseAssociatedPartiesString(raw);
     expect(directors).toHaveLength(2);
     expect(directors[0].name).toBe('Alice Smith');
     expect(directors[1].name).toBe('Bob Jones');

@@ -40,6 +40,8 @@ describe('PhotoImportModal', () => {
     render(<PhotoImportModal onClose={onClose} onOpenSettings={onOpenSettings} />);
 
     expect(screen.getByText(/api key required/i)).toBeInTheDocument();
+    expect(screen.getByText(/Google Gemini/i)).toBeInTheDocument();
+    expect(screen.queryByText(/OpenAI/i)).not.toBeInTheDocument();
     const configBtn = screen.getByRole('button', { name: /configure api key/i });
     fireEvent.click(configBtn);
 

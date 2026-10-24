@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  formatDirectorsString,
+  formatAssociatedPartiesString,
   buildExcelRowsFromChart,
-  exportStructureToExcel,
+  exportChartToExcel,
 } from '../../utils/excelExporter';
 import { parseExcelWorkbook } from '../../utils/excelParser';
 import { TrustStructureChart } from '../../types/structure';
@@ -14,7 +14,7 @@ describe('excelExporter', () => {
       { id: '2', name: 'Acme Corp', isCorporate: true, isResident: false },
       { id: '3', name: 'John Smith', isCorporate: false, isResident: false },
     ];
-    const formatted = formatDirectorsString(directors);
+    const formatted = formatAssociatedPartiesString(directors);
     expect(formatted).toBe('Jane Doe (Res); Acme Corp (Corp); John Smith');
   });
 
@@ -22,13 +22,13 @@ describe('excelExporter', () => {
     const directors = [
       { id: '1', name: 'Alpha Trust Co', isCorporate: true, isResident: true },
     ];
-    const formatted = formatDirectorsString(directors);
+    const formatted = formatAssociatedPartiesString(directors);
     expect(formatted).toBe('Alpha Trust Co (Res, Corp)');
   });
 
   it('handles empty or non-array directors gracefully', () => {
-    expect(formatDirectorsString([])).toBe('');
-    expect(formatDirectorsString(null as any)).toBe('');
+    expect(formatAssociatedPartiesString([])).toBe('');
+    expect(formatAssociatedPartiesString(null as any)).toBe('');
   });
 
   it('builds excel rows correctly for root entities and multi-parent entities', () => {
@@ -120,7 +120,7 @@ describe('excelExporter', () => {
       ],
     };
 
-    const bytes = exportStructureToExcel(chart);
+    const bytes = exportChartToExcel(chart);
     expect(bytes).toBeInstanceOf(Uint8Array);
     expect(bytes.length).toBeGreaterThan(100);
 

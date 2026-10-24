@@ -2,7 +2,7 @@ import { toPng, toSvg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import pptxgen from 'pptxgenjs';
 import { ChartMetadata, TrustStructureChart } from '../types/structure';
-import { exportStructureToExcel } from './excelExporter';
+import { exportChartToExcel } from './excelExporter';
 
 export function parseJsonBackup(jsonString: string): TrustStructureChart | null {
   try {
@@ -45,7 +45,7 @@ export function downloadJsonBackup(chart: TrustStructureChart): void {
 }
 
 export function downloadExcelStructure(chart: TrustStructureChart): void {
-  const bytes = exportStructureToExcel(chart);
+  const bytes = exportChartToExcel(chart);
   const blob = new Blob([bytes.buffer as ArrayBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
