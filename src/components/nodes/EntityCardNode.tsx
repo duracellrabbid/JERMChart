@@ -76,7 +76,7 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
       </svg>
 
       <Handle
-        type="target"
+        type="source"
         position={Position.Top}
         id="top-in"
         className="!w-3 !h-3 !bg-slate-700 !border-2 !border-white"
@@ -84,7 +84,7 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
       />
       {/* Exact boundary handles positioned on triangle sloped borders at y = 50% (height / 2) */}
       <Handle
-        type="target"
+        type="source"
         position={Position.Left}
         id="left-in"
         className="!w-2.5 !h-2.5 !bg-slate-700 !border-2 !border-white"
@@ -94,7 +94,7 @@ const TrustTriangleCard: React.FC<ShapeNodeProps> = ({
         }}
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Right}
         id="right-in"
         className="!w-2.5 !h-2.5 !bg-slate-700 !border-2 !border-white"
@@ -175,20 +175,20 @@ const SubsidiarySquareCard: React.FC<ShapeNodeProps> = ({
       } ${isDimmed ? 'opacity-40 grayscale-[20%]' : 'opacity-100'}`}
     >
       <Handle
-        type="target"
+        type="source"
         position={Position.Top}
         id="top-in"
         className="!w-3 !h-3 !bg-slate-700 !border-2 !border-white"
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Left}
         id="left-in"
         className="!w-2.5 !h-2.5 !bg-slate-700 !border-2 !border-white"
         style={{ top: '50%' }}
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Right}
         id="right-in"
         className="!w-2.5 !h-2.5 !bg-slate-700 !border-2 !border-white"
@@ -269,21 +269,21 @@ export const BankCircleCard: React.FC<ShapeNodeProps> = ({
       } ${isDimmed ? 'opacity-40 grayscale-[20%]' : 'opacity-100'}`}
     >
       <Handle
-        type="target"
+        type="source"
         position={Position.Top}
         id="top-in"
         className="!w-3 !h-3 !bg-slate-700 !border-2 !border-white"
         style={{ top: 0, left: '50%' }}
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Left}
         id="left-in"
         className="!w-2.5 !h-2.5 !bg-slate-700 !border-2 !border-white"
         style={{ top: '50%', left: 0 }}
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Right}
         id="right-in"
         className="!w-2.5 !h-2.5 !bg-slate-700 !border-2 !border-white"
@@ -371,7 +371,8 @@ export const SatelliteRoleCard = memo(({ data, selected }: SatelliteRoleCardProp
           type="source"
           position={Position.Right}
           id="right-out"
-          className="!w-2 !h-2 !bg-slate-700 !border !border-white"
+          isConnectable={false}
+          className="!w-2 !h-2 !bg-slate-700 !border !border-white pointer-events-none"
           style={{ top: '50%' }}
         />
       ) : (
@@ -379,7 +380,8 @@ export const SatelliteRoleCard = memo(({ data, selected }: SatelliteRoleCardProp
           type="source"
           position={Position.Left}
           id="left-out"
-          className="!w-2 !h-2 !bg-slate-700 !border !border-white"
+          isConnectable={false}
+          className="!w-2 !h-2 !bg-slate-700 !border !border-white pointer-events-none"
           style={{ top: '50%' }}
         />
       )}

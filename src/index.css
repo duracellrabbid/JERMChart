@@ -59,7 +59,8 @@ html, body, #root {
 .react-flow__handle-connecting {
   animation: handle-pulse 1s infinite alternate;
 }
-.react-flow__handle-valid {
+.react-flow__handle-valid,
+.react-flow__handle.valid {
   background-color: #10b981 !important;
   border-color: #ffffff !important;
 }

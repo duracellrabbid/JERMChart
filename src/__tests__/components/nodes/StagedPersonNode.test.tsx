@@ -22,6 +22,9 @@ describe('StagedPersonNode Component', () => {
 
     expect(screen.getByText('Victoria Cross')).toBeInTheDocument();
     expect(screen.getByText('Protector')).toBeInTheDocument();
+    const handles = screen.getByTestId('staged-person-node').querySelectorAll('.react-flow__handle');
+    expect(handles.length).toBe(4);
+    handles.forEach((h) => expect(h).toHaveClass('source'));
   });
 
   it('triggers unstageNode when delete button is clicked', () => {

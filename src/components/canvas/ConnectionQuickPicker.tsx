@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Link as LinkIcon, UserCheck } from 'lucide-react';
+import { X, Link as LinkIcon, UserCheck, ArrowUpDown } from 'lucide-react';
 
 export type ConnectionKind = 'entity-to-entity' | 'person-to-entity';
 
@@ -13,6 +13,8 @@ export interface PendingConnectionInfo {
 
 export type EntityConnectionResult = {
   connectionKind: 'entity-to-entity';
+  sourceId: string;
+  targetId: string;
   ownershipPercentage: number;
   shareClass: string;
   isCrossLink: boolean;
@@ -47,9 +49,28 @@ export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
   const [shareClass, setShareClass] = useState<string>('Ordinary Shares');
   const [isCrossLink, setIsCrossLink] = useState<boolean>(false);
 
+  const [sourceId, setSourceId] = useState<string>(connection.sourceId);
+  const [sourceName, setSourceName] = useState<string>(connection.sourceName);
+  const [targetId, setTargetId] = useState<string>(connection.targetId);
+  const [targetName, setTargetName] = useState<string>(connection.targetName);
+
   const [role, setRole] = useState<string>('Director');
   const [isResident, setIsResident] = useState<boolean>(false);
   const [isCorporate, setIsCorporate] = useState<boolean>(false);
+
+  useEffect(() => {
+    setSourceId(connection.sourceId);
+    setSourceName(connection.sourceName);
+    setTargetId(connection.targetId);
+    setTargetName(connection.targetName);
+  }, [connection]);
+
+  const handleSwapDirection = () => {
+    setSourceId(targetId);
+    setSourceName(targetName);
+    setTargetId(sourceId);
+    setTargetName(sourceName);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -65,6 +86,8 @@ export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
     e.preventDefault();
     onConfirm({
       connectionKind: 'entity-to-entity',
+      sourceId,
+      targetId,
       ownershipPercentage: ownershipPct,
       shareClass,
       isCrossLink,
@@ -119,14 +142,28 @@ export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
         </button>
       </div>
 
-      <div className="bg-slate-50 rounded-lg p-2 mb-3 border border-slate-100 flex flex-col gap-1 text-[11px]">
-        <div className="text-slate-500">
-          <span className="font-semibold text-slate-700">{connection.sourceName}</span>
+      <div className="bg-slate-50 rounded-lg p-2.5 mb-3 border border-slate-100 flex items-center justify-between text-[11px]">
+        <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+          <div className="text-slate-700 font-semibold truncate" title={sourceName}>
+            {sourceName}
+          </div>
+          <div className="text-slate-400 text-[10px]">▼ connects to</div>
+          <div className="text-slate-700 font-semibold truncate" title={targetName}>
+            {targetName}
+          </div>
         </div>
-        <div className="text-slate-400 text-[10px]">▼ connects to</div>
-        <div className="text-slate-500">
-          <span className="font-semibold text-slate-700">{connection.targetName}</span>
-        </div>
+        {connection.connectionKind === 'entity-to-entity' && (
+          <button
+            type="button"
+            onClick={handleSwapDirection}
+            title="Swap Direction"
+            aria-label="Swap Direction"
+            className="flex-shrink-0 px-2 py-1 text-[10px] font-medium text-slate-600 bg-white hover:bg-slate-100 hover:text-sky-600 border border-slate-200 rounded-md transition flex items-center gap-1 shadow-2xs"
+          >
+            <ArrowUpDown className="w-3 h-3" />
+            <span>Swap</span>
+          </button>
+        )}
       </div>
 
       {connection.connectionKind === 'entity-to-entity' ? (

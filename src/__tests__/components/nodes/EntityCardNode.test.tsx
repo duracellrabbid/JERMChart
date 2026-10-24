@@ -83,6 +83,8 @@ describe('EntityCardNode', () => {
 
     expect(leftHandle).toBeInTheDocument();
     expect(rightHandle).toBeInTheDocument();
+    expect(leftHandle).toHaveClass('source');
+    expect(rightHandle).toHaveClass('source');
 
     // At y = 50% (95px), boundary on 260x190 triangle is at 68px and 192px
     expect(leftHandle).toHaveStyle({ left: '68px', top: '50%' });
@@ -337,6 +339,8 @@ describe('EntityCardNode', () => {
     const card = screen.getByTestId('satellite-role-card');
     expect(card.className).toContain('ring-2 ring-sky-400');
     expect(card.className).toContain('opacity-40');
+    const satHandle = card.querySelector('.react-flow__handle');
+    expect(satHandle).toHaveClass('pointer-events-none');
 
     // Clicking when parentEntityId is undefined does not throw or change selectedEntityId
     fireEvent.click(card);

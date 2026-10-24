@@ -71,6 +71,8 @@ describe('ConnectionQuickPicker Component', () => {
       ownershipPercentage: 100,
       shareClass: 'Preference Shares',
       isCrossLink: true,
+      sourceId: 'entity-1',
+      targetId: 'entity-2',
     });
   });
 
@@ -95,6 +97,38 @@ describe('ConnectionQuickPicker Component', () => {
     expect(onConfirm).toHaveBeenCalledWith({
       connectionKind: 'entity-to-entity',
       ownershipPercentage: 75,
+      shareClass: 'Ordinary Shares',
+      isCrossLink: false,
+      sourceId: 'entity-1',
+      targetId: 'entity-2',
+    });
+  });
+
+  it('allows swapping source and target direction for entity-to-entity connections', () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+
+    render(
+      <ConnectionQuickPicker
+        connection={defaultEntityConnection}
+        position={{ x: 100, y: 150 }}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    );
+
+    const swapBtn = screen.getByRole('button', { name: /swap direction/i });
+    expect(swapBtn).toBeInTheDocument();
+
+    fireEvent.click(swapBtn);
+
+    fireEvent.click(screen.getByRole('button', { name: /establish link/i }));
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      connectionKind: 'entity-to-entity',
+      sourceId: 'entity-2',
+      targetId: 'entity-1',
+      ownershipPercentage: 100,
       shareClass: 'Ordinary Shares',
       isCrossLink: false,
     });

@@ -7,6 +7,7 @@ import {
   useNodesState,
   useEdgesState,
   Connection,
+  ConnectionMode,
   Edge,
   Node,
   ReactFlowProvider,
@@ -244,15 +245,33 @@ export const StructureCanvasContent: React.FC = () => {
     [isReadOnly, resolveConnectionAttempt, cursorPos]
   );
 
+  const isValidConnection = useCallback(
+    (connection: Edge | Connection) => {
+      if (!connection.source || !connection.target) return false;
+      if (connection.source === connection.target) return false;
+      const isSourceStaged = stagedNodes.some((s) => s.id === connection.source);
+      const isTargetStaged = stagedNodes.some((s) => s.id === connection.target);
+      if (isSourceStaged && isTargetStaged) return false;
+      return true;
+    },
+    [stagedNodes]
+  );
+
   const handleConfirmConnection = useCallback(
     (result: ConnectionQuickPickerResult) => {
       const pending = pendingConnection!;
       const { info } = pending;
 
       if (result.connectionKind === 'entity-to-entity') {
+        if (isCycleIntroducingEdge(result.sourceId, result.targetId, relationships)) {
+          setCycleWarning('Circular ownership loops are not permitted in fiduciary structure charts.');
+          setPendingConnection(null);
+          return;
+        }
+
         addRelationship({
-          source: info.sourceId,
-          target: info.targetId,
+          source: result.sourceId,
+          target: result.targetId,
           ownershipPercentage: result.ownershipPercentage,
           shareClass: result.shareClass,
           isCrossLink: result.isCrossLink,
@@ -266,7 +285,7 @@ export const StructureCanvasContent: React.FC = () => {
       }
       setPendingConnection(null);
     },
-    [pendingConnection, addRelationship, connectStagedPersonToEntity]
+    [pendingConnection, addRelationship, connectStagedPersonToEntity, relationships]
   );
 
   const onPaneClick = useCallback(() => {
@@ -324,6 +343,9 @@ export const StructureCanvasContent: React.FC = () => {
         nodes={nodes}
         edges={edges}
         nodesConnectable={!isReadOnly}
+        connectionMode={ConnectionMode.Loose}
+        connectionRadius={25}
+        isValidConnection={isValidConnection}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}

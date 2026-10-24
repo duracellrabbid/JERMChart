@@ -20,13 +20,13 @@ export const StagedPersonNode = memo(({ id, data }: NodeProps) => {
       className="relative px-3 py-2 rounded-lg bg-white/95 border-2 border-dashed border-purple-400 shadow-md flex items-center gap-2 select-none min-w-[140px] text-xs"
     >
       <Handle
-        type="target"
+        type="source"
         position={Position.Top}
         id="top-in"
         className="!w-2.5 !h-2.5 !bg-purple-600 !border-2 !border-white"
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Left}
         id="left-in"
         className="!w-2.5 !h-2.5 !bg-purple-600 !border-2 !border-white"

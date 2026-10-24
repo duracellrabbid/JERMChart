@@ -38,6 +38,38 @@ describe('StructureCanvas', () => {
     expect(container.querySelector('#trust-structure-canvas')).toBeInTheDocument();
   });
 
+  it('configures ReactFlow with ConnectionMode.Loose, magnetic radius, and isValidConnection guard', () => {
+    act(() => {
+      useStructureStore.getState().stageNode({
+        kind: 'person',
+        name: 'Lord Sterling',
+        role: 'Enforcer',
+        position: { x: 100, y: 100 },
+      });
+      useStructureStore.getState().stageNode({
+        kind: 'person',
+        name: 'Lady Sterling',
+        role: 'Settlor',
+        position: { x: 200, y: 100 },
+      });
+    });
+
+    render(<StructureCanvas />);
+    expect(capturedProps.connectionMode).toBe('loose');
+    expect(capturedProps.connectionRadius).toBe(25);
+    expect(typeof capturedProps.isValidConnection).toBe('function');
+
+    const isValid = capturedProps.isValidConnection;
+    expect(isValid({ source: null, target: 'entity-1' })).toBe(false);
+    expect(isValid({ source: 'entity-1', target: null })).toBe(false);
+    expect(isValid({ source: 'entity-1', target: 'entity-1' })).toBe(false);
+    const [p1, p2] = useStructureStore.getState().stagedNodes;
+    expect(isValid({ source: p1.id, target: p2.id })).toBe(false);
+    expect(isValid({ source: 'entity-1', target: 'entity-2' })).toBe(true);
+    expect(isValid({ source: p1.id, target: 'entity-1' })).toBe(true);
+    expect(isValid({ source: 'entity-1', target: p1.id })).toBe(true);
+  });
+
   it('renders entity nodes from store', () => {
     render(<StructureCanvas />);
     expect(screen.getByText('The Aurelius Dynasty Trust')).toBeInTheDocument();
@@ -390,6 +422,68 @@ describe('StructureCanvas', () => {
     const closeBtn = screen.getByText('✕');
     fireEvent.click(closeBtn);
     expect(screen.queryByText(/circular ownership loops are not permitted/i)).toBeNull();
+  });
+
+  it('allows swapping connection direction in quick picker before establishing link', () => {
+    render(<StructureCanvas />);
+
+    // Connect entity-4 to entity-5 (neither is ancestor of the other)
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-4',
+        target: 'entity-5',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    const swapBtn = screen.getByRole('button', { name: /swap direction/i });
+    fireEvent.click(swapBtn);
+
+    const confirmBtn = screen.getByRole('button', { name: /establish link/i });
+    fireEvent.click(confirmBtn);
+
+    const rels = useStructureStore.getState().relationships;
+    // With swap, source should be entity-5 and target should be entity-4
+    const swappedRel = rels.find((r) => r.source === 'entity-5' && r.target === 'entity-4');
+    expect(swappedRel).toBeDefined();
+  });
+
+  it('warns if swapped connection would introduce a circular ownership loop', () => {
+    render(<StructureCanvas />);
+
+    // entity-1 is parent of entity-2. Connecting entity-1 -> entity-2 normally is fine.
+    // If swapped in the picker to entity-2 -> entity-1, it introduces a cycle.
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-1',
+        target: 'entity-4',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    // We can simulate an onConfirm result with swapped IDs introducing a cycle (e.g. entity-2 -> entity-1)
+    const swapBtn = screen.getByRole('button', { name: /swap direction/i });
+    fireEvent.click(swapBtn);
+
+    // Let's test with entity-1 and entity-2
+    act(() => {
+      capturedOnConnect?.({
+        source: 'entity-1',
+        target: 'entity-2',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    const swapBtn2 = screen.getByRole('button', { name: /swap direction/i });
+    fireEvent.click(swapBtn2);
+
+    const confirmBtn = screen.getByRole('button', { name: /establish link/i });
+    fireEvent.click(confirmBtn);
+
+    expect(screen.getByText(/circular ownership loops are not permitted/i)).toBeInTheDocument();
   });
 
   it('positions connection quick picker at pointer coordinates when connecting nodes', () => {
