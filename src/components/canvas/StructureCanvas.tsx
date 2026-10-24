@@ -276,7 +276,7 @@ export const StructureCanvasContent: React.FC = () => {
   }, [setSelectedEntityId]);
 
   const onNodeDragStop = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
+    (_event: MouseEvent | TouchEvent, node: Node) => {
       if (isReadOnly) return;
       if (node.type === 'stagedPersonNode') {
         updateStagedNodePosition(node.id, node.position);
