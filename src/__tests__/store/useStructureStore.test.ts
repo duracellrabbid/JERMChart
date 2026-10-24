@@ -119,6 +119,52 @@ describe('useStructureStore', () => {
     expect(useStructureStore.getState().relationships.length).toBe(initialCount);
   });
 
+  it('rejects self-loops where source and target are the same entity', () => {
+    const store = useStructureStore.getState();
+    const countBefore = store.relationships.length;
+
+    store.addRelationship({
+      source: 'entity-1',
+      target: 'entity-1',
+      ownershipPercentage: 100,
+    });
+
+    expect(useStructureStore.getState().relationships.length).toBe(countBefore);
+  });
+
+  it('rejects relationships with missing source or target', () => {
+    const store = useStructureStore.getState();
+    const countBefore = store.relationships.length;
+
+    store.addRelationship({
+      source: '',
+      target: 'entity-1',
+      ownershipPercentage: 50,
+    });
+    expect(useStructureStore.getState().relationships.length).toBe(countBefore);
+
+    store.addRelationship({
+      source: 'entity-1',
+      target: '',
+      ownershipPercentage: 50,
+    });
+    expect(useStructureStore.getState().relationships.length).toBe(countBefore);
+  });
+
+  it('rejects cycle-introducing relationships', () => {
+    const store = useStructureStore.getState();
+    // In sample structure: entity-1 -> entity-2 -> entity-3
+    const countBefore = store.relationships.length;
+
+    store.addRelationship({
+      source: 'entity-3',
+      target: 'entity-1',
+      ownershipPercentage: 50,
+    });
+
+    expect(useStructureStore.getState().relationships.length).toBe(countBefore);
+  });
+
   it('updates and deletes an ownership relationship', () => {
     const relId = 'rel-1-2';
     useStructureStore.getState().updateRelationship(relId, {

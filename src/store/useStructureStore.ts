@@ -10,6 +10,7 @@ import {
   TrustStructureChart,
 } from '../types/structure';
 import { sampleTrustStructure } from '../data/sampleStructure';
+import { isCycleIntroducingEdge } from '../utils/graphValidation';
 
 export interface OcrReviewState {
   summary: string;
@@ -352,8 +353,11 @@ export const useStructureStore = create<StructureState>((set, get) => ({
 
   addRelationship: (rel) => {
     if (get().isReadOnly) return;
-    const exists = get().relationships.some((r) => r.source === rel.source && r.target === rel.target);
-    if (exists) return;
+    if (!rel.source || !rel.target || rel.source === rel.target) return;
+    const currentRels = get().relationships;
+    if (currentRels.some((r) => r.source === rel.source && r.target === rel.target)) return;
+    if (isCycleIntroducingEdge(rel.source, rel.target, currentRels)) return;
+
     get().pushHistory();
     const newRel: OwnershipEdgeData = {
       ...rel,
