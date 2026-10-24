@@ -69,6 +69,7 @@ export interface StructureState {
   // Staged node mutations
   stageNode: (node: Omit<StagedNodeData, 'id'>) => StagedNodeData;
   unstageNode: (id: string) => void;
+  updateStagedNodePosition: (id: string, position: { x: number; y: number }) => void;
   connectStagedPersonToEntity: (
     stagedId: string,
     targetEntityId: string,
@@ -322,6 +323,13 @@ export const useStructureStore = create<StructureState>((set, get) => ({
     if (get().isReadOnly) return;
     get().pushHistory();
     set((state) => ({ stagedNodes: state.stagedNodes.filter((n) => n.id !== id) }));
+  },
+
+  updateStagedNodePosition: (id, position) => {
+    if (get().isReadOnly) return;
+    set((state) => ({
+      stagedNodes: state.stagedNodes.map((n) => (n.id === id ? { ...n, position } : n)),
+    }));
   },
 
   connectStagedPersonToEntity: (stagedId, targetEntityId, roleData) => {

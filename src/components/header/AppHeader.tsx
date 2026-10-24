@@ -318,8 +318,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <button
           onClick={() => {
             useStructureStore.setState((state) => ({
-              sortCriteria: state.sortCriteria,
-              entities: [...state.entities],
+              entities: state.entities.map((e) => {
+                if (!e.position) return e;
+                const copy = { ...e };
+                delete copy.position;
+                return copy;
+              }),
             }));
           }}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs rounded-md shadow transition"

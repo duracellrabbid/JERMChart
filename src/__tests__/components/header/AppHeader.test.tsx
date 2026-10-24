@@ -429,4 +429,20 @@ describe('AppHeader', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(viewOptionsBtn).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it('clears manual entity positions when Auto-Tidy button is clicked to restore clean Dagre layout', () => {
+    useStructureStore.setState({
+      entities: useStructureStore.getState().entities.map((e, idx) =>
+        idx === 0 ? { ...e, position: { x: 500, y: 300 } } : e
+      ),
+    });
+    expect(useStructureStore.getState().entities[0].position).toEqual({ x: 500, y: 300 });
+
+    renderHeader();
+    const autoTidyBtn = screen.getByRole('button', { name: /Auto-Tidy/i });
+    fireEvent.click(autoTidyBtn);
+
+    expect(useStructureStore.getState().entities[0].position).toBeUndefined();
+    expect(useStructureStore.getState().entities.every((e) => e.position === undefined)).toBe(true);
+  });
 });

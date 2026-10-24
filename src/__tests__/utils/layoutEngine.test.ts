@@ -502,5 +502,29 @@ describe('layoutEngine', () => {
         }
       }
     });
+
+    it('uses entity.position when sortCriteria === manual and entity has manual position', () => {
+      const customPos = { x: 777, y: 888 };
+      const entityWithPos: EntityNodeData = {
+        ...mockEntities[0],
+        position: customPos,
+      };
+
+      const resultManual = calculateSortedLayout(
+        [entityWithPos],
+        [],
+        'manual'
+      );
+      const manualNode = resultManual.nodes.find((n) => n.id === entityWithPos.id);
+      expect(manualNode?.position).toEqual(customPos);
+
+      const resultAuto = calculateSortedLayout(
+        [entityWithPos],
+        [],
+        'alphabetical'
+      );
+      const autoNode = resultAuto.nodes.find((n) => n.id === entityWithPos.id);
+      expect(autoNode?.position).not.toEqual(customPos);
+    });
   });
 });

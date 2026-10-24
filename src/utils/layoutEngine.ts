@@ -364,8 +364,8 @@ export function calculateSortedLayout(
     const compoundTop = nodePos.y - flanks.totalHeight / 2;
 
     // Core entity is placed inside compound box, offset by left flank width
-    const coreX = compoundLeft + flanks.leftWidth;
-    const coreY = compoundTop + (flanks.totalHeight - dims.height) / 2;
+    const coreX = (sortCriteria === 'manual' && entity.position) ? entity.position.x : compoundLeft + flanks.leftWidth;
+    const coreY = (sortCriteria === 'manual' && entity.position) ? entity.position.y : compoundTop + (flanks.totalHeight - dims.height) / 2;
 
     nodes.push({
       id: entity.id,

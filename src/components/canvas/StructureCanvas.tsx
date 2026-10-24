@@ -74,7 +74,9 @@ export const StructureCanvasContent: React.FC = () => {
   const isExportMode = useStructureStore((state) => state.isExportMode);
   const isReadOnly = useStructureStore((state) => state.isReadOnly);
   const addEntity = useStructureStore((state) => state.addEntity);
+  const updateEntity = useStructureStore((state) => state.updateEntity);
   const stageNode = useStructureStore((state) => state.stageNode);
+  const updateStagedNodePosition = useStructureStore((state) => state.updateStagedNodePosition);
   const addRelationship = useStructureStore((state) => state.addRelationship);
   const connectStagedPersonToEntity = useStructureStore(
     (state) => state.connectStagedPersonToEntity
@@ -273,6 +275,18 @@ export const StructureCanvasContent: React.FC = () => {
     setCycleWarning(null);
   }, [setSelectedEntityId]);
 
+  const onNodeDragStop = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (isReadOnly) return;
+      if (node.type === 'stagedPersonNode') {
+        updateStagedNodePosition(node.id, node.position);
+      } else if (node.type === 'entityNode') {
+        updateEntity(node.id, { position: node.position });
+      }
+    },
+    [isReadOnly, updateStagedNodePosition, updateEntity]
+  );
+
   return (
     <div
       className="relative w-full h-full bg-slate-100"
@@ -313,6 +327,7 @@ export const StructureCanvasContent: React.FC = () => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeDragStop={onNodeDragStop}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}

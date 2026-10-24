@@ -483,4 +483,44 @@ describe('useStructureStore', () => {
     expect(useStructureStore.getState().undo()).toBe(true);
     expect(useStructureStore.getState().undoHistory.length).toBe(2);
   });
+
+  it('updates entity position and staged node position via dedicated actions', () => {
+    const store = useStructureStore.getState();
+    const entityId = store.entities[0].id;
+
+    store.updateEntity(entityId, { position: { x: 500, y: 300 } });
+    expect(useStructureStore.getState().entities.find((e) => e.id === entityId)?.position).toEqual({
+      x: 500,
+      y: 300,
+    });
+
+    const staged1 = store.stageNode({
+      kind: 'person',
+      name: 'Staged Person 1',
+      position: { x: 100, y: 100 },
+    });
+    const staged2 = store.stageNode({
+      kind: 'person',
+      name: 'Staged Person 2',
+      position: { x: 200, y: 200 },
+    });
+
+    store.updateStagedNodePosition(staged1.id, { x: 250, y: 150 });
+    expect(useStructureStore.getState().stagedNodes.find((n) => n.id === staged1.id)?.position).toEqual({
+      x: 250,
+      y: 150,
+    });
+    expect(useStructureStore.getState().stagedNodes.find((n) => n.id === staged2.id)?.position).toEqual({
+      x: 200,
+      y: 200,
+    });
+
+    // Test readOnly guard for updateStagedNodePosition
+    useStructureStore.setState({ isReadOnly: true });
+    useStructureStore.getState().updateStagedNodePosition(staged1.id, { x: 999, y: 999 });
+    expect(useStructureStore.getState().stagedNodes.find((n) => n.id === staged1.id)?.position).toEqual({
+      x: 250,
+      y: 150,
+    });
+  });
 });

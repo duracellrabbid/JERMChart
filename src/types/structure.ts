@@ -45,6 +45,7 @@ export interface EntityNodeData {
   associatedParties: AssociatedParty[];
   ubosOrBeneficiaries?: string[];
   notes?: string;
+  position?: { x: number; y: number };
 }
 
 export interface OwnershipEdgeData {

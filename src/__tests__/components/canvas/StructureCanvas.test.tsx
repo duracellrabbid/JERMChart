@@ -415,5 +415,66 @@ describe('StructureCanvas', () => {
     expect(dialog.style.left).toBe('360px');
     expect(dialog.style.top).toBe('230px');
   });
+
+  it('updates store on node drag stop for entityNode and stagedPersonNode', () => {
+    render(<StructureCanvas />);
+    expect(capturedProps.onNodeDragStop).toBeDefined();
+
+    act(() => {
+      capturedProps.onNodeDragStop({} as any, {
+        id: 'entity-1',
+        type: 'entityNode',
+        position: { x: 550, y: 350 },
+      });
+    });
+
+    const updatedEntity = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
+    expect(updatedEntity?.position).toEqual({ x: 550, y: 350 });
+
+    let stagedId = '';
+    act(() => {
+      const staged = useStructureStore.getState().stageNode({
+        kind: 'person',
+        name: 'Staged Advisor',
+        position: { x: 100, y: 100 },
+      });
+      stagedId = staged.id;
+    });
+
+    act(() => {
+      capturedProps.onNodeDragStop({} as any, {
+        id: stagedId,
+        type: 'stagedPersonNode',
+        position: { x: 420, y: 220 },
+      });
+    });
+
+    const updatedStaged = useStructureStore.getState().stagedNodes.find((n) => n.id === stagedId);
+    expect(updatedStaged?.position).toEqual({ x: 420, y: 220 });
+
+    // Ignore drag stop on other node types
+    act(() => {
+      capturedProps.onNodeDragStop({} as any, {
+        id: 'satellite-1',
+        type: 'satelliteNode',
+        position: { x: 800, y: 800 },
+      });
+    });
+
+    // When readOnly, dragging should not update positions
+    act(() => {
+      useStructureStore.setState({ isReadOnly: true });
+    });
+    act(() => {
+      capturedProps.onNodeDragStop({} as any, {
+        id: 'entity-1',
+        type: 'entityNode',
+        position: { x: 999, y: 999 },
+      });
+    });
+
+    const unaffectedEntity = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
+    expect(unaffectedEntity?.position).toEqual({ x: 550, y: 350 });
+  });
 });
 
