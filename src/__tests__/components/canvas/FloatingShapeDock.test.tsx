@@ -13,10 +13,13 @@ describe('FloatingShapeDock Component', () => {
     });
   });
 
-  it('renders all shape chips and personnel tools in editable mode', () => {
+  it('renders all shape chips and personnel tools in editable mode with bottom-dock positioning', () => {
     render(<FloatingShapeDock onAddShape={mockOnAddShape} />);
 
-    expect(screen.getByTestId('floating-shape-dock')).toBeInTheDocument();
+    const dock = screen.getByTestId('floating-shape-dock');
+    expect(dock).toBeInTheDocument();
+    expect(dock).toHaveClass('bottom-6', 'z-10');
+    expect(dock).not.toHaveClass('top-4');
     expect(screen.getByText('Trust')).toBeInTheDocument();
     expect(screen.getByText('HoldCo')).toBeInTheDocument();
     expect(screen.getByText('OpCo')).toBeInTheDocument();

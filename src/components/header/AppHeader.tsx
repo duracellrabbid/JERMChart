@@ -149,7 +149,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   };
 
   return (
-    <header className="h-14 bg-slate-900 text-white flex items-center justify-between px-4 border-b border-slate-800 flex-shrink-0 z-20">
+    <header className="relative z-40 h-14 bg-slate-900 text-white flex items-center justify-between px-4 border-b border-slate-800 flex-shrink-0">
       {/* Cluster 1: Document & Trust Metadata */}
       <div className="flex items-center gap-3">
         {headerLeftSlot}
@@ -246,7 +246,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <div
             className={
               isViewMenuOpen
-                ? 'absolute right-0 mt-1 w-72 bg-slate-800 border border-slate-700 rounded-md shadow-2xl p-3 z-30 space-y-3 block'
+                ? 'absolute right-0 mt-1 w-72 bg-slate-800 border border-slate-700 rounded-md shadow-2xl p-3 z-50 space-y-3 block'
                 : 'sr-only'
             }
           >
@@ -348,7 +348,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </button>
 
             {isResetMenuOpen && (
-              <div className="absolute right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-30">
+              <div className="absolute right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-50">
                 <button
                   onClick={requestClearCanvas}
                   className="w-full text-left px-3 py-2 text-xs text-rose-300 hover:bg-rose-950/40 hover:text-rose-200 flex items-center gap-2 transition cursor-pointer"
@@ -384,7 +384,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </button>
 
             {isImportMenuOpen && (
-              <div className="absolute right-0 mt-1 w-64 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-30 animate-in fade-in duration-100">
+              <div className="absolute right-0 mt-1 w-64 bg-slate-800 border border-slate-700 rounded-md shadow-xl py-1 z-50 animate-in fade-in duration-100">
                 <button
                   onClick={() => {
                     setIsImportMenuOpen(false);

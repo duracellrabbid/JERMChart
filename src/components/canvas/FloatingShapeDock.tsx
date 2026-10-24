@@ -79,7 +79,7 @@ export const FloatingShapeDock: React.FC<FloatingShapeDockProps> = ({ onAddShape
   return (
     <div
       data-testid="floating-shape-dock"
-      className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-full shadow-md py-1 px-2.5 flex items-center gap-1.5 select-none"
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm border border-slate-200/90 rounded-full shadow-lg py-1 px-2.5 flex items-center gap-1.5 select-none transition-all"
     >
       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
         Palette
