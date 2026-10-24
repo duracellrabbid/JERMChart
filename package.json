@@ -28,7 +28,6 @@
     "@dagrejs/dagre": "^3.1.1",
     "@google/genai": "^2.23.0",
     "@xyflow/react": "^12.12.0",
-    "clsx": "^2.1.1",
     "heic2any": "^0.0.4",
     "html-to-image": "^1.11.11",
     "jspdf": "^4.2.1",
@@ -36,7 +35,6 @@
     "pptxgenjs": "^4.0.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "tailwind-merge": "^3.0.1",
     "xlsx": "npm:@e965/xlsx@^0.20.3",
     "zustand": "^5.0.15"
   },
