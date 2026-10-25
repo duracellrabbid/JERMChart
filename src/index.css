@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/xyflow-base.css";
 
 @theme {
   --color-trust-50: #f8fafc;
@@ -52,10 +53,44 @@ html, body, #root {
 }
 
 /* React Flow interactive connection & drop target feedback */
-.react-flow__handle:hover {
-  transform: scale(1.3);
-  transition: transform 0.15s ease-in-out;
+.react-flow__handle {
+  z-index: 10;
+  cursor: crosshair !important;
+  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out, background-color 0.15s ease-in-out;
 }
+
+/* Generous 28x28px invisible interaction target (Fitts's Law) so dots are effortless to grab */
+.react-flow__handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: transparent;
+  pointer-events: all;
+}
+
+/* Preserve React Flow's position-specific translate offsets while scaling on hover */
+.react-flow__handle-top:hover {
+  transform: translate(-50%, -50%) scale(1.35);
+}
+.react-flow__handle-bottom:hover {
+  transform: translate(-50%, 50%) scale(1.35);
+}
+.react-flow__handle-left:hover {
+  transform: translate(-50%, -50%) scale(1.35);
+}
+.react-flow__handle-right:hover {
+  transform: translate(50%, -50%) scale(1.35);
+}
+
+.react-flow__handle:hover {
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.35);
+}
+
 .react-flow__handle-connecting {
   animation: handle-pulse 1s infinite alternate;
 }
@@ -65,7 +100,7 @@ html, body, #root {
   border-color: #ffffff !important;
 }
 @keyframes handle-pulse {
-  from { transform: scale(1); }
-  to { transform: scale(1.4); }
+  from { scale: 1; }
+  to { scale: 1.35; }
 }
 

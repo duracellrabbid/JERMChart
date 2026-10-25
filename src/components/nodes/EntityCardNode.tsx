@@ -168,7 +168,7 @@ const SubsidiarySquareCard: React.FC<ShapeNodeProps> = ({
       data-testid="subsidiary-card-node"
       onClick={onSelect}
       style={{ width: `${SUBSIDIARY_CARD_SIZE}px`, height: `${height}px` }}
-      className={`relative w-[220px] rounded-lg bg-white shadow-md border-2 transition-all duration-150 cursor-pointer flex flex-col justify-between overflow-hidden ${
+      className={`relative w-[220px] rounded-lg bg-white shadow-md border-2 transition-all duration-150 cursor-pointer flex flex-col justify-between ${
         colors.border
       } ${isSelected ? 'ring-4 ring-sky-400 ring-offset-1 shadow-lg' : ''} ${
         containsHighlightedParty ? 'ring-4 ring-amber-500 shadow-xl scale-[1.02]' : ''
@@ -195,7 +195,7 @@ const SubsidiarySquareCard: React.FC<ShapeNodeProps> = ({
         style={{ top: '50%' }}
       />
 
-      <div className={`h-1.5 w-full ${colors.accentBar}`} />
+      <div className={`h-1.5 w-full rounded-t-[6px] ${colors.accentBar}`} />
 
       <div className="p-3 flex-1 flex flex-col justify-between">
         <div>

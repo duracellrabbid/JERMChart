@@ -13,7 +13,6 @@ import {
   ReactFlowProvider,
   useReactFlow,
 } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
 
 import { useStructureStore } from '../../store/useStructureStore';
 import { EntityCardNode, SatelliteRoleCard } from '../nodes/EntityCardNode';

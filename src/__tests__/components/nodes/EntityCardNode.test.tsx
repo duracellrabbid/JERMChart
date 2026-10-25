@@ -108,7 +108,9 @@ describe('EntityCardNode', () => {
 
     expect(screen.getByText('Pacific Holding Ltd')).toBeInTheDocument();
     expect(screen.getByText('Holding Company')).toBeInTheDocument();
-    expect(screen.getByTestId('subsidiary-card-node')).toBeInTheDocument();
+    const subCard = screen.getByTestId('subsidiary-card-node');
+    expect(subCard).toBeInTheDocument();
+    expect(subCard).not.toHaveClass('overflow-hidden');
   });
 
   it('renders BankCircleCard for Bank entity type', () => {
