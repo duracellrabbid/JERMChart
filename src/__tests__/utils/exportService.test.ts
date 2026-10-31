@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   downloadJsonBackup,
+  downloadEncryptedJsonBackup,
   downloadExcelStructure,
   parseJsonBackup,
   exportToImage,
@@ -269,6 +270,64 @@ describe('exportService', () => {
       };
       downloadJsonBackup(chartNoMeta as any);
       expect(createObjectURLSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('downloadEncryptedJsonBackup', () => {
+    let createObjectURLSpy: any;
+    let revokeObjectURLSpy: any;
+    let clickSpy: any;
+    let capturedDownload: string;
+
+    beforeEach(() => {
+      capturedDownload = '';
+      window.URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-url');
+      window.URL.revokeObjectURL = vi.fn();
+      createObjectURLSpy = vi.spyOn(window.URL, 'createObjectURL');
+      revokeObjectURLSpy = vi.spyOn(window.URL, 'revokeObjectURL');
+      clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        capturedDownload = this.download;
+      });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it('triggers file download with encrypted payload, custom filename, and deferred revocation', () => {
+      vi.useFakeTimers();
+      const mockCipherJson = JSON.stringify({ format: 'jermchart-encrypted', cipher: { data: 'xyz' } });
+      downloadEncryptedJsonBackup(mockCipherJson, 'MyCustomTrust');
+
+      expect(createObjectURLSpy).toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalled();
+      expect(capturedDownload).toBe('MyCustomTrust_Structure.json');
+      expect(revokeObjectURLSpy).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1000);
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url');
+      vi.useRealTimers();
+    });
+
+    it('falls back to default title "Trust" when filename is missing or empty string', () => {
+      downloadEncryptedJsonBackup('{"encrypted":true}');
+      expect(createObjectURLSpy).toHaveBeenCalled();
+      expect(capturedDownload).toBe('Trust_Structure.json');
+
+      downloadEncryptedJsonBackup('{"encrypted":true}', '');
+      expect(createObjectURLSpy).toHaveBeenCalled();
+      expect(capturedDownload).toBe('Trust_Structure.json');
+
+      downloadEncryptedJsonBackup('{"encrypted":true}', undefined);
+      expect(createObjectURLSpy).toHaveBeenCalled();
+      expect(capturedDownload).toBe('Trust_Structure.json');
+    });
+
+    it('sanitizes special characters in filename', () => {
+      downloadEncryptedJsonBackup('{"encrypted":true}', 'Family / Trust #1?');
+      expect(createObjectURLSpy).toHaveBeenCalled();
+      expect(capturedDownload).toBe('Family___Trust__1__Structure.json');
     });
   });
 

@@ -5,11 +5,15 @@ import {
   exportToPdf,
   exportToPptx,
   downloadJsonBackup,
+  downloadEncryptedJsonBackup,
   downloadExcelStructure,
   parseJsonBackup,
 } from '../../utils/exportService';
+import { FEATURE_FLAGS } from '../../config/featureFlags';
+import { encryptChart, decryptChart, isEncryptedEnvelope } from '../../utils/cryptoService';
 import { FileDown, Image, FileText, Upload, Check, X, Presentation, FileSpreadsheet } from 'lucide-react';
 import { AlertModal } from '../common/AlertModal';
+import { PasswordPromptModal } from '../common/PasswordPromptModal';
 
 interface ExportModalProps {
   onClose: () => void;
@@ -23,6 +27,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
   const metadata = useStructureStore((state) => state.metadata);
   const entities = useStructureStore((state) => state.entities);
   const relationships = useStructureStore((state) => state.relationships);
+  const stagedNodes = useStructureStore((state) => state.stagedNodes);
   const loadStructure = useStructureStore((state) => state.loadStructure);
   const setExportMode = useStructureStore((state) => state.setExportMode);
   const isReadOnly = useStructureStore((state) => state.isReadOnly);
@@ -31,6 +36,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorAlert, setErrorAlert] = useState<{ title: string; message: string } | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordModalMode, setPasswordModalMode] = useState<'export' | 'import'>('export');
+  const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
+  const [isPasswordModalLoading, setIsPasswordModalLoading] = useState(false);
+  const [pendingImportContent, setPendingImportContent] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showError = (title: string, message: string) => {
@@ -91,8 +101,63 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
   };
 
   const handleDownloadBackup = () => {
-    downloadJsonBackup({ metadata, entities, relationships });
+    if (FEATURE_FLAGS.enableJsonEncryption) {
+      setPasswordModalMode('export');
+      setPasswordModalError(null);
+      setIsPasswordModalOpen(true);
+      return;
+    }
+    downloadJsonBackup({ metadata, entities, relationships, stagedNodes });
     setSuccessMsg('Structure backup (.json) saved.');
+  };
+
+  const handleExportPasswordSubmit = async (password: string) => {
+    setIsPasswordModalLoading(true);
+    setPasswordModalError(null);
+    try {
+      const encryptedJson = await encryptChart(
+        { metadata, entities, relationships, stagedNodes },
+        password
+      );
+      downloadEncryptedJsonBackup(encryptedJson, metadata.chartTitle);
+      setIsPasswordModalOpen(false);
+      setSuccessMsg('Structure backup (.json) encrypted and saved.');
+    } catch (err) {
+      setPasswordModalError(formatExportError(err));
+    } finally {
+      setIsPasswordModalLoading(false);
+    }
+  };
+
+  const handleImportPasswordSubmit = async (password: string) => {
+    setIsPasswordModalLoading(true);
+    setPasswordModalError(null);
+    try {
+      const decryptedChart = await decryptChart(pendingImportContent, password);
+      loadStructure(decryptedChart);
+      setIsPasswordModalOpen(false);
+      setPendingImportContent('');
+      setSuccessMsg(`Loaded ${decryptedChart.entities.length} entities from encrypted backup.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Incorrect password or corrupted file';
+      setPasswordModalError(message);
+    } finally {
+      setIsPasswordModalLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = (password: string) => {
+    if (passwordModalMode === 'export') {
+      void handleExportPasswordSubmit(password);
+    } else {
+      void handleImportPasswordSubmit(password);
+    }
+  };
+
+  const handlePasswordModalClose = () => {
+    setIsPasswordModalOpen(false);
+    setPasswordModalError(null);
+    setPendingImportContent('');
   };
 
   const handleUploadBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,10 +168,26 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
     reader.onload = (ev) => {
       try {
         const content = ev.target?.result as string;
-        const parsed = parseJsonBackup(content);
-        if (parsed) {
-          loadStructure(parsed);
-          setSuccessMsg(`Loaded ${parsed.entities.length} entities from backup.`);
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(content);
+        } catch {
+          showError('Invalid Backup File', 'Invalid or corrupted structure file.');
+          return;
+        }
+
+        if (isEncryptedEnvelope(parsed)) {
+          setPendingImportContent(content);
+          setPasswordModalMode('import');
+          setPasswordModalError(null);
+          setIsPasswordModalOpen(true);
+          return;
+        }
+
+        const chart = parseJsonBackup(content);
+        if (chart) {
+          loadStructure(chart);
+          setSuccessMsg(`Loaded ${chart.entities.length} entities from backup.`);
         } else {
           showError('Invalid Backup File', 'Invalid or corrupted structure file.');
         }
@@ -150,51 +231,55 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
         )}
 
         <div className="mt-4 space-y-3">
-          <button
-            onClick={handleExportPdf}
-            disabled={isExporting}
-            className="w-full p-3 rounded-lg border border-slate-200 hover:border-sky-500 hover:bg-sky-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded bg-rose-100 text-rose-700">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-xs text-slate-900">
-                  Print-Ready PDF (A4 Landscape)
+          {FEATURE_FLAGS.enablePdfExport && (
+            <button
+              onClick={handleExportPdf}
+              disabled={isExporting}
+              className="w-full p-3 rounded-lg border border-slate-200 hover:border-sky-500 hover:bg-sky-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded bg-rose-100 text-rose-700">
+                  <FileText className="w-5 h-5" />
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Includes trust header, date, and confidentiality notice
+                <div>
+                  <div className="font-semibold text-xs text-slate-900">
+                    Print-Ready PDF (A4 Landscape)
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Includes trust header, date, and confidentiality notice
+                  </div>
                 </div>
               </div>
-            </div>
-            <span className="text-xs font-semibold text-sky-600 group-hover:underline">
-              {isExporting ? 'Exporting...' : 'Download'}
-            </span>
-          </button>
+              <span className="text-xs font-semibold text-sky-600 group-hover:underline">
+                {isExporting ? 'Exporting...' : 'Download'}
+              </span>
+            </button>
+          )}
 
-          <button
-            onClick={handleExportPptx}
-            disabled={isExporting}
-            className="w-full p-3 rounded-lg border border-slate-200 hover:border-orange-500 hover:bg-orange-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded bg-orange-100 text-orange-700">
-                <Presentation className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-xs text-slate-900">
-                  PowerPoint (.pptx)
+          {FEATURE_FLAGS.enablePptxExport && (
+            <button
+              onClick={handleExportPptx}
+              disabled={isExporting}
+              className="w-full p-3 rounded-lg border border-slate-200 hover:border-orange-500 hover:bg-orange-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded bg-orange-100 text-orange-700">
+                  <Presentation className="w-5 h-5" />
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Widescreen 16:9 slide with corporate branding & chart
+                <div>
+                  <div className="font-semibold text-xs text-slate-900">
+                    PowerPoint (.pptx)
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Widescreen 16:9 slide with corporate branding & chart
+                  </div>
                 </div>
               </div>
-            </div>
-            <span className="text-xs font-semibold text-sky-600 group-hover:underline">
-              {isExporting ? 'Exporting...' : 'Download'}
-            </span>
-          </button>
+              <span className="text-xs font-semibold text-sky-600 group-hover:underline">
+                {isExporting ? 'Exporting...' : 'Download'}
+              </span>
+            </button>
+          )}
 
           <button
             onClick={handleExportExcel}
@@ -308,6 +393,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
           onClose={() => setErrorAlert(null)}
         />
       )}
+
+      <PasswordPromptModal
+        isOpen={isPasswordModalOpen}
+        mode={passwordModalMode}
+        errorMessage={passwordModalError}
+        isLoading={isPasswordModalLoading}
+        onSubmit={handlePasswordSubmit}
+        onClose={handlePasswordModalClose}
+      />
     </div>
   );
 };

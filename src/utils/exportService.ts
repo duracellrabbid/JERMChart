@@ -44,6 +44,19 @@ export function downloadJsonBackup(chart: TrustStructureChart): void {
   revokeObjectURLDeferred(url);
 }
 
+export function downloadEncryptedJsonBackup(encryptedJson: string, filename?: string): void {
+  const blob = new Blob([encryptedJson], {
+    type: 'application/json',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const safeTitle = sanitizeDownloadFilename(filename, 'Trust');
+  link.download = `${safeTitle}_Structure.json`;
+  link.href = url;
+  link.click();
+  revokeObjectURLDeferred(url);
+}
+
 export function downloadExcelStructure(chart: TrustStructureChart): void {
   const bytes = exportChartToExcel(chart);
   const blob = new Blob([bytes.buffer as ArrayBuffer], {

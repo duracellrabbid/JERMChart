@@ -4,6 +4,14 @@ import { ExportModal } from '../../../components/export/ExportModal';
 import { useStructureStore } from '../../../store/useStructureStore';
 import * as exportService from '../../../utils/exportService';
 
+vi.mock('../../../config/featureFlags', () => ({
+  FEATURE_FLAGS: {
+    enablePdfExport: true,
+    enablePptxExport: true,
+    enableJsonEncryption: false,
+  },
+}));
+
 vi.mock('../../../utils/exportService', () => ({
   exportToImage: vi.fn().mockResolvedValue(undefined),
   exportToPdf: vi.fn().mockResolvedValue(undefined),
