@@ -1,13 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
 import { extractErrorMessage, testAIConnection } from '../../services/ai/connectionTestService';
+import { AIConfig } from '../../services/ai/aiConfig';
 
 const mockGenerateContent = vi.fn();
+const mockTestOllamaConnection = vi.fn();
+
 vi.mock('@google/genai', () => ({
   GoogleGenAI: class MockGoogleGenAI {
     models = {
       generateContent: mockGenerateContent,
     };
   },
+}));
+
+vi.mock('../../services/ai/ollamaService', () => ({
+  testOllamaConnection: (...args: unknown[]) => mockTestOllamaConnection(...args),
 }));
 
 describe('connectionTestService', () => {
@@ -99,6 +106,47 @@ describe('connectionTestService', () => {
       const res = await testAIConnection('invalid-key');
       expect(res.success).toBe(false);
       expect(res.message).toBe('Connection test failed: Invalid API key provided.');
+    });
+
+    it('dispatches to testOllamaConnection when config.provider is ollama', async () => {
+      mockTestOllamaConnection.mockResolvedValueOnce({
+        success: true,
+        message: 'Connected to Ollama (version 0.5.1). Model "llama3.2-vision" is ready.',
+      });
+
+      const config: AIConfig = {
+        provider: 'ollama',
+        apiKey: '',
+        model: 'llama3.2-vision',
+        ollamaUrl: 'http://localhost:11434',
+      };
+
+      const res = await testAIConnection('', 'llama3.2-vision', config);
+      expect(res.success).toBe(true);
+      expect(res.message).toContain('Connected to Ollama');
+      expect(mockTestOllamaConnection).toHaveBeenCalledWith('http://localhost:11434', 'llama3.2-vision');
+      expect(mockGenerateContent).not.toHaveBeenCalled();
+    });
+
+    it('continues to use Gemini ping when config provider is gemini', async () => {
+      mockGenerateContent.mockResolvedValueOnce({ text: 'Pong' });
+
+      const config: AIConfig = {
+        provider: 'gemini',
+        apiKey: 'valid-gemini-key',
+        model: 'gemini-3.8-flash',
+        ollamaUrl: 'http://localhost:11434',
+      };
+
+      const res = await testAIConnection('valid-gemini-key', 'gemini-3.8-flash', config);
+      expect(res.success).toBe(true);
+      expect(mockGenerateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'gemini-3.8-flash',
+          contents: 'Ping',
+        })
+      );
+      expect(mockTestOllamaConnection).not.toHaveBeenCalled();
     });
   });
 });

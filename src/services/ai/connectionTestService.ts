@@ -1,4 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
+import { AIConfig } from './aiConfig';
+import { testOllamaConnection } from './ollamaService';
 
 export interface ConnectionTestResult {
   success: boolean;
@@ -31,8 +33,13 @@ export function extractErrorMessage(error: unknown): string {
 
 export async function testAIConnection(
   apiKey: string,
-  model = 'gemini-3.8-flash'
+  model = 'gemini-3.8-flash',
+  config?: AIConfig
 ): Promise<ConnectionTestResult> {
+  if (config?.provider === 'ollama') {
+    return testOllamaConnection(config.ollamaUrl, model);
+  }
+
   const trimmedKey = apiKey.trim();
   if (!trimmedKey) {
     return {

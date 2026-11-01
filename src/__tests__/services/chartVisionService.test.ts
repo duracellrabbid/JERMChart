@@ -2,16 +2,31 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   parseRawAiResponse,
   analyzeChartImage,
+  CHART_VISION_RESPONSE_SCHEMA,
+  SYSTEM_INSTRUCTION,
 } from '../../services/ai/chartVisionService';
 import { AIConfig } from '../../services/ai/aiConfig';
 
 const mockGenerateContent = vi.fn();
+const mockCallOllamaVision = vi.fn();
+
 vi.mock('@google/genai', () => ({
+  Type: {
+    OBJECT: 'OBJECT',
+    STRING: 'STRING',
+    NUMBER: 'NUMBER',
+    ARRAY: 'ARRAY',
+    BOOLEAN: 'BOOLEAN',
+  },
   GoogleGenAI: class MockGoogleGenAI {
     models = {
       generateContent: mockGenerateContent,
     };
   },
+}));
+
+vi.mock('../../services/ai/ollamaService', () => ({
+  callOllamaVision: (...args: unknown[]) => mockCallOllamaVision(...args),
 }));
 
 describe('chartVisionService', () => {
@@ -79,12 +94,31 @@ describe('chartVisionService', () => {
     expect(result.chart.entities).toHaveLength(1);
   });
 
-  it('calls Gemini API and returns parsed chart', async () => {
+  it('calls Gemini API and passes responseSchema, systemInstruction, and image payload', async () => {
     const mockGeminiResponse = {
       text: JSON.stringify({
         chartTitle: 'Gemini Structure',
         entities: [
-          { tempId: 'g1', name: 'Gemini Trust', type: 'Trust', jurisdiction: 'Jersey' },
+          {
+            tempId: 'g1',
+            name: 'Gemini Trust',
+            type: 'Trust',
+            jurisdiction: 'Jersey',
+            registrationNumber: 'REG-999',
+            taxId: 'TIN-888',
+            status: 'Active',
+            associatedParties: [
+              {
+                name: 'Alice Trustee',
+                role: 'Trustee',
+                isCorporate: false,
+                isResident: true,
+                appointmentDate: '2020-01-15',
+              },
+            ],
+            ubosOrBeneficiaries: ['Beneficiary Alice'],
+            notes: 'Primary Trust Node',
+          },
         ],
         relationships: [],
         warnings: [],
@@ -103,10 +137,48 @@ describe('chartVisionService', () => {
     expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'gemini-3.8-flash',
-        config: { responseMimeType: 'application/json' },
+        contents: [
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: 'base64imgdata',
+            },
+          },
+          {
+            text: expect.stringContaining('structure chart'),
+          },
+        ],
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          responseMimeType: 'application/json',
+          responseSchema: CHART_VISION_RESPONSE_SCHEMA,
+        },
       })
     );
     expect(result.chart.metadata.chartTitle).toBe('Gemini Structure');
+    expect(result.chart.entities[0].associatedParties[0].appointmentDate).toBe('2020-01-15');
+    expect(result.chart.entities[0].taxId).toBe('TIN-888');
+    expect(result.chart.entities[0].registrationNumber).toBe('REG-999');
+    expect(result.chart.entities[0].ubosOrBeneficiaries).toEqual(['Beneficiary Alice']);
+  });
+
+  it('validates that CHART_VISION_RESPONSE_SCHEMA contains correct constraints and enums', () => {
+    expect(CHART_VISION_RESPONSE_SCHEMA).toBeDefined();
+    expect(CHART_VISION_RESPONSE_SCHEMA.type).toBe('OBJECT');
+    expect(CHART_VISION_RESPONSE_SCHEMA.required).toEqual(['entities', 'relationships']);
+
+    const entityProps = (CHART_VISION_RESPONSE_SCHEMA.properties as any).entities.items.properties;
+    expect(entityProps.tempId).toBeDefined();
+    expect(entityProps.type.enum).toContain('Trust');
+    expect(entityProps.type.enum).toContain('Bank');
+    expect(entityProps.type.enum).toContain('Individual');
+    expect(entityProps.status.enum).toEqual(['Active', 'Dormant', 'In Liquidation', 'Nominee']);
+    expect(entityProps.associatedParties.items.properties.appointmentDate).toBeDefined();
+
+    const relProps = (CHART_VISION_RESPONSE_SCHEMA.properties as any).relationships.items.properties;
+    expect(relProps.sourceTempId).toBeDefined();
+    expect(relProps.targetTempId).toBeDefined();
+    expect(relProps.ownershipPercentage).toBeDefined();
   });
 
   it('throws error on missing API key', async () => {
@@ -238,6 +310,70 @@ describe('chartVisionService', () => {
     Object.defineProperty(globalThis, 'crypto', {
       value: originalCrypto,
       configurable: true,
+    });
+  });
+
+  describe('analyzeChartImage with Ollama provider', () => {
+    it('dispatches to callOllamaVision and forwards signal when provider is ollama', async () => {
+      const mockOllamaResponse = JSON.stringify({
+        chartTitle: 'Ollama Dispatched Structure',
+        entities: [
+          {
+            tempId: 'o1',
+            name: 'Ollama Trust',
+            type: 'Trust',
+            jurisdiction: 'Jersey',
+          },
+        ],
+        relationships: [],
+        warnings: [],
+      });
+
+      mockCallOllamaVision.mockResolvedValueOnce(mockOllamaResponse);
+
+      const controller = new AbortController();
+      const config: AIConfig = {
+        provider: 'ollama',
+        apiKey: '',
+        model: 'llama3.2-vision',
+        ollamaUrl: 'http://localhost:11434',
+      };
+
+      const result = await analyzeChartImage('base64imgdata', 'image/png', config, controller.signal);
+
+      expect(mockCallOllamaVision).toHaveBeenCalledWith(
+        'base64imgdata',
+        'image/png',
+        config,
+        controller.signal
+      );
+      expect(result.chart.metadata.chartTitle).toBe('Ollama Dispatched Structure');
+      expect(result.chart.entities).toHaveLength(1);
+      expect(result.chart.entities[0].name).toBe('Ollama Trust');
+    });
+
+    it('throws error when provider is ollama and ollamaUrl is missing or whitespace', async () => {
+      const configMissingUrl: AIConfig = {
+        provider: 'ollama',
+        apiKey: '',
+        model: 'llama3.2-vision',
+        ollamaUrl: '',
+      };
+
+      await expect(
+        analyzeChartImage('base64imgdata', 'image/png', configMissingUrl)
+      ).rejects.toThrow('Ollama Server URL is required. Please configure it in Settings.');
+
+      const configWhitespaceUrl: AIConfig = {
+        provider: 'ollama',
+        apiKey: '',
+        model: 'llama3.2-vision',
+        ollamaUrl: '   ',
+      };
+
+      await expect(
+        analyzeChartImage('base64imgdata', 'image/png', configWhitespaceUrl)
+      ).rejects.toThrow('Ollama Server URL is required. Please configure it in Settings.');
     });
   });
 });

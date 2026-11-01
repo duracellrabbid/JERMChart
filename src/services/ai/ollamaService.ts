@@ -1,5 +1,5 @@
 import { AIConfig } from './aiConfig';
-import { SYSTEM_INSTRUCTION } from './chartVisionService';
+import { SYSTEM_INSTRUCTION } from './prompts';
 
 export interface OllamaModelItem {
   name: string;
