@@ -217,7 +217,6 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
     clearInterval(timerRef.current);
     timerRef.current = undefined;
     setIsProcessing(false);
-    setErrorMsg('Analysis was cancelled by user.');
   };
 
   const executeAnalysis = async () => {

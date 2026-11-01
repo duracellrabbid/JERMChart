@@ -161,8 +161,10 @@ describe('electron/main.cjs', () => {
 
     // Loopback & local hosts on approved Ollama routes allowed in dev and prod
     expect(isAllowedUrl('http://localhost:11434/api/tags', false)).toBe(true);
+    expect(isAllowedUrl('http://localhost:11434/api/tags/', false)).toBe(true);
     expect(isAllowedUrl('http://localhost:11434/api/tags', true)).toBe(true);
     expect(isAllowedUrl('http://127.0.0.1:11434/api/chat', false)).toBe(true);
+    expect(isAllowedUrl('http://127.0.0.1:11434/api/chat/', false)).toBe(true);
     expect(isAllowedUrl('http://127.0.0.1:11434/api/chat', true)).toBe(true);
     expect(isAllowedUrl('https://localhost:11434/api/tags', false)).toBe(true);
 

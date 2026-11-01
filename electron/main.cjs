@@ -49,10 +49,15 @@ function isAllowedOllamaUrl(parsed) {
   const isHttpOrHttps = parsed.protocol === 'http:' || parsed.protocol === 'https:';
   if (!isHttpOrHttps) {
     return false;
-  } else if (!ALLOWED_OLLAMA_PATHS.has(parsed.pathname)) {
-    return false;
   } else {
-    return isPrivateOrLoopbackHost(parsed.hostname);
+    const rawPath = parsed.pathname || '';
+    const normalizedPath =
+      rawPath.endsWith('/') && rawPath.length > 1 ? rawPath.slice(0, -1) : rawPath;
+    if (!ALLOWED_OLLAMA_PATHS.has(normalizedPath)) {
+      return false;
+    } else {
+      return isPrivateOrLoopbackHost(parsed.hostname);
+    }
   }
 }
 
