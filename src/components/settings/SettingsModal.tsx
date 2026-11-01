@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   AIConfig,
+  AIProvider,
   getAIConfig,
   saveAIConfig,
 } from '../../services/ai/aiConfig';
@@ -11,6 +12,11 @@ import {
   isCustomModel,
 } from '../../services/ai/modelCatalog';
 import {
+  fetchOllamaModels,
+  isVisionModel,
+  OllamaModelItem,
+} from '../../services/ai/ollamaService';
+import {
   Settings,
   Eye,
   EyeOff,
@@ -19,16 +25,309 @@ import {
   X,
   Sparkles,
   ShieldAlert,
+  ShieldCheck,
+  RefreshCw,
 } from 'lucide-react';
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
+interface ProviderSwitcherProps {
+  provider: AIProvider;
+  onProviderChange: (provider: AIProvider) => void;
+}
+
+export const ProviderSwitcher: React.FC<ProviderSwitcherProps> = ({
+  provider,
+  onProviderChange,
+}) => (
+  <div className="flex rounded-lg bg-slate-100 p-1 border border-slate-200" role="group" aria-label="AI Provider">
+    <button
+      type="button"
+      onClick={() => onProviderChange('gemini')}
+      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition ${
+        provider === 'gemini'
+          ? 'bg-white text-sky-700 shadow-sm border border-slate-200'
+          : 'text-slate-600 hover:text-slate-900'
+      }`}
+    >
+      Google Gemini
+    </button>
+    <button
+      type="button"
+      onClick={() => onProviderChange('ollama')}
+      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition ${
+        provider === 'ollama'
+          ? 'bg-white text-sky-700 shadow-sm border border-slate-200'
+          : 'text-slate-600 hover:text-slate-900'
+      }`}
+    >
+      Ollama (Local / Private)
+    </button>
+  </div>
+);
+
+interface GeminiSettingsSectionProps {
+  config: AIConfig;
+  isCustom: boolean;
+  showApiKey: boolean;
+  onModelChange: (selectedId: string) => void;
+  onCustomModelInputChange: (customId: string) => void;
+  onApiKeyChange: (apiKey: string) => void;
+  onToggleShowApiKey: () => void;
+}
+
+export const GeminiSettingsSection: React.FC<GeminiSettingsSectionProps> = ({
+  config,
+  isCustom,
+  showApiKey,
+  onModelChange,
+  onCustomModelInputChange,
+  onApiKeyChange,
+  onToggleShowApiKey,
+}) => {
+  const availableModels = getModelsForProvider('gemini');
+  const currentModelDescription = availableModels.find((m) => m.id === config.model)?.description;
+
+  return (
+    <>
+      {/* Fiduciary Privacy Notice */}
+      <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed space-y-1.5">
+        <div className="flex items-center gap-1.5 font-semibold text-amber-800">
+          <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <span>Fiduciary Privacy & Enterprise Disclaimer</span>
+        </div>
+        <p>
+          JERMChart operates 100% locally and never sends structure chart data to any external server. When using Vision OCR, chart images are transmitted directly to Google Gemini using your personal API key.
+        </p>
+        <p className="font-medium text-amber-950">
+          Important: You must ensure your API key belongs to a paid/enterprise Google Cloud project with prompt logging disabled. Consumer/free-tier Google AI keys may use prompt data for model training. JERMChart disclaims liability for data processed under non-enterprise terms.
+        </p>
+      </div>
+
+      {/* Model Selection */}
+      <div>
+        <label htmlFor="ai-model" className="block font-semibold text-slate-800 mb-1">
+          Google Gemini Vision Model
+        </label>
+        <select
+          id="ai-model"
+          value={isCustom ? CUSTOM_MODEL_VALUE : config.model}
+          onChange={(e) => onModelChange(e.target.value)}
+          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+        >
+          {availableModels.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.displayName}
+            </option>
+          ))}
+          <option value={CUSTOM_MODEL_VALUE}>Custom Model...</option>
+        </select>
+        <p className="text-[10px] text-slate-500 mt-1">
+          {isCustom
+            ? 'Specify a custom or fine-tuned model identifier for your enterprise Gemini deployment.'
+            : currentModelDescription}
+        </p>
+      </div>
+
+      {/* Custom Model Input */}
+      {isCustom && (
+        <div>
+          <label htmlFor="custom-ai-model" className="block font-semibold text-slate-800 mb-1">
+            Custom Model Identifier
+          </label>
+          <input
+            id="custom-ai-model"
+            type="text"
+            value={config.model}
+            onChange={(e) => onCustomModelInputChange(e.target.value)}
+            placeholder="e.g. gemini-3.8-flash"
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
+          />
+        </div>
+      )}
+
+      {/* API Key */}
+      <div>
+        <label htmlFor="ai-apikey" className="block font-semibold text-slate-800 mb-1">
+          Google Gemini API Key
+        </label>
+        <div className="relative">
+          <input
+            id="ai-apikey"
+            type={showApiKey ? 'text' : 'password'}
+            value={config.apiKey}
+            placeholder="Enter Gemini API Key"
+            onChange={(e) => onApiKeyChange(e.target.value)}
+            className="w-full pl-3 pr-10 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
+          />
+          <button
+            type="button"
+            aria-label="Toggle API key visibility"
+            onClick={onToggleShowApiKey}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+          >
+            {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+        <p className="text-[10px] text-slate-500 mt-1">
+          Stored locally on your device in your user profile. Never transmitted elsewhere.
+        </p>
+      </div>
+    </>
+  );
+};
+
+interface OllamaSettingsSectionProps {
+  config: AIConfig;
+  models: OllamaModelItem[];
+  isLoadingModels: boolean;
+  isCustom: boolean;
+  onUrlChange: (url: string) => void;
+  onModelChange: (model: string) => void;
+  onCustomModelChange: (model: string) => void;
+  onRefreshModels: () => void;
+}
+
+export const OllamaSettingsSection: React.FC<OllamaSettingsSectionProps> = ({
+  config,
+  models,
+  isLoadingModels,
+  isCustom,
+  onUrlChange,
+  onModelChange,
+  onCustomModelChange,
+  onRefreshModels,
+}) => {
+  const modelItem = models.find((m) => m.name === config.model);
+  const isSelectedVision = modelItem
+    ? modelItem.isVisionCapable
+    : isVisionModel(config.model);
+
+  return (
+    <>
+      {/* Local Privacy Notice */}
+      <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] leading-relaxed space-y-1.5">
+        <div className="flex items-center gap-1.5 font-semibold text-emerald-800">
+          <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          <span>Local Privacy & Zero Egress</span>
+        </div>
+        <p>
+          Zero cloud egress: diagram images and structure chart data are processed 100% locally on your machine/private network.
+        </p>
+      </div>
+
+      {/* Ollama Server URL */}
+      <div>
+        <label htmlFor="ollama-url" className="block font-semibold text-slate-800 mb-1">
+          Ollama Server URL
+        </label>
+        <div className="flex gap-2 items-center">
+          <input
+            id="ollama-url"
+            type="text"
+            value={config.ollamaUrl}
+            onChange={(e) => onUrlChange(e.target.value)}
+            placeholder="http://localhost:11434"
+            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
+          />
+          <button
+            type="button"
+            onClick={onRefreshModels}
+            disabled={isLoadingModels}
+            aria-label="Refresh Models"
+            className="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold transition disabled:opacity-50 flex items-center gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-sky-600 ${isLoadingModels ? 'animate-spin' : ''}`} />
+            <span>{isLoadingModels ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+        </div>
+        <p className="text-[10px] text-slate-500 mt-1">
+          Default local endpoint: http://localhost:11434 (or local network IP).
+        </p>
+      </div>
+
+      {/* Models dynamic dropdown or fallback input */}
+      {models.length > 0 ? (
+        <div>
+          <label htmlFor="ollama-model" className="block font-semibold text-slate-800 mb-1">
+            Ollama Model
+          </label>
+          <select
+            id="ollama-model"
+            value={isCustom ? CUSTOM_MODEL_VALUE : config.model}
+            onChange={(e) => onModelChange(e.target.value)}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
+          >
+            {models.map((m) => (
+              <option key={m.name} value={m.name}>
+                {m.name}{m.isVisionCapable ? ' [Vision]' : ''}
+              </option>
+            ))}
+            <option value={CUSTOM_MODEL_VALUE}>Custom Model...</option>
+          </select>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <span className="leading-snug">No models found at this URL. Ensure Ollama is running.</span>
+          </div>
+          <div>
+            <label htmlFor="ollama-model-fallback" className="block font-semibold text-slate-800 mb-1">
+              Ollama Model Name
+            </label>
+            <input
+              id="ollama-model-fallback"
+              type="text"
+              value={config.model}
+              onChange={(e) => onModelChange(e.target.value)}
+              placeholder="e.g. llama3.2-vision"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Custom Model Input when models list is populated */}
+      {models.length > 0 && isCustom && (
+        <div>
+          <label htmlFor="custom-ollama-model" className="block font-semibold text-slate-800 mb-1">
+            Custom Model Identifier
+          </label>
+          <input
+            id="custom-ollama-model"
+            type="text"
+            value={config.model}
+            onChange={(e) => onCustomModelChange(e.target.value)}
+            placeholder="e.g. llama3.2-vision"
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
+          />
+        </div>
+      )}
+
+      {/* Vision Warning Banner if selected model lacks vision */}
+      {!isSelectedVision && config.model.trim().length > 0 && (
+        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+          <span>
+            Selected model may lack image-understanding capabilities. For best diagram transcription, we recommend installing a vision model (e.g.{' '}
+            <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-amber-950">
+              ollama pull llama3.2-vision
+            </code>
+            ).
+          </span>
+        </div>
+      )}
+    </>
+  );
+};
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [config, setConfig] = useState<AIConfig>(() => getAIConfig());
   const [isCustom, setIsCustom] = useState<boolean>(() =>
-    isCustomModel(config.provider, config.model)
+    config.provider === 'gemini' ? isCustomModel('gemini', config.model) : false
   );
   const [showApiKey, setShowApiKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -36,6 +335,47 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     success: boolean;
     message: string;
   } | null>(null);
+
+  const [ollamaModels, setOllamaModels] = useState<OllamaModelItem[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
+
+  const loadOllamaModels = useCallback(async (url: string) => {
+    setHasAttemptedFetch(true);
+    setIsLoadingModels(true);
+    try {
+      const fetched = await fetchOllamaModels(url);
+      setOllamaModels(fetched);
+      setConfig((prev) => {
+        if (prev.provider !== 'ollama') return prev;
+        const currentExists = fetched.some((m) => m.name === prev.model);
+        if (currentExists) {
+          setIsCustom(false);
+          return prev;
+        }
+        if (fetched.length > 0) {
+          const matchingTagged = fetched.find(
+            (m) => m.name.split(':')[0] === prev.model || m.name === `${prev.model}:latest`
+          );
+          if (matchingTagged) {
+            setIsCustom(false);
+            return { ...prev, model: matchingTagged.name };
+          }
+          if (!prev.model || prev.model.startsWith('gemini')) {
+            setIsCustom(false);
+            const firstVision = fetched.find((m) => m.isVisionCapable)?.name || fetched[0].name;
+            return { ...prev, model: firstVision };
+          }
+          setIsCustom(true);
+        }
+        return prev;
+      });
+    } catch {
+      setOllamaModels([]);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -45,26 +385,61 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const handleModelChange = (selectedId: string) => {
+  useEffect(() => {
+    if (config.provider === 'ollama' && !hasAttemptedFetch) {
+      loadOllamaModels(config.ollamaUrl);
+    }
+  }, [config.provider, config.ollamaUrl, hasAttemptedFetch, loadOllamaModels]);
+
+  const handleProviderChange = (newProvider: AIProvider) => {
+    if (newProvider === config.provider) return;
+    setTestResult(null);
+    if (newProvider === 'ollama') {
+      setIsCustom(false);
+      const url = config.ollamaUrl;
+      const firstVision = ollamaModels.find((m) => m.isVisionCapable)?.name || ollamaModels[0]?.name || '';
+      setConfig((prev) => ({
+        ...prev,
+        provider: 'ollama',
+        ollamaUrl: url,
+        model: prev.model.startsWith('gemini') ? firstVision : prev.model,
+      }));
+    } else {
+      setIsCustom(isCustomModel('gemini', config.model));
+      setConfig((prev) => ({
+        ...prev,
+        provider: 'gemini',
+        model: !prev.model || !prev.model.startsWith('gemini') ? 'gemini-3.8-flash' : prev.model,
+      }));
+    }
+  };
+
+  const handleGeminiModelChange = (selectedId: string) => {
+    setTestResult(null);
     if (selectedId === CUSTOM_MODEL_VALUE) {
       setIsCustom(true);
       setConfig((prev) => ({
         ...prev,
-        model: isCustomModel(prev.provider, prev.model) ? prev.model : '',
+        model: isCustomModel('gemini', prev.model) ? prev.model : '',
       }));
     } else {
       setIsCustom(false);
-      setConfig((prev) => ({
-        ...prev,
-        model: selectedId,
-      }));
+      setConfig((prev) => ({ ...prev, model: selectedId }));
     }
-    setTestResult(null);
   };
 
-  const handleCustomModelInputChange = (customId: string) => {
-    setConfig((prev) => ({ ...prev, model: customId }));
+  const handleOllamaModelChange = (selected: string) => {
     setTestResult(null);
+    if (selected === CUSTOM_MODEL_VALUE) {
+      setIsCustom(true);
+      setConfig((prev) => ({
+        ...prev,
+        model: prev.model && !ollamaModels.some((m) => m.name === prev.model) ? prev.model : '',
+      }));
+    } else {
+      setIsCustom(false);
+      setConfig((prev) => ({ ...prev, model: selected }));
+    }
   };
 
   const handleSave = () => {
@@ -75,13 +450,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const handleTestConnection = async () => {
     setIsTesting(true);
     setTestResult(null);
-    const result = await testAIConnection(config.apiKey, config.model);
+    const result = await testAIConnection(config.apiKey, config.model, config);
     setTestResult(result);
     setIsTesting(false);
   };
-
-  const availableModels = getModelsForProvider(config.provider);
-  const currentModelDescription = availableModels.find((m) => m.id === config.model)?.description;
 
   return (
     <div
@@ -107,92 +479,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
         {/* Content Form */}
         <div className="p-6 space-y-4 text-xs text-slate-700">
-          {/* Fiduciary Privacy Notice */}
-          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed space-y-1.5">
-            <div className="flex items-center gap-1.5 font-semibold text-amber-800">
-              <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <span>Fiduciary Privacy & Enterprise Disclaimer</span>
-            </div>
-            <p>
-              JERMChart operates 100% locally and never sends structure chart data to any external server. When using Vision OCR, chart images are transmitted directly to Google Gemini using your personal API key.
-            </p>
-            <p className="font-medium text-amber-950">
-              Important: You must ensure your API key belongs to a paid/enterprise Google Cloud project with prompt logging disabled. Consumer/free-tier Google AI keys may use prompt data for model training. JERMChart disclaims liability for data processed under non-enterprise terms.
-            </p>
-          </div>
+          {/* Provider Switcher */}
+          <ProviderSwitcher
+            provider={config.provider}
+            onProviderChange={handleProviderChange}
+          />
 
-          {/* Model Selection */}
-          <div>
-            <label htmlFor="ai-model" className="block font-semibold text-slate-800 mb-1">
-              Google Gemini Vision Model
-            </label>
-            <select
-              id="ai-model"
-              value={isCustom ? CUSTOM_MODEL_VALUE : config.model}
-              onChange={(e) => handleModelChange(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
-            >
-              {availableModels.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.displayName}
-                </option>
-              ))}
-              <option value={CUSTOM_MODEL_VALUE}>Custom Model...</option>
-            </select>
-            <p className="text-[10px] text-slate-500 mt-1">
-              {isCustom
-                ? 'Specify a custom or fine-tuned model identifier for your enterprise Gemini deployment.'
-                : currentModelDescription}
-            </p>
-          </div>
-
-          {/* Custom Model Input */}
-          {isCustom && (
-            <div>
-              <label htmlFor="custom-ai-model" className="block font-semibold text-slate-800 mb-1">
-                Custom Model Identifier
-              </label>
-              <input
-                id="custom-ai-model"
-                type="text"
-                value={config.model}
-                onChange={(e) => handleCustomModelInputChange(e.target.value)}
-                placeholder="e.g. gemini-3.8-flash"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
-              />
-            </div>
+          {config.provider === 'gemini' ? (
+            <GeminiSettingsSection
+              config={config}
+              isCustom={isCustom}
+              showApiKey={showApiKey}
+              onModelChange={handleGeminiModelChange}
+              onCustomModelInputChange={(customId) => {
+                setConfig((prev) => ({ ...prev, model: customId }));
+                setTestResult(null);
+              }}
+              onApiKeyChange={(apiKey) => {
+                setConfig((prev) => ({ ...prev, apiKey }));
+                setTestResult(null);
+              }}
+              onToggleShowApiKey={() => setShowApiKey(!showApiKey)}
+            />
+          ) : (
+            <OllamaSettingsSection
+              config={config}
+              models={ollamaModels}
+              isLoadingModels={isLoadingModels}
+              isCustom={isCustom}
+              onUrlChange={(url) => {
+                setConfig((prev) => ({ ...prev, ollamaUrl: url }));
+                setTestResult(null);
+              }}
+              onModelChange={handleOllamaModelChange}
+              onCustomModelChange={(customId) => {
+                setConfig((prev) => ({ ...prev, model: customId }));
+                setTestResult(null);
+              }}
+              onRefreshModels={() => {
+                setTestResult(null);
+                loadOllamaModels(config.ollamaUrl);
+              }}
+            />
           )}
-
-          {/* API Key */}
-          <div>
-            <label htmlFor="ai-apikey" className="block font-semibold text-slate-800 mb-1">
-              Google Gemini API Key
-            </label>
-            <div className="relative">
-              <input
-                id="ai-apikey"
-                type={showApiKey ? 'text' : 'password'}
-                value={config.apiKey}
-                placeholder="Enter Gemini API Key"
-                onChange={(e) => {
-                  setConfig((prev) => ({ ...prev, apiKey: e.target.value }));
-                  setTestResult(null);
-                }}
-                className="w-full pl-3 pr-10 py-2 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
-              />
-              <button
-                type="button"
-                aria-label="Toggle API key visibility"
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-              >
-                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            <p className="text-[10px] text-slate-500 mt-1">
-              Stored locally on your device in your user profile. Never transmitted elsewhere.
-            </p>
-          </div>
 
           {/* Test Status feedback */}
           {testResult && (

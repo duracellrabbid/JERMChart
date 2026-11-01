@@ -13,10 +13,30 @@ vi.mock('@google/genai', () => ({
   },
 }));
 
+const mockFetchOllamaModels = vi.fn();
+const mockTestOllamaConnection = vi.fn();
+
+vi.mock('../../../services/ai/ollamaService', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../services/ai/ollamaService')>();
+  return {
+    ...actual,
+    fetchOllamaModels: (...args: any[]) => mockFetchOllamaModels(...args),
+    testOllamaConnection: (...args: any[]) => mockTestOllamaConnection(...args),
+  };
+});
+
 describe('SettingsModal', () => {
   beforeEach(() => {
     aiConfig.clearAIConfig();
     vi.clearAllMocks();
+    mockFetchOllamaModels.mockResolvedValue([
+      { name: 'llama3.2-vision:latest', isVisionCapable: true, size: 7900000000 },
+      { name: 'qwen2.5-coder:7b', isVisionCapable: false, size: 4700000000 },
+    ]);
+    mockTestOllamaConnection.mockResolvedValue({
+      success: true,
+      message: 'Connected to Ollama. Model "llama3.2-vision:latest" is ready.',
+    });
   });
 
   it('renders fiduciary disclaimer, api key input, and model dropdown fields', () => {
@@ -241,5 +261,382 @@ describe('SettingsModal', () => {
         model: 'gemini-3.8-flash',
       })
     );
+  });
+
+  describe('Ollama Provider', () => {
+    it('renders provider switcher and allows switching to Ollama', async () => {
+      render(<SettingsModal onClose={vi.fn()} />);
+
+      const ollamaBtn = screen.getByRole('button', { name: /ollama/i });
+      expect(ollamaBtn).toBeInTheDocument();
+
+      fireEvent.click(ollamaBtn);
+
+      expect(screen.getByText(/zero cloud egress/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/ollama server url/i)).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText(/enter gemini api key/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/fiduciary privacy & enterprise disclaimer/i)).not.toBeInTheDocument();
+    });
+
+    it('switches back from Ollama to Gemini cleanly', async () => {
+      render(<SettingsModal onClose={vi.fn()} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      expect(screen.getByLabelText(/ollama server url/i)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /google gemini/i }));
+      expect(screen.getByPlaceholderText(/enter gemini api key/i)).toBeInTheDocument();
+      expect(screen.getByText(/fiduciary privacy & enterprise disclaimer/i)).toBeInTheDocument();
+    });
+
+    it('updates Ollama server URL on input change', async () => {
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      const urlInput = screen.getByLabelText(/ollama server url/i) as HTMLInputElement;
+      expect(urlInput.value).toBe('http://localhost:11434');
+
+      fireEvent.change(urlInput, { target: { value: 'http://192.168.1.100:11434' } });
+      expect(urlInput.value).toBe('http://192.168.1.100:11434');
+    });
+
+    it('fetches Ollama models dynamically and displays [Vision] badges', async () => {
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(mockFetchOllamaModels).toHaveBeenCalledWith('http://localhost:11434');
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      const modelSelect = screen.getByLabelText(/ollama model/i) as HTMLSelectElement;
+      const options = Array.from(modelSelect.options).map((o) => o.text);
+
+      expect(options).toContain('llama3.2-vision:latest [Vision]');
+      expect(options).toContain('qwen2.5-coder:7b');
+    });
+
+    it('shows warning banner when a non-vision model is selected', async () => {
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      const modelSelect = screen.getByLabelText(/ollama model/i);
+      fireEvent.change(modelSelect, { target: { value: 'qwen2.5-coder:7b' } });
+
+      expect(
+        screen.getByText(/selected model may lack image-understanding capabilities/i)
+      ).toBeInTheDocument();
+    });
+
+    it('does not show warning banner when a vision model is selected', async () => {
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      const modelSelect = screen.getByLabelText(/ollama model/i);
+      fireEvent.change(modelSelect, { target: { value: 'llama3.2-vision:latest' } });
+
+      expect(
+        screen.queryByText(/selected model may lack image-understanding capabilities/i)
+      ).not.toBeInTheDocument();
+    });
+
+    it('handles empty models list or fetch failure with helpful message and fallback input', async () => {
+      mockFetchOllamaModels.mockRejectedValueOnce(new Error('Connection refused'));
+
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/no models found at this url\. ensure ollama is running\./i)
+        ).toBeInTheDocument();
+      });
+
+      const fallbackInput = screen.getByLabelText(/ollama model name/i) as HTMLInputElement;
+      expect(fallbackInput).toBeInTheDocument();
+
+      fireEvent.change(fallbackInput, { target: { value: 'my-custom-vision-fallback' } });
+      expect(fallbackInput.value).toBe('my-custom-vision-fallback');
+    });
+
+    it('allows manual refresh of Ollama models via Refresh button', async () => {
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(mockFetchOllamaModels).toHaveBeenCalledTimes(1);
+      });
+
+      const refreshBtn = screen.getByRole('button', { name: /refresh models/i });
+      fireEvent.click(refreshBtn);
+
+      await waitFor(() => {
+        expect(mockFetchOllamaModels).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('supports selecting custom model when models are loaded', async () => {
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      const modelSelect = screen.getByLabelText(/ollama model/i);
+      fireEvent.change(modelSelect, { target: { value: CUSTOM_MODEL_VALUE } });
+
+      const customInput = screen.getByLabelText(/custom model identifier/i);
+      expect(customInput).toBeInTheDocument();
+
+      fireEvent.change(customInput, { target: { value: 'my-custom-vision-model' } });
+      expect((customInput as HTMLInputElement).value).toBe('my-custom-vision-model');
+    });
+
+    it('tests Ollama connection successfully', async () => {
+      mockTestOllamaConnection.mockResolvedValueOnce({
+        success: true,
+        message: 'Connected to Ollama (version 0.5.7). Model "llama3.2-vision:latest" is ready.',
+      });
+
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      const testBtn = screen.getByRole('button', { name: /test connection/i });
+      fireEvent.click(testBtn);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/connected to ollama \(version 0\.5\.7\)\. model "llama3\.2-vision:latest" is ready\./i)
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('handles Ollama connection test failure', async () => {
+      mockTestOllamaConnection.mockResolvedValueOnce({
+        success: false,
+        message: 'Could not connect to Ollama at http://localhost:11434: Connection refused.',
+      });
+
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      const testBtn = screen.getByRole('button', { name: /test connection/i });
+      fireEvent.click(testBtn);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/could not connect to ollama at http:\/\/localhost:11434: connection refused\./i)
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('persists Ollama configuration on Save Settings', async () => {
+      const onClose = vi.fn();
+      render(<SettingsModal onClose={onClose} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      const urlInput = screen.getByLabelText(/ollama server url/i);
+      fireEvent.change(urlInput, { target: { value: 'http://10.0.0.5:11434' } });
+
+      const modelSelect = screen.getByLabelText(/ollama model/i);
+      fireEvent.change(modelSelect, { target: { value: 'llama3.2-vision:latest' } });
+
+      const saveBtn = screen.getByRole('button', { name: /save settings/i });
+      fireEvent.click(saveBtn);
+
+      const saved = aiConfig.getAIConfig();
+      expect(saved.provider).toBe('ollama');
+      expect(saved.ollamaUrl).toBe('http://10.0.0.5:11434');
+      expect(saved.model).toBe('llama3.2-vision:latest');
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    it('loads previously stored Ollama configuration on modal open', async () => {
+      aiConfig.saveAIConfig({
+        provider: 'ollama',
+        ollamaUrl: 'http://192.168.1.55:11434',
+        model: 'llama3.2-vision:latest',
+      });
+
+      render(<SettingsModal onClose={vi.fn()} />);
+
+      const urlInput = screen.getByLabelText(/ollama server url/i) as HTMLInputElement;
+      expect(urlInput.value).toBe('http://192.168.1.55:11434');
+
+      await waitFor(() => {
+        expect(mockFetchOllamaModels).toHaveBeenCalledWith('http://192.168.1.55:11434');
+      });
+    });
+
+    it('ignores clicking the already active provider button', () => {
+      render(<SettingsModal onClose={vi.fn()} />);
+
+      const geminiBtn = screen.getByRole('button', { name: /google gemini/i });
+      fireEvent.click(geminiBtn);
+
+      expect(screen.getByLabelText(/google gemini vision model/i)).toBeInTheDocument();
+      expect(screen.queryByLabelText(/ollama server url/i)).not.toBeInTheDocument();
+    });
+
+    it('recognizes previously saved custom model on modal open for Ollama', async () => {
+      aiConfig.saveAIConfig({
+        provider: 'ollama',
+        model: 'my-custom-vision-ollama',
+      });
+
+      render(<SettingsModal onClose={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/custom model identifier/i)).toBeInTheDocument();
+      });
+
+      const customInput = screen.getByLabelText(/custom model identifier/i) as HTMLInputElement;
+      expect(customInput.value).toBe('my-custom-vision-ollama');
+    });
+
+    it('normalizes untagged model to tagged model name when matching tag is returned by Ollama', async () => {
+      aiConfig.saveAIConfig({
+        provider: 'ollama',
+        model: 'llama3.2-vision',
+      });
+
+      render(<SettingsModal onClose={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      const modelSelect = screen.getByLabelText(/ollama model/i) as HTMLSelectElement;
+      expect(modelSelect.value).toBe('llama3.2-vision:latest');
+    });
+
+    it('falls back to first model if no vision-capable models exist in Ollama response', async () => {
+      mockFetchOllamaModels.mockResolvedValueOnce([
+        { name: 'llama3:8b', isVisionCapable: false, size: 4000000000 },
+        { name: 'mistral:7b', isVisionCapable: false, size: 4000000000 },
+      ]);
+
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      const modelSelect = screen.getByLabelText(/ollama model/i) as HTMLSelectElement;
+      expect(modelSelect.value).toBe('llama3:8b');
+      expect(
+        screen.getByText(/selected model may lack image-understanding capabilities/i)
+      ).toBeInTheDocument();
+    });
+
+    it('shows vision warning in fallback mode when user types non-vision model and hides for vision model', async () => {
+      mockFetchOllamaModels.mockResolvedValueOnce([]);
+
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/no models found at this url\. ensure ollama is running\./i)
+        ).toBeInTheDocument();
+      });
+
+      const fallbackInput = screen.getByLabelText(/ollama model name/i);
+      fireEvent.change(fallbackInput, { target: { value: 'qwen2.5-coder:7b' } });
+
+      expect(
+        screen.getByText(/selected model may lack image-understanding capabilities/i)
+      ).toBeInTheDocument();
+
+      fireEvent.change(fallbackInput, { target: { value: 'llama3.2-vision:latest' } });
+      expect(
+        screen.queryByText(/selected model may lack image-understanding capabilities/i)
+      ).not.toBeInTheDocument();
+    });
+
+    it('handles switching to Ollama when ollamaUrl is empty and model does not start with gemini', () => {
+      aiConfig.saveAIConfig({
+        provider: 'gemini',
+        ollamaUrl: '',
+        model: 'custom-pretrained-model',
+      });
+
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      const urlInput = screen.getByLabelText(/ollama server url/i) as HTMLInputElement;
+      expect(urlInput.value).toBe('http://localhost:11434');
+    });
+
+    it('preserves existing model when switching to Gemini if it starts with gemini', () => {
+      aiConfig.saveAIConfig({
+        provider: 'ollama',
+        model: 'gemini-3.7-flash',
+      });
+
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /google gemini/i }));
+
+      const modelSelect = screen.getByLabelText(/google gemini vision model/i) as HTMLSelectElement;
+      expect(modelSelect.value).toBe('gemini-3.7-flash');
+    });
+
+    it('does not update model if provider switched away from ollama before fetch resolves', async () => {
+      let resolveModels!: (val: any) => void;
+      mockFetchOllamaModels.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveModels = resolve;
+        })
+      );
+
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      fireEvent.click(screen.getByRole('button', { name: /google gemini/i }));
+
+      resolveModels([{ name: 'llama3.2-vision:latest', isVisionCapable: true, size: 1000 }]);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/google gemini vision model/i)).toBeInTheDocument();
+      });
+    });
+
+    it('preserves custom model when reselecting custom model from dropdown in Ollama', async () => {
+      render(<SettingsModal onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      const modelSelect = screen.getByLabelText(/ollama model/i);
+      fireEvent.change(modelSelect, { target: { value: CUSTOM_MODEL_VALUE } });
+
+      const customInput = screen.getByLabelText(/custom model identifier/i);
+      fireEvent.change(customInput, { target: { value: 'my-custom-active-model' } });
+
+      fireEvent.change(modelSelect, { target: { value: CUSTOM_MODEL_VALUE } });
+      expect((customInput as HTMLInputElement).value).toBe('my-custom-active-model');
+    });
   });
 });
