@@ -7,6 +7,7 @@ import {
   fetchOllamaModels,
   testOllamaConnection,
   callOllamaVision,
+  isModelInstalled,
 } from '../../services/ai/ollamaService';
 import {
   CHART_VISION_SCHEMA,
@@ -32,6 +33,8 @@ describe('ollamaService', () => {
       expect(isVisionModel('qwen-vl:chat')).toBe(true);
       expect(isVisionModel('moondream:latest')).toBe(true);
       expect(isVisionModel('bakllava:latest')).toBe(true);
+      expect(isVisionModel('paligemma:latest')).toBe(true);
+      expect(isVisionModel('pixtral:12b')).toBe(true);
       expect(isVisionModel('custom-model:latest', 'mllama')).toBe(true);
       expect(isVisionModel('custom-model:latest', 'vision')).toBe(true);
     });
@@ -42,6 +45,13 @@ describe('ollamaService', () => {
       expect(isVisionModel('mistral:7b')).toBe(false);
       expect(isVisionModel('deepseek-r1:8b')).toBe(false);
       expect(isVisionModel('')).toBe(false);
+    });
+
+    it('isModelInstalled correctly checks matching model names and tags', () => {
+      const models = [{ name: 'llama3.2-vision:latest', isVisionCapable: true, size: 1000 }];
+      expect(isModelInstalled(models, 'llama3.2-vision')).toBe(true);
+      expect(isModelInstalled(models, 'llama3.2-vision:latest')).toBe(true);
+      expect(isModelInstalled(models, 'other-model')).toBe(false);
     });
   });
 
@@ -167,6 +177,35 @@ describe('ollamaService', () => {
           ollamaUrl: 'http://localhost:11434',
         })
       ).rejects.toThrow(/empty response/i);
+    });
+
+    it('handles message.content returned as a parsed JSON object', async () => {
+      const contentObj = {
+        entities: [{ tempId: 'e1', name: 'Alpha Ltd' }],
+        relationships: [],
+        warnings: [],
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: { content: contentObj },
+          }),
+          { status: 200 }
+        )
+      );
+
+      const result = await callOllamaVision(
+        'base64data',
+        'image/png',
+        {
+          provider: 'ollama',
+          apiKey: '',
+          model: 'llama3.2-vision',
+          ollamaUrl: 'http://localhost:11434',
+        }
+      );
+
+      expect(result).toBe(JSON.stringify(contentObj));
     });
 
     it('handles error response with JSON but missing error property', async () => {
@@ -348,6 +387,25 @@ describe('ollamaService', () => {
       expect(res.message).toContain('Model "llama3.2-vision" is ready');
     });
 
+    it('returns warning note when installed model is not vision-capable', async () => {
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ version: '0.5.1' }), { status: 200 })
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              models: [{ name: 'gemma4:latest', size: 1000 }],
+            }),
+            { status: 200 }
+          )
+        );
+
+      const res = await testOllamaConnection('http://localhost:11434', 'gemma4');
+      expect(res.success).toBe(true);
+      expect(res.message).toContain('may lack vision/OCR capabilities');
+    });
+
     it('returns failure suggesting ollama pull when model is missing', async () => {
       vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(
@@ -451,6 +509,7 @@ describe('ollamaService', () => {
       expect(parsedBody.format).toEqual(CHART_VISION_SCHEMA);
       expect(parsedBody.stream).toBe(false);
       expect(parsedBody.options.temperature).toBeCloseTo(0.1);
+      expect(parsedBody.options.num_ctx).toBe(8192);
       expect(parsedBody.messages[0]).toEqual({
         role: 'system',
         content: SYSTEM_INSTRUCTION,

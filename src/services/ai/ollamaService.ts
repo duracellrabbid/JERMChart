@@ -24,6 +24,13 @@ const VISION_KEYWORDS = [
   'moondream',
   'mllama',
   'bakllava',
+  'paligemma',
+  'pixtral',
+  'granite3.2-vision',
+  'deepseek-vl',
+  'internvl',
+  'glm-4v',
+  'cogvlm',
 ];
 
 export function isVisionModel(name: string, family = ''): boolean {
@@ -89,12 +96,16 @@ export async function fetchOllamaModels(baseUrl: string): Promise<OllamaModelIte
   return rawModels.map(mapOllamaModelItem);
 }
 
-function isModelInstalled(models: OllamaModelItem[], targetModel: string): boolean {
+function findInstalledModel(models: OllamaModelItem[], targetModel: string): OllamaModelItem | undefined {
   const normalized = targetModel.trim().toLowerCase();
-  return models.some((m) => {
+  return models.find((m) => {
     const n = m.name.toLowerCase();
     return n === normalized || n === `${normalized}:latest` || n.split(':')[0] === normalized;
   });
+}
+
+export function isModelInstalled(models: OllamaModelItem[], targetModel: string): boolean {
+  return Boolean(findInstalledModel(models, targetModel));
 }
 
 export async function testOllamaConnection(
@@ -139,7 +150,15 @@ export async function testOllamaConnection(
     };
   }
 
-  if (isModelInstalled(models, trimmedModel)) {
+  const installed = findInstalledModel(models, trimmedModel);
+  if (installed) {
+    if (!installed.isVisionCapable) {
+      return {
+        success: true,
+        message: `Connected to Ollama (version ${version}). Note: Model "${trimmedModel}" may lack vision/OCR capabilities. For chart transcription, install a multimodal model (e.g. "ollama pull llama3.2-vision").`,
+      };
+    }
+
     return {
       success: true,
       message: `Connected to Ollama (version ${version}). Model "${trimmedModel}" is ready.`,
@@ -195,6 +214,7 @@ export async function callOllamaVision(
     stream: false,
     options: {
       temperature: 0.1,
+      num_ctx: 8192,
     },
   };
 
@@ -211,7 +231,10 @@ export async function callOllamaVision(
   }
 
   const data = await response.json().catch(() => ({}));
-  const content = data?.message?.content;
+  let content = data?.message?.content;
+  if (typeof content === 'object' && content !== null) {
+    content = JSON.stringify(content);
+  }
   if (!content || typeof content !== 'string' || content.trim().length === 0) {
     throw new Error('Ollama returned an empty response.');
   }

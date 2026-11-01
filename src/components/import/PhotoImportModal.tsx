@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { hasValidAIConfig, getAIConfig, AIProvider } from '../../services/ai/aiConfig';
 import { preprocessImageFile } from '../../utils/imagePreprocessing';
 import { analyzeChartImage } from '../../services/ai/chartVisionService';
+import { isVisionModel } from '../../services/ai/ollamaService';
 import { useStructureStore } from '../../store/useStructureStore';
 import {
   Camera,
@@ -260,6 +261,17 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
         currentConfig,
         controller.signal
       );
+
+      if (result.chart.entities.length === 0) {
+        let failureReason =
+          result.warnings.length > 0
+            ? result.warnings.join(' ')
+            : 'No entities could be identified from the uploaded chart image.';
+        if (currentConfig.provider === 'ollama' && !isVisionModel(currentConfig.model)) {
+          failureReason += ` Note: "${currentConfig.model}" may lack vision capabilities. For chart OCR, please install and select a multimodal vision model (such as llama3.2-vision or qwen2.5-vl).`;
+        }
+        throw new Error(failureReason);
+      }
 
       setProgressStep('Calculating automatic hierarchy and canvas layout...');
       loadStructure(result.chart);

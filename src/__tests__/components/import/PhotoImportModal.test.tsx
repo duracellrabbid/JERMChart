@@ -241,6 +241,100 @@ describe('PhotoImportModal', () => {
     });
   });
 
+  it('displays error and does not close modal when analysis returns 0 entities', async () => {
+    aiConfig.saveAIConfig({ apiKey: 'valid-test-key-12345' });
+    vi.mocked(chartVisionService.analyzeChartImage).mockResolvedValueOnce({
+      chart: {
+        metadata: { chartTitle: 'Empty', effectiveDate: '2026-09-21', confidentialityNotice: '' },
+        entities: [],
+        relationships: [],
+      },
+      warnings: ['Analysis failed: No discernible structure chart image was provided.'],
+    });
+
+    const onClose = vi.fn();
+    render(<PhotoImportModal onClose={onClose} onOpenSettings={vi.fn()} />);
+
+    const file = new File(['mock-img'], 'chart.png', { type: 'image/png' });
+    const fileInput = screen.getByLabelText(/upload photo/i, { selector: 'input' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    const analyzeBtn = screen.getByRole('button', { name: /analyze & create chart/i });
+    fireEvent.click(analyzeBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/no discernible structure chart image was provided/i)
+      ).toBeInTheDocument();
+    });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('displays default error message when analysis returns 0 entities and no warnings', async () => {
+    aiConfig.saveAIConfig({ apiKey: 'valid-test-key-12345' });
+    vi.mocked(chartVisionService.analyzeChartImage).mockResolvedValueOnce({
+      chart: {
+        metadata: { chartTitle: 'Empty', effectiveDate: '2026-09-21', confidentialityNotice: '' },
+        entities: [],
+        relationships: [],
+      },
+      warnings: [],
+    });
+
+    const onClose = vi.fn();
+    render(<PhotoImportModal onClose={onClose} onOpenSettings={vi.fn()} />);
+
+    const file = new File(['mock-img'], 'chart.png', { type: 'image/png' });
+    const fileInput = screen.getByLabelText(/upload photo/i, { selector: 'input' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    const analyzeBtn = screen.getByRole('button', { name: /analyze & create chart/i });
+    fireEvent.click(analyzeBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/no entities could be identified from the uploaded chart image/i)
+      ).toBeInTheDocument();
+    });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('includes Ollama vision model hint when 0 entities returned for non-vision Ollama model', async () => {
+    vi.spyOn(aiConfig, 'getAIConfig').mockReturnValue({
+      provider: 'ollama',
+      apiKey: '',
+      model: 'gemma4:latest',
+      ollamaUrl: 'http://localhost:11434',
+    });
+    vi.spyOn(aiConfig, 'hasValidAIConfig').mockReturnValue(true);
+
+    vi.mocked(chartVisionService.analyzeChartImage).mockResolvedValueOnce({
+      chart: {
+        metadata: { chartTitle: 'Empty', effectiveDate: '2026-09-21', confidentialityNotice: '' },
+        entities: [],
+        relationships: [],
+      },
+      warnings: ['No entities detected'],
+    });
+
+    const onClose = vi.fn();
+    render(<PhotoImportModal onClose={onClose} onOpenSettings={vi.fn()} />);
+
+    const file = new File(['mock-img'], 'chart.png', { type: 'image/png' });
+    const fileInput = screen.getByLabelText(/upload photo/i, { selector: 'input' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    const analyzeBtn = screen.getByRole('button', { name: /analyze & create chart/i });
+    fireEvent.click(analyzeBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/may lack vision capabilities/i)
+      ).toBeInTheDocument();
+    });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('revokes previous object URL on re-selection and on modal unmount', () => {
     aiConfig.saveAIConfig({ apiKey: 'valid-test-key-12345' });
     const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
