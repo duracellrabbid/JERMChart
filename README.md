@@ -74,9 +74,12 @@ This utility solves these challenges with an **algorithmic layout engine**, **cu
   - Full roundtrip compatibility: export the active canvas structure to a standard 12-column Excel workbook, or import existing client entity registers into editable interactive charts.
   - Multi-parent ownership resolution, share classes, percentage normalization (supporting decimal 0.0–1.0 and whole 0–100 scales), and director parsing.
 
-- **AI-Powered Photo & Hand-Drawn Chart OCR (Google Gemini Exclusive)**:
-  - Transcribe photos of whiteboard sketches, diagrams, or hand-drawn trust structures directly into editable digital charts exclusively using Google Gemini multimodal vision (`@google/genai`).
-  - Multi-model catalog selection supporting Gemini 2.5 Flash, Gemini 1.5 Pro, and latest Gemini vision models.
+- **AI-Powered Photo & Hand-Drawn Chart OCR (Local Ollama & Google Gemini)**:
+  - Transcribe photos of whiteboard sketches, diagrams, or hand-drawn trust structures directly into editable digital charts using either **Local Ollama** (100% offline & airgapped) or **Google Gemini** multimodal vision (`@google/genai`).
+  - **Local Ollama Provider**: Run fully air-gapped on-premises vision models (`llama3.2-vision`, `minicpm-v`, `llava`, etc.) with dynamic local model discovery (`/api/tags`), local/LAN endpoint configuration, and zero data leaving the local network.
+  - **Google Gemini Provider**: Multi-model catalog selection supporting Gemini 2.5 Flash, Gemini 1.5 Pro, and latest Gemini vision models with enterprise data privacy disclaimers.
+  - **Unified Canonical Schema & Guardrails**: Enforces structured JSON output (`prompts.ts`) across both providers with robust parsing, entity normalization, and guardrails for OCR inference.
+  - **Live Progress & Cancellation**: Real-time progress overlay with elapsed timer and instant cancellation control (`AbortController`) in the photo import dialog.
   - Built-in AI connection testing utility (`npm run test:ai` and in-app settings verification).
   - Interactive OCR review banner with one-click undo snapshot restoration.
   - **Fiduciary Data Privacy Notice**: Built-in enterprise compliance disclaimer deflecting liability and requiring users to ensure their Google AI API key is an Enterprise/Paid tier with model training disabled.
@@ -84,9 +87,9 @@ This utility solves these challenges with an **algorithmic layout engine**, **cu
 - **Airgapped Zero-Telemetry & Mathematical Offline Architecture**:
   - **100% In-Browser Privacy**: Client data stays completely inside the user's browser or local machine. Zero unauthorized network egress, analytics, or background telemetry.
   - **Vendored CSS Security**: Replaced external dependency CSS imports with locally audited `src/styles/xyflow-base.css` to eliminate remote injection vectors and enforce strict offline isolation.
-  - **Compile-Time AST Restrictions**: ESLint `no-restricted-globals` statically forbids `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon` across all application modules, with an exception solely for explicit user-initiated Gemini OCR in `chartVisionService.ts`.
-  - **Content Security Policy (CSP)**: Strict `<meta http-equiv="Content-Security-Policy">` restricting `connect-src` strictly to `'self'` and `https://generativelanguage.googleapis.com`.
-  - **Electron Runtime Firewall & Chromium Hardening**: Suppresses Chromium background telemetry via 6 privacy flags (`disable-background-networking`, `disable-component-update`, `disable-domain-reliability`, `disable-sync`, `metrics-recording-only`, `no-report-upload`) and enforces an active network firewall via `session.defaultSession.webRequest.onBeforeRequest` that cancels unauthorized egress.
+  - **Compile-Time AST Restrictions**: ESLint `no-restricted-globals` statically forbids `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon` across all application modules, with an exception solely for explicit user-initiated OCR in `chartVisionService.ts` and `ollamaService.ts`.
+  - **Content Security Policy (CSP)**: Strict `<meta http-equiv="Content-Security-Policy">` restricting `connect-src` strictly to `'self'`, `https://generativelanguage.googleapis.com`, and user-configured local/LAN Ollama endpoints.
+  - **Electron Runtime Firewall & Chromium Hardening**: Suppresses Chromium background telemetry via 6 privacy flags (`disable-background-networking`, `disable-component-update`, `disable-domain-reliability`, `disable-sync`, `metrics-recording-only`, `no-report-upload`) and enforces an active network firewall via `session.defaultSession.webRequest.onBeforeRequest` that cancels unauthorized egress while strictly permitting safe local/LAN Ollama API routes when configured.
   - **Automated Offline Isolation Suite**: Dedicated test suite (`src/__tests__/offline/networkIsolation.test.ts` and `src/__tests__/offline/cssSecurity.test.ts`) guaranteeing zero network requests across all entity operations, Dagre layout calculations, Excel imports, and document exports.
 
 - **Enterprise Quality & Security Safeguards**:
@@ -108,7 +111,7 @@ This utility solves these challenges with an **algorithmic layout engine**, **cu
 - **State Management**: Zustand 5
 - **Security & Cryptography**: Web Crypto API (AES-256-GCM, PBKDF2 with SHA-256)
 - **File I/O & Export Services**: `xlsx` (`@e965/xlsx`), `jspdf`, `pptxgenjs`, `html-to-image`, `heic2any`
-- **AI Multimodal Vision**: `@google/genai` (Google Gemini exclusively)
+- **AI Multimodal Vision**: Local Ollama (100% offline airgapped vision models) & Google Gemini (`@google/genai`)
 - **Code Quality & Linting**: ESLint 10 (`eslint-plugin-sonarjs`, `eslint-plugin-regexp`), Husky 9
 - **Testing & Coverage**: Vitest 5 (v8 coverage) + React Testing Library (100% global threshold)
 - **CI/CD & Packaging**: GitHub Actions, `electron-builder` 27
@@ -295,7 +298,6 @@ JERMChart/
 ├── docs/                        # Architecture documentation, standards, and specifications
 ├── scripts/
 │   └── test-ai-connection.mjs   # Node CLI script to verify Gemini API key & model access
-├── ARCHITECTURE.md              # Architectural specification for JERMChart ecosystem
 ├── DESIGN.md                    # Visual design specification, tokens, and UI layout
 ├── PRODUCT.md                   # Product vision, user personas, and fiduciary workflows
 ├── index.html                   # HTML shell with strict Content Security Policy (CSP)
@@ -320,7 +322,7 @@ JERMChart/
 │   ├── store/
 │   │   └── useStructureStore.ts # Central Zustand state store with read-only guards & undo snapshots
 │   ├── services/
-│   │   └── ai/                  # AI vision OCR integration (Gemini exclusively, AIConfig, ModelCatalog)
+│   │   └── ai/                  # AI vision OCR integration (Local Ollama & Google Gemini, canonical schemas & prompts)
 │   ├── utils/
 │   │   ├── cryptoService.ts     # AES-256-GCM encryption & PBKDF2 password derivation
 │   │   ├── graphValidation.ts   # Circular ownership detection and self-reference guards
@@ -338,8 +340,8 @@ JERMChart/
 │   │   ├── common/              # Common modals (PasswordPromptModal, AlertModal, ConfirmationModal)
 │   │   ├── nodes/               # Custom entity card nodes & staged person nodes
 │   │   ├── edges/               # Custom stepped orthogonal and straight ownership connectors
-│   │   ├── import/              # Excel spreadsheet & AI photo OCR import modals
-│   │   ├── settings/            # Gemini API key manager, model selector & Enterprise Compliance Notice
+│   │   ├── import/              # Excel spreadsheet & AI photo OCR import modals (with progress timer & abort)
+│   │   ├── settings/            # AI provider selector (Ollama / Gemini), model manager & Enterprise Compliance Notice
 │   │   └── export/              # Export modal for PDF/PNG/SVG/PPTX and encrypted JSON
 │   └── __tests__/               # Isolated test suites (40 suites, 464 tests, 100% coverage)
 │       └── offline/             # Automated network isolation & CSS security suites
