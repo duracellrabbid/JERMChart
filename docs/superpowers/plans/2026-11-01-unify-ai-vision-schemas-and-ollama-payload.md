@@ -32,28 +32,11 @@
   - `export const CHART_VISION_SCHEMA: Record<string, unknown>`
   - `export function cleanBase64Image(base64: string): string`
 
-- [ ] **Step 1: Write failing tests in `src/__tests__/services/prompts.test.ts`**
-
-Create `src/__tests__/services/prompts.test.ts` testing:
-- `CHART_VISION_SCHEMA` has `type: 'object'`, `required: ['entities', 'relationships']`, correct entity types and statuses in enum arrays.
-- `cleanBase64Image` strips data URI prefix (e.g. `data:image/png;base64,` and `data:image/jpeg;base64,`), handles plain base64, whitespace, and empty input.
-- `VISION_USER_PROMPT` and `SYSTEM_INSTRUCTION` are non-empty strings containing expected extraction instructions.
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `rtk npm test -- src/__tests__/services/prompts.test.ts`  
-Expected: FAIL due to missing exports.
-
-- [ ] **Step 3: Implement `prompts.ts`**
-
-Define `CHART_VISION_SCHEMA` using standard lowercase JSON Schema types (`'object'`, `'string'`, `'number'`, `'array'`, `'boolean'`). Move `cleanBase64Image` from `ollamaService.ts` to `prompts.ts`. Export `VISION_USER_PROMPT`.
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `rtk npm test -- src/__tests__/services/prompts.test.ts`  
-Expected: PASS with 100% coverage.
-
-- [ ] **Step 5: Commit changes**
+- [x] **Step 1: Write failing tests in `src/__tests__/services/prompts.test.ts`**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement `prompts.ts`**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit changes**
 
 ```bash
 rtk git add src/services/ai/prompts.ts src/__tests__/services/prompts.test.ts
@@ -72,25 +55,11 @@ rtk git commit -m "feat(ai): centralize canonical vision schema, prompts, and ba
 - Consumes: `CHART_VISION_SCHEMA`, `SYSTEM_INSTRUCTION`, `VISION_USER_PROMPT`, `cleanBase64Image` from `./prompts`
 - Produces: `callOllamaVision(base64Image, mimeType, config, signal?)` sending `format: CHART_VISION_SCHEMA`
 
-- [ ] **Step 1: Write failing test in `src/__tests__/services/ollamaService.test.ts`**
-
-Update test in `src/__tests__/services/ollamaService.test.ts` to verify that `callOllamaVision` sends `format: CHART_VISION_SCHEMA` and `content: VISION_USER_PROMPT` in the `POST /api/chat` payload.
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `rtk npm test -- src/__tests__/services/ollamaService.test.ts`  
-Expected: FAIL because `format` is currently `'json'`.
-
-- [ ] **Step 3: Update `callOllamaVision` in `src/services/ai/ollamaService.ts`**
-
-Import `CHART_VISION_SCHEMA`, `cleanBase64Image`, and `VISION_USER_PROMPT` from `./prompts`. Re-export `cleanBase64Image` for backward compatibility. Replace `format: 'json'` with `format: CHART_VISION_SCHEMA` and use `VISION_USER_PROMPT`.
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `rtk npm test -- src/__tests__/services/ollamaService.test.ts`  
-Expected: PASS with 100% coverage.
-
-- [ ] **Step 5: Commit changes**
+- [x] **Step 1: Write failing test in `src/__tests__/services/ollamaService.test.ts`**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Update `callOllamaVision` in `src/services/ai/ollamaService.ts`**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit changes**
 
 ```bash
 rtk git add src/services/ai/ollamaService.ts src/__tests__/services/ollamaService.test.ts
@@ -111,29 +80,11 @@ rtk git commit -m "feat(ai): enforce structured JSON schema on Ollama vision cha
   - `CHART_VISION_RESPONSE_SCHEMA` (aliased to `CHART_VISION_SCHEMA as Schema`)
   - `callGeminiVision` using `cleanBase64Image` and `VISION_USER_PROMPT`
 
-- [ ] **Step 1: Write/update tests in `src/__tests__/services/chartVisionService.test.ts`**
-
-Verify that `callGeminiVision` passes `cleanBase64Image(base64Image)` and `VISION_USER_PROMPT`, and that `CHART_VISION_RESPONSE_SCHEMA` matches `CHART_VISION_SCHEMA`.
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `rtk npm test -- src/__tests__/services/chartVisionService.test.ts`
-
-- [ ] **Step 3: Update `chartVisionService.ts`**
-
-Import `CHART_VISION_SCHEMA`, `VISION_USER_PROMPT`, `cleanBase64Image` from `./prompts`. Re-export `CHART_VISION_RESPONSE_SCHEMA = CHART_VISION_SCHEMA as unknown as Schema` for backward compatibility. Use `cleanBase64Image(base64Image)` in `inlineData.data`.
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `rtk npm test -- src/__tests__/services/chartVisionService.test.ts`  
-Expected: PASS with 100% coverage.
-
-- [ ] **Step 5: Commit changes**
-
-```bash
-rtk git add src/services/ai/chartVisionService.ts src/__tests__/services/chartVisionService.test.ts
-rtk git commit -m "refactor(ai): unify Gemini vision client with shared canonical schema and prompts"
-```
+- [x] **Step 1: Write/update tests in `src/__tests__/services/chartVisionService.test.ts`**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Update `chartVisionService.ts`**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit changes**
 
 ---
 
@@ -142,17 +93,6 @@ rtk git commit -m "refactor(ai): unify Gemini vision client with shared canonica
 **Files:**
 - All codebase files
 
-- [ ] **Step 1: Run pre-commit gate check**
-
-Run: `rtk npm run verify:pre-commit`  
-Expected: PASS with 0 ESLint errors and 100% test coverage across all files.
-
-- [ ] **Step 2: Run pre-push gate check**
-
-Run: `rtk npm run verify:pre-push`  
-Expected: PASS with successful Vite/Electron build and 0 vulnerabilities.
-
-- [ ] **Step 3: Check git log**
-
-Run: `rtk git log -n 5 --oneline`  
-Expected: Clean linear history of discrete commits.
+- [x] **Step 1: Run pre-commit gate check**
+- [x] **Step 2: Run pre-push gate check**
+- [x] **Step 3: Check git log**
