@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { hasValidApiKey, getAIConfig } from '../../services/ai/aiConfig';
+import { hasValidAIConfig, getAIConfig, AIProvider } from '../../services/ai/aiConfig';
 import { preprocessImageFile } from '../../utils/imagePreprocessing';
 import { analyzeChartImage } from '../../services/ai/chartVisionService';
 import { useStructureStore } from '../../store/useStructureStore';
@@ -25,33 +25,42 @@ function isHeicFile(filename: string): boolean {
   return lower.endsWith('.heic') || lower.endsWith('.heif');
 }
 
-const ApiKeyRequiredNotice: React.FC<{ onConfigure: () => void }> = ({ onConfigure }) => (
-  <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-900 space-y-3">
-    <div className="flex items-center gap-2 font-bold text-amber-800 text-sm">
-      <KeyRound className="w-4 h-4 text-amber-600" />
-      <span>API Key Required</span>
-    </div>
-    <p className="leading-relaxed">
-      To transcribe hand-drawn diagrams into digital structure charts, this feature uses
-      multimodal vision AI (Google Gemini). Please configure your API key in Settings first.
-    </p>
-    <button
-      type="button"
-      onClick={onConfigure}
-      className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5 transition shadow"
-    >
-      <span>Configure API Key</span>
-      <ArrowRight className="w-4 h-4" />
-    </button>
-  </div>
-);
+export const ConfigRequiredNotice: React.FC<{
+  provider: AIProvider;
+  onConfigure: () => void;
+}> = ({ provider, onConfigure }) => {
+  const isOllama = provider === 'ollama';
+  const title = isOllama ? 'Ollama Configuration Required' : 'API Key Required';
+  const description = isOllama
+    ? 'To transcribe hand-drawn diagrams into digital structure charts, local vision AI (Ollama) requires a configured server URL and model. Please configure Ollama in Settings first.'
+    : 'To transcribe hand-drawn diagrams into digital structure charts, this feature uses multimodal vision AI (Google Gemini). Please configure your API key in Settings first.';
+  const buttonText = isOllama ? 'Configure Ollama' : 'Configure API Key';
 
-const ConfirmReplaceNotice: React.FC<{
+  return (
+    <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-900 space-y-3">
+      <div className="flex items-center gap-2 font-bold text-amber-800 text-sm">
+        <KeyRound className="w-4 h-4 text-amber-600" />
+        <span>{title}</span>
+      </div>
+      <p className="leading-relaxed">{description}</p>
+      <button
+        type="button"
+        onClick={onConfigure}
+        className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5 transition shadow"
+      >
+        <span>{buttonText}</span>
+        <ArrowRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+};
+
+export const ConfirmReplaceNotice: React.FC<{
   entityCount: number;
-  isProcessing: boolean;
+  isProcessing?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
-}> = ({ entityCount, isProcessing, onCancel, onConfirm }) => (
+}> = ({ entityCount, isProcessing = false, onCancel, onConfirm }) => (
   <div className="p-4 rounded-xl border border-sky-200 bg-sky-50 text-xs text-slate-800 space-y-3 animate-in fade-in">
     <div className="flex items-center gap-2 font-bold text-sky-900 text-sm">
       <AlertTriangle className="w-4 h-4 text-sky-600" />
@@ -82,6 +91,34 @@ const ConfirmReplaceNotice: React.FC<{
   </div>
 );
 
+export const ProcessingView: React.FC<{
+  progressStep: string;
+  elapsedSeconds: number;
+  onCancel: () => void;
+}> = ({ progressStep, elapsedSeconds, onCancel }) => (
+  <div className="py-8 px-4 flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in">
+    <div className="p-4 rounded-full bg-sky-50 text-sky-600 ring-8 ring-sky-50/50">
+      <Loader2 className="w-8 h-8 animate-spin" />
+    </div>
+    <div className="space-y-1">
+      <h3 className="font-bold text-base text-slate-900">Transcribing Structure Chart...</h3>
+      <p className="text-xs text-slate-600 font-medium">{progressStep}</p>
+    </div>
+    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-mono">
+      <span>Elapsed: {elapsedSeconds}s</span>
+    </div>
+    <div className="pt-2">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition shadow-sm"
+      >
+        Cancel Analysis
+      </button>
+    </div>
+  </div>
+);
+
 export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   onClose,
   onOpenSettings,
@@ -93,20 +130,26 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   const setUndoSnapshot = useStructureStore((state) => state.setUndoSnapshot);
   const setOcrReviewState = useStructureStore((state) => state.setOcrReviewState);
 
-  const [hasKey, setHasKey] = useState(() => hasValidApiKey());
+  const [config, setConfig] = useState(() => getAIConfig());
+  const [hasConfig, setHasConfig] = useState(() => hasValidAIConfig());
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressStep, setProgressStep] = useState<string>('');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showConfirmReplace, setShowConfirmReplace] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    setHasKey(hasValidApiKey());
+    const currentConfig = getAIConfig();
+    setConfig(currentConfig);
+    setHasConfig(hasValidAIConfig(currentConfig));
   }, []);
 
   useEffect(() => {
@@ -114,6 +157,14 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
         previewUrlRef.current = null;
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
     };
   }, []);
@@ -137,7 +188,6 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
       previewUrlRef.current = null;
     }
 
-    // If it's a regular browser-displayable image, show preview
     if (!isHeicFile(selectedFile.name)) {
       const url = URL.createObjectURL(selectedFile);
       previewUrlRef.current = url;
@@ -164,28 +214,59 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
     if (droppedFile) handleSelectFile(droppedFile);
   };
 
+  const handleCancelAnalysis = () => {
+    abortControllerRef.current?.abort();
+    clearInterval(timerRef.current!);
+    timerRef.current = null;
+    setIsProcessing(false);
+    setErrorMsg('Analysis was cancelled by user.');
+  };
+
   const executeAnalysis = async () => {
+    setShowConfirmReplace(false);
     setIsProcessing(true);
     setErrorMsg(null);
+    setElapsedSeconds(0);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    timerRef.current = timer;
+
+    let stepTimer: ReturnType<typeof setTimeout> | null = null;
 
     try {
-      // Save current canvas to undo snapshot if existing entities
       if (entities.length > 0) {
         setUndoSnapshot({ metadata, entities, relationships });
       }
 
-      setProgressStep('Optimizing photo & converting formats...');
+      setProgressStep('Optimizing & preprocessing photo...');
       const preprocessed = await preprocessImageFile(file!);
 
-      setProgressStep('Analyzing structure, entities & relationships with AI...');
-      const config = getAIConfig();
+      const currentConfig = getAIConfig();
+      setProgressStep(
+        currentConfig.provider === 'ollama'
+          ? 'Connecting to local Ollama vision model...'
+          : 'Connecting to Google Gemini vision AI...'
+      );
+
+      stepTimer = setTimeout(() => {
+        setProgressStep('Transcribing handwritten entities and relationships...');
+      }, 800);
+
       const result = await analyzeChartImage(
         preprocessed.base64Data,
         preprocessed.mimeType,
-        config
+        currentConfig,
+        controller.signal
       );
 
-      setProgressStep('Generating chart layout...');
+      clearTimeout(stepTimer);
+
+      setProgressStep('Calculating automatic hierarchy and canvas layout...');
       loadStructure(result.chart);
 
       setOcrReviewState({
@@ -195,10 +276,18 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
 
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to analyze photo. Please check your API key or image.');
-      setShowConfirmReplace(false);
+      clearTimeout(stepTimer);
+      if (err?.name === 'AbortError' || controller.signal.aborted) {
+        setErrorMsg('Analysis was cancelled by user.');
+      } else {
+        setErrorMsg(err?.message || 'Failed to analyze photo. Please check your API key or image.');
+      }
     } finally {
+      clearTimeout(stepTimer);
+      clearInterval(timerRef.current!);
+      timerRef.current = null;
       setIsProcessing(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -211,9 +300,10 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   };
 
   const renderModalBody = () => {
-    if (!hasKey) {
+    if (!hasConfig) {
       return (
-        <ApiKeyRequiredNotice
+        <ConfigRequiredNotice
+          provider={config.provider}
           onConfigure={() => {
             onClose();
             onOpenSettings();
@@ -222,11 +312,20 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
       );
     }
 
+    if (isProcessing) {
+      return (
+        <ProcessingView
+          progressStep={progressStep}
+          elapsedSeconds={elapsedSeconds}
+          onCancel={handleCancelAnalysis}
+        />
+      );
+    }
+
     if (showConfirmReplace) {
       return (
         <ConfirmReplaceNotice
           entityCount={entities.length}
-          isProcessing={isProcessing}
           onCancel={() => setShowConfirmReplace(false)}
           onConfirm={executeAnalysis}
         />
@@ -243,93 +342,96 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
           onClick={() => fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center ${
             isDragging
-                    ? 'border-sky-500 bg-sky-50/50'
-                    : 'border-slate-300 hover:border-sky-400 hover:bg-slate-50'
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  id="photo-upload-input"
-                  aria-label="Upload photo of structure chart"
-                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleSelectFile(f);
-                  }}
+              ? 'border-sky-500 bg-sky-50/50'
+              : 'border-slate-300 hover:border-sky-400 hover:bg-slate-50'
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            id="photo-upload-input"
+            aria-label="Upload photo of structure chart"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleSelectFile(f);
+            }}
+          />
+
+          {file ? (
+            <div className="flex flex-col items-center gap-2">
+              {previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt="Selected diagram preview"
+                  className="max-h-40 rounded-lg border border-slate-200 object-contain shadow-sm"
                 />
-
-                {file ? (
-                  <div className="flex flex-col items-center gap-2">
-                    {previewUrl ? (
-                      <img
-                        src={previewUrl}
-                        alt="Selected diagram preview"
-                        className="max-h-40 rounded-lg border border-slate-200 object-contain shadow-sm"
-                      />
-                    ) : (
-                      <div className="p-4 rounded-lg bg-sky-100 text-sky-700">
-                        <FileImage className="w-10 h-10" />
-                      </div>
-                    )}
-                    <span className="font-semibold text-xs text-slate-800">{file.name}</span>
-                    <span className="text-[10px] text-slate-500">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB • Click or drop to replace
-                    </span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="p-3 rounded-full bg-sky-100 text-sky-600 mb-2">
-                      <Upload className="w-6 h-6" />
-                    </div>
-                    <div className="font-semibold text-xs text-slate-900">
-                      Upload Hand-Drawn Structure Chart
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-1">
-                      Drag and drop phone photo or camera scan (.jpg, .png, .webp, .heic)
-                    </div>
-                  </>
-                )}
+              ) : (
+                <div className="p-4 rounded-lg bg-sky-100 text-sky-700">
+                  <FileImage className="w-10 h-10" />
+                </div>
+              )}
+              <span className="font-semibold text-xs text-slate-800">{file.name}</span>
+              <span className="text-[10px] text-slate-500">
+                {(file.size / 1024 / 1024).toFixed(2)} MB • Click or drop to replace
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="p-3 rounded-full bg-sky-100 text-sky-600 mb-2">
+                <Upload className="w-6 h-6" />
               </div>
-
-              {/* Error Message */}
-              {errorMsg && (
-                <div className="p-3 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-800 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
-
-              {/* Processing Progress */}
-              {isProcessing && (
-                <div className="p-3 rounded-lg border border-sky-200 bg-sky-50 text-xs text-sky-900 flex items-center gap-3">
-                  <Loader2 className="w-4 h-4 animate-spin text-sky-600 flex-shrink-0" />
-                  <span className="font-medium">{progressStep}</span>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={isProcessing}
-                  className="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 text-xs font-semibold transition disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAnalyzeClick}
-                  disabled={!file || isProcessing}
-                  className="px-4 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-500 text-xs font-semibold shadow transition disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{isProcessing ? 'Analyzing...' : 'Analyze & Create Chart'}</span>
-                </button>
+              <div className="font-semibold text-xs text-slate-900">
+                Upload Hand-Drawn Structure Chart
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1">
+                Drag and drop phone photo or camera scan (.jpg, .png, .webp, .heic)
               </div>
             </>
+          )}
+        </div>
+
+        {/* Status / Error Message */}
+        {errorMsg && (
+          <div
+            className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${
+              errorMsg.toLowerCase().includes('cancel')
+                ? 'border-slate-200 bg-slate-50 text-slate-700'
+                : 'border-rose-200 bg-rose-50 text-rose-800'
+            }`}
+          >
+            {errorMsg.toLowerCase().includes('cancel') ? (
+              <span className="font-medium">{errorMsg}</span>
+            ) : (
+              <>
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" />
+                <span>{errorMsg}</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 text-xs font-semibold transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleAnalyzeClick}
+            disabled={!file}
+            className="px-4 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-500 text-xs font-semibold shadow transition disabled:opacity-50 flex items-center gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Analyze & Create Chart</span>
+          </button>
+        </div>
+      </>
     );
   };
 
@@ -357,9 +459,7 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
-          {renderModalBody()}
-        </div>
+        <div className="p-6 space-y-4">{renderModalBody()}</div>
       </div>
     </div>
   );
