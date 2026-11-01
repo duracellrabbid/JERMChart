@@ -1,5 +1,12 @@
 import { AIConfig } from './aiConfig';
-import { SYSTEM_INSTRUCTION } from './prompts';
+import {
+  CHART_VISION_SCHEMA,
+  cleanBase64Image,
+  SYSTEM_INSTRUCTION,
+  VISION_USER_PROMPT,
+} from './prompts';
+
+export { cleanBase64Image };
 
 export interface OllamaModelItem {
   name: string;
@@ -34,15 +41,6 @@ export function sanitizeBaseUrl(url: string): string {
     cleaned = `http://${cleaned}`;
   }
   return cleaned;
-}
-
-export function cleanBase64Image(base64: string): string {
-  const trimmed = (base64 || '').trim();
-  const commaIndex = trimmed.indexOf(',');
-  if (trimmed.startsWith('data:') && commaIndex !== -1) {
-    return trimmed.slice(commaIndex + 1).trim();
-  }
-  return trimmed;
 }
 
 export function createTimeoutSignal(timeoutMs: number): AbortSignal {
@@ -189,12 +187,11 @@ export async function callOllamaVision(
       { role: 'system', content: SYSTEM_INSTRUCTION },
       {
         role: 'user',
-        content:
-          'Analyze this structure chart and extract all entities, relationships, and metadata strictly following the schema.',
+        content: VISION_USER_PROMPT,
         images: [cleanBase64],
       },
     ],
-    format: 'json',
+    format: CHART_VISION_SCHEMA,
     stream: false,
     options: {
       temperature: 0.1,

@@ -8,7 +8,11 @@ import {
   testOllamaConnection,
   callOllamaVision,
 } from '../../services/ai/ollamaService';
-import { SYSTEM_INSTRUCTION } from '../../services/ai/chartVisionService';
+import {
+  CHART_VISION_SCHEMA,
+  SYSTEM_INSTRUCTION,
+  VISION_USER_PROMPT,
+} from '../../services/ai/prompts';
 
 describe('ollamaService', () => {
   beforeEach(() => {
@@ -444,13 +448,14 @@ describe('ollamaService', () => {
 
       const parsedBody = JSON.parse(options.body as string);
       expect(parsedBody.model).toBe('llama3.2-vision:latest');
-      expect(parsedBody.format).toBe('json');
+      expect(parsedBody.format).toEqual(CHART_VISION_SCHEMA);
       expect(parsedBody.stream).toBe(false);
       expect(parsedBody.options.temperature).toBeCloseTo(0.1);
       expect(parsedBody.messages[0]).toEqual({
         role: 'system',
         content: SYSTEM_INSTRUCTION,
       });
+      expect(parsedBody.messages[1].content).toBe(VISION_USER_PROMPT);
       expect(parsedBody.messages[1].images).toEqual(['iVBORw0KGgoAAAANSUhEUgAA']);
     });
 
