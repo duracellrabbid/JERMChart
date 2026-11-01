@@ -156,6 +156,56 @@ describe('electron/main.cjs', () => {
     expect(isAllowedUrl('not-a-valid-url', false)).toBe(false);
   });
 
+  it('permits safe local and LAN Ollama API endpoints while blocking unauthorized routes', () => {
+    const { isAllowedUrl, isPrivateOrLoopbackHost } = loadMain();
+
+    // Loopback & local hosts on approved Ollama routes allowed in dev and prod
+    expect(isAllowedUrl('http://localhost:11434/api/tags', false)).toBe(true);
+    expect(isAllowedUrl('http://localhost:11434/api/tags', true)).toBe(true);
+    expect(isAllowedUrl('http://127.0.0.1:11434/api/chat', false)).toBe(true);
+    expect(isAllowedUrl('http://127.0.0.1:11434/api/chat', true)).toBe(true);
+    expect(isAllowedUrl('https://localhost:11434/api/tags', false)).toBe(true);
+
+    // Private RFC 1918 LAN subnets allowed in dev and prod
+    expect(isAllowedUrl('http://192.168.1.50:11434/api/version', false)).toBe(true);
+    expect(isAllowedUrl('http://192.168.1.50:11434/api/version', true)).toBe(true);
+    expect(isAllowedUrl('http://10.0.0.5:11434/api/tags', false)).toBe(true);
+    expect(isAllowedUrl('http://10.0.0.5:11434/api/tags', true)).toBe(true);
+    expect(isAllowedUrl('http://172.20.0.2:11434/api/tags', false)).toBe(true);
+    expect(isAllowedUrl('http://172.20.0.2:11434/api/tags', true)).toBe(true);
+    expect(isAllowedUrl('http://172.16.0.1:11434/api/tags', false)).toBe(true);
+    expect(isAllowedUrl('http://172.31.255.254:11434/api/tags', false)).toBe(true);
+
+    // Subnets outside RFC 1918 172.16.0.0/12 blocked
+    expect(isAllowedUrl('http://172.35.0.2:11434/api/tags', false)).toBe(false);
+    expect(isAllowedUrl('http://172.35.0.2:11434/api/tags', true)).toBe(false);
+    expect(isAllowedUrl('http://172.15.0.1:11434/api/tags', false)).toBe(false);
+    expect(isAllowedUrl('http://172.32.0.1:11434/api/tags', false)).toBe(false);
+    expect(isAllowedUrl('http://172.invalid.0.1:11434/api/tags', false)).toBe(false);
+
+    // Unauthorized paths on Ollama servers blocked in production
+    expect(isAllowedUrl('http://localhost:11434/unauthorized', false)).toBe(false);
+    expect(isAllowedUrl('http://192.168.1.50:11434/unauthorized', false)).toBe(false);
+    expect(isAllowedUrl('http://192.168.1.50:11434/unauthorized', true)).toBe(false);
+
+    // Public / external hosts blocked even if they have Ollama paths
+    expect(isAllowedUrl('https://evil-site.com/api/chat', false)).toBe(false);
+    expect(isAllowedUrl('https://evil-site.com/api/chat', true)).toBe(false);
+    expect(isAllowedUrl('http://evil-site.com/api/tags', false)).toBe(false);
+
+    // Dangerous protocols blocked even on loopback host
+    expect(isAllowedUrl('gopher://localhost:11434/api/tags', false)).toBe(false);
+    expect(isAllowedUrl('gopher://localhost:11434/api/tags', true)).toBe(false);
+    expect(isAllowedUrl('ftp://localhost:11434/api/tags', false)).toBe(false);
+
+    // isPrivateOrLoopbackHost helper edge cases
+    if (isPrivateOrLoopbackHost) {
+      expect(isPrivateOrLoopbackHost('')).toBe(false);
+      expect(isPrivateOrLoopbackHost(null)).toBe(false);
+      expect(isPrivateOrLoopbackHost('example.com')).toBe(false);
+    }
+  });
+
   it('sets up security firewall and intercepts requests in dev mode', () => {
     const { setupSecurityFirewall } = loadMain();
 
@@ -198,6 +248,19 @@ describe('electron/main.cjs', () => {
     // Handles null / empty session gracefully
     expect(() => setupSecurityFirewall(null)).not.toThrow();
     expect(() => setupSecurityFirewall({ webRequest: null })).not.toThrow();
+
+    // Custom session with explicit devMode flag
+    const customSession = {
+      webRequest: {
+        onBeforeRequest: vi.fn(),
+      },
+    };
+    setupSecurityFirewall(customSession as any, false);
+    expect(customSession.webRequest.onBeforeRequest).toHaveBeenCalled();
+    const customInterceptor = customSession.webRequest.onBeforeRequest.mock.calls[0][0];
+    mockCallback.mockClear();
+    customInterceptor({ url: 'file:///custom/path' }, mockCallback);
+    expect(mockCallback).toHaveBeenCalledWith({ cancel: false });
   });
 
   it('initializes window with dev defaults when in development', async () => {
@@ -324,6 +387,16 @@ describe('electron/main.cjs', () => {
     // Blocked in prod: localhost
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     prodInterceptor({ url: 'http://localhost:5173' }, mockProdCallback);
+    expect(mockProdCallback).toHaveBeenCalledWith({ cancel: true });
+
+    // Allowed in prod: Ollama API endpoint
+    mockProdCallback.mockClear();
+    prodInterceptor({ url: 'http://localhost:11434/api/tags' }, mockProdCallback);
+    expect(mockProdCallback).toHaveBeenCalledWith({ cancel: false });
+
+    // Blocked in prod: unauthorized Ollama route
+    mockProdCallback.mockClear();
+    prodInterceptor({ url: 'http://localhost:11434/unauthorized' }, mockProdCallback);
     expect(mockProdCallback).toHaveBeenCalledWith({ cancel: true });
     warnSpy.mockRestore();
   });

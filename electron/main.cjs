@@ -21,6 +21,40 @@ if (app.commandLine && typeof app.commandLine.appendSwitch === 'function') {
 
 const ALLOWED_PROTOCOLS = new Set(['file:', 'devtools:', 'blob:', 'data:']);
 const DEV_HOSTS = new Set(['localhost', '127.0.0.1']);
+const ALLOWED_OLLAMA_PATHS = new Set(['/api/tags', '/api/chat', '/api/version']);
+
+function isRfc1918Subnet(hostname) {
+  if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) {
+    return true;
+  } else if (hostname.startsWith('172.')) {
+    const parts = hostname.split('.');
+    const secondOctet = Number(parts[1]);
+    return Number.isInteger(secondOctet) && secondOctet >= 16 && secondOctet <= 31;
+  } else {
+    return false;
+  }
+}
+
+function isPrivateOrLoopbackHost(hostname) {
+  if (!hostname) {
+    return false;
+  } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return true;
+  } else {
+    return isRfc1918Subnet(hostname);
+  }
+}
+
+function isAllowedOllamaUrl(parsed) {
+  const isHttpOrHttps = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  if (!isHttpOrHttps) {
+    return false;
+  } else if (!ALLOWED_OLLAMA_PATHS.has(parsed.pathname)) {
+    return false;
+  } else {
+    return isPrivateOrLoopbackHost(parsed.hostname);
+  }
+}
 
 function isAllowedUrl(rawUrl, isDevelopment) {
   let parsed;
@@ -32,9 +66,15 @@ function isAllowedUrl(rawUrl, isDevelopment) {
 
   if (ALLOWED_PROTOCOLS.has(parsed.protocol)) {
     return true;
-  } else if (isDevelopment && DEV_HOSTS.has(parsed.hostname)) {
+  } else if (
+    isDevelopment &&
+    (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+    DEV_HOSTS.has(parsed.hostname)
+  ) {
     return true;
   } else if (parsed.protocol === 'https:' && parsed.hostname === 'generativelanguage.googleapis.com') {
+    return true;
+  } else if (isAllowedOllamaUrl(parsed)) {
     return true;
   } else {
     return false;
@@ -165,6 +205,8 @@ module.exports = {
   createWindow,
   handleWindowOpen,
   isAllowedUrl,
+  isPrivateOrLoopbackHost,
+  ALLOWED_OLLAMA_PATHS,
   setupSecurityFirewall,
   PRIVACY_SWITCHES,
 };
