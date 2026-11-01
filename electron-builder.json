@@ -4,14 +4,18 @@
   "directories": {
     "output": "release"
   },
-  "files": [
-    "dist/**/*",
-    "electron/**/*",
-    "package.json",
-    "!**/__tests__/**",
-    "!**/*.test.*"
-  ],
+  "fileOptions": {
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "!**/__tests__/**",
+      "!**/*.test.*"
+    ]
+  },
   "win": {
+    "verifyUpdateCodeSignature": false,
+    "updateManifest": false,
     "target": [
       {
         "target": "portable",
