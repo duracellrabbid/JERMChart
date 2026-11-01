@@ -5,6 +5,10 @@ import {
   CHART_VISION_RESPONSE_SCHEMA,
   SYSTEM_INSTRUCTION,
 } from '../../services/ai/chartVisionService';
+import {
+  CHART_VISION_SCHEMA,
+  VISION_USER_PROMPT,
+} from '../../services/ai/prompts';
 import { AIConfig } from '../../services/ai/aiConfig';
 
 const mockGenerateContent = vi.fn();
@@ -133,7 +137,11 @@ describe('chartVisionService', () => {
       model: 'gemini-3.8-flash',
     };
 
-    const result = await analyzeChartImage('base64imgdata', 'image/jpeg', config);
+    const result = await analyzeChartImage(
+      'data:image/jpeg;base64,base64imgdata',
+      'image/jpeg',
+      config
+    );
     expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'gemini-3.8-flash',
@@ -145,7 +153,7 @@ describe('chartVisionService', () => {
             },
           },
           {
-            text: expect.stringContaining('structure chart'),
+            text: VISION_USER_PROMPT,
           },
         ],
         config: {
@@ -164,7 +172,8 @@ describe('chartVisionService', () => {
 
   it('validates that CHART_VISION_RESPONSE_SCHEMA contains correct constraints and enums', () => {
     expect(CHART_VISION_RESPONSE_SCHEMA).toBeDefined();
-    expect(CHART_VISION_RESPONSE_SCHEMA.type).toBe('OBJECT');
+    expect(CHART_VISION_RESPONSE_SCHEMA).toBe(CHART_VISION_SCHEMA);
+    expect(CHART_VISION_RESPONSE_SCHEMA.type).toBe('object');
     expect(CHART_VISION_RESPONSE_SCHEMA.required).toEqual(['entities', 'relationships']);
 
     const entityProps = (CHART_VISION_RESPONSE_SCHEMA.properties as any).entities.items.properties;
