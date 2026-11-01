@@ -3,8 +3,10 @@ import {
   getAIConfig,
   saveAIConfig,
   hasValidApiKey,
+  hasValidAIConfig,
   clearAIConfig,
   migrateLegacyModel,
+  DEFAULT_CONFIG,
 } from '../../services/ai/aiConfig';
 
 describe('aiConfig', () => {
@@ -147,5 +149,137 @@ describe('aiConfig', () => {
       value: originalStorage,
       configurable: true,
     });
+  });
+
+  it('validates configuration correctly for both gemini and ollama providers', () => {
+    expect(
+      hasValidAIConfig({
+        provider: 'gemini',
+        apiKey: 'AIzaSyKey',
+        model: 'gemini-3.8-flash',
+        ollamaUrl: 'http://localhost:11434',
+      })
+    ).toBe(true);
+    expect(
+      hasValidAIConfig({
+        provider: 'gemini',
+        apiKey: '',
+        model: 'gemini-3.8-flash',
+        ollamaUrl: 'http://localhost:11434',
+      })
+    ).toBe(false);
+    expect(
+      hasValidAIConfig({
+        provider: 'gemini',
+        apiKey: 'AIzaSyKey',
+        model: '   ',
+        ollamaUrl: 'http://localhost:11434',
+      })
+    ).toBe(false);
+    expect(
+      hasValidAIConfig({
+        provider: 'ollama',
+        apiKey: '',
+        model: 'llama3.2-vision',
+        ollamaUrl: 'http://localhost:11434',
+      })
+    ).toBe(true);
+    expect(
+      hasValidAIConfig({
+        provider: 'ollama',
+        apiKey: '',
+        model: '',
+        ollamaUrl: 'http://localhost:11434',
+      })
+    ).toBe(false);
+    expect(
+      hasValidAIConfig({
+        provider: 'ollama',
+        apiKey: '',
+        model: 'llama3.2-vision',
+        ollamaUrl: '   ',
+      })
+    ).toBe(false);
+
+    // When called with no arguments, validates active config from storage
+    clearAIConfig();
+    expect(hasValidAIConfig()).toBe(false);
+    saveAIConfig({
+      provider: 'ollama',
+      model: 'llama3.2-vision',
+      ollamaUrl: 'http://localhost:11434',
+    });
+    expect(hasValidAIConfig()).toBe(true);
+    expect(hasValidApiKey()).toBe(true);
+  });
+
+  it('migrates legacy stored config and ensures default ollamaUrl is populated', () => {
+    const saved = saveAIConfig({ provider: 'ollama', model: 'llama3.2-vision' });
+    expect(saved.provider).toBe('ollama');
+    expect(saved.ollamaUrl).toBe('http://localhost:11434');
+
+    const loaded = getAIConfig();
+    expect(loaded.provider).toBe('ollama');
+    expect(loaded.model).toBe('llama3.2-vision');
+    expect(loaded.ollamaUrl).toBe('http://localhost:11434');
+  });
+
+  it('preserves provider and custom ollamaUrl when updating config partially', () => {
+    saveAIConfig({
+      provider: 'ollama',
+      model: 'llama3.2-vision',
+      ollamaUrl: 'http://192.168.1.100:11434',
+    });
+
+    const updated = saveAIConfig({
+      model: 'minicpm-v',
+    });
+    expect(updated.provider).toBe('ollama');
+    expect(updated.model).toBe('minicpm-v');
+    expect(updated.ollamaUrl).toBe('http://192.168.1.100:11434');
+
+    // Passing whitespace for ollamaUrl resets to default
+    const resetUrl = saveAIConfig({
+      ollamaUrl: '   ',
+    });
+    expect(resetUrl.ollamaUrl).toBe('http://localhost:11434');
+
+    const nonStringUrl = saveAIConfig({
+      ollamaUrl: 12345 as any,
+    });
+    expect(nonStringUrl.ollamaUrl).toBe('http://localhost:11434');
+  });
+
+  it('handles non-string or whitespace ollamaUrl when parsing stored config', () => {
+    window.localStorage.setItem(
+      'tmu_ai_config',
+      JSON.stringify({
+        provider: 'ollama',
+        model: 'llama3.2-vision',
+        ollamaUrl: 12345,
+      })
+    );
+    expect(getAIConfig().ollamaUrl).toBe('http://localhost:11434');
+
+    window.localStorage.setItem(
+      'tmu_ai_config',
+      JSON.stringify({
+        provider: 'ollama',
+        model: 'llama3.2-vision',
+        ollamaUrl: '   ',
+      })
+    );
+    expect(getAIConfig().ollamaUrl).toBe('http://localhost:11434');
+  });
+
+  it('handles empty storedModel for ollama provider in migrateLegacyModel', () => {
+    expect(migrateLegacyModel('ollama', '')).toBe('llama3.2-vision');
+    expect(migrateLegacyModel('ollama', '   ')).toBe('llama3.2-vision');
+    expect(migrateLegacyModel('ollama', 'custom-model:latest')).toBe('custom-model:latest');
+  });
+
+  it('exports DEFAULT_CONFIG with ollamaUrl initialized', () => {
+    expect(DEFAULT_CONFIG.provider).toBe('gemini');
+    expect(DEFAULT_CONFIG.ollamaUrl).toBe('http://localhost:11434');
   });
 });

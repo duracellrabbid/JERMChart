@@ -1,19 +1,22 @@
 import { getDefaultModelForProvider } from './modelCatalog';
 
-export type AIProvider = 'gemini';
+export type AIProvider = 'gemini' | 'ollama';
 
 export interface AIConfig {
   provider: AIProvider;
   apiKey: string;
   model: string;
+  ollamaUrl: string;
 }
 
 const STORAGE_KEY = 'tmu_ai_config';
+export const DEFAULT_OLLAMA_URL = 'http://localhost:11434';
 
-const DEFAULT_CONFIG: AIConfig = {
+export const DEFAULT_CONFIG: AIConfig = {
   provider: 'gemini',
   apiKey: '',
   model: 'gemini-3.8-flash',
+  ollamaUrl: DEFAULT_OLLAMA_URL,
 };
 
 const LEGACY_GEMINI_MODELS = new Set([
@@ -37,7 +40,7 @@ const LEGACY_OPENAI_MODELS = new Set([
 export function migrateLegacyModel(provider: string, storedModel: string): string {
   const trimmed = storedModel.trim();
   if (!trimmed) {
-    return getDefaultModelForProvider('gemini');
+    return provider === 'ollama' ? 'llama3.2-vision' : getDefaultModelForProvider('gemini');
   }
   if (provider === 'gemini' && LEGACY_GEMINI_MODELS.has(trimmed)) {
     return 'gemini-3.8-flash';
@@ -79,13 +82,16 @@ export function getAIConfig(): AIConfig {
     const raw = storage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_CONFIG };
     const parsed = JSON.parse(raw);
-    const storedProvider = typeof parsed.provider === 'string' ? parsed.provider : 'gemini';
+    const storedProvider: AIProvider = parsed.provider === 'ollama' ? 'ollama' : 'gemini';
     const rawModel = typeof parsed.model === 'string' ? parsed.model : '';
     const model = migrateLegacyModel(storedProvider, rawModel);
+    const rawOllamaUrl = typeof parsed.ollamaUrl === 'string' ? parsed.ollamaUrl.trim() : '';
+    const ollamaUrl = rawOllamaUrl || DEFAULT_OLLAMA_URL;
     return {
-      provider: 'gemini',
+      provider: storedProvider,
       apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '',
       model,
+      ollamaUrl,
     };
   } catch {
     return { ...DEFAULT_CONFIG };
@@ -94,14 +100,31 @@ export function getAIConfig(): AIConfig {
 
 export function saveAIConfig(patch: Partial<AIConfig>): AIConfig {
   const current = getAIConfig();
-  const updated: AIConfig = { ...current, ...patch, provider: 'gemini' };
+  const rawProvider = patch.provider ?? current.provider;
+  const provider: AIProvider = rawProvider === 'ollama' ? 'ollama' : 'gemini';
+  const rawOllamaUrl = patch.ollamaUrl ?? current.ollamaUrl;
+  const ollamaUrl = (typeof rawOllamaUrl === 'string' ? rawOllamaUrl.trim() : '') || DEFAULT_OLLAMA_URL;
+  const updated: AIConfig = {
+    ...current,
+    ...patch,
+    provider,
+    ollamaUrl,
+  };
   const storage = getStorage();
   storage.setItem(STORAGE_KEY, JSON.stringify(updated));
   return updated;
 }
 
+export function hasValidAIConfig(config?: AIConfig): boolean {
+  const target = config || getAIConfig();
+  if (target.provider === 'ollama') {
+    return target.ollamaUrl.trim().length > 0 && target.model.trim().length > 0;
+  }
+  return target.apiKey.trim().length > 0 && target.model.trim().length > 0;
+}
+
 export function hasValidApiKey(): boolean {
-  return getAIConfig().apiKey.length > 5;
+  return hasValidAIConfig();
 }
 
 export function clearAIConfig(): void {
