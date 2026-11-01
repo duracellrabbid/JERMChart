@@ -4,29 +4,43 @@ A 100% client-side, zero-telemetry application designed for trust officers, fidu
 
 [![CI](https://github.com/duracellrabbid/JERMChart/actions/workflows/ci.yml/badge.svg)](https://github.com/duracellrabbid/JERMChart/actions/workflows/ci.yml)
 [![Release](https://github.com/duracellrabbid/JERMChart/actions/workflows/release.yml/badge.svg)](https://github.com/duracellrabbid/JERMChart/actions/workflows/release.yml)
+[![Version: 1.3.0](https://img.shields.io/badge/version-1.3.0-informational.svg)](package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
 ## Overview & Key Challenges Solved
 
-In corporate trust and wealth management, trust officers regularly draft structure charts detailing trusts, holding companies, operating subsidiaries, property SPVs, foundations, and their boards of directors.
+In corporate trust and wealth management, trust officers regularly draft structure charts detailing trusts, holding companies, operating subsidiaries, property SPVs, foundations, partnerships, banking institutions, and their boards of directors.
 
 Hand-drawing these in generic diagramming tools (like Visio or PowerPoint) often creates:
-- **Tangled, overlapping connectors** as structures expand.
+- **Tangled, overlapping connectors** as structures expand across multi-tier entities.
 - **Tedious manual realignment** whenever an entity or director is added or updated.
 - **Lack of cross-entity insight** (e.g. identifying all entities where a specific individual or corporate trustee sits on the board).
+- **Security & Data Privacy Risks** when uploading confidential client structures into cloud-hosted web diagramming tools.
 
-This utility solves these challenges with an **algorithmic layout engine**, **customizable sibling sorting rules**, a **dual-mode entry workflow**, and **one-click fiduciary-grade exports**.
+This utility solves these challenges with an **algorithmic layout engine**, **customizable sibling sorting rules**, an **interactive drag-and-drop shape dock**, **omnidirectional connections with loop protection**, **AES-256 encrypted JSON backups**, and **one-click fiduciary-grade exports**.
 
 ---
 
 ## Key Features
 
-- **Automated Hierarchical Layout (`@dagrejs/dagre`)**:
+- **Automated Hierarchical Layout & Orthogonal Styling (`@dagrejs/dagre`)**:
   - Automatically calculates optimal, non-overlapping coordinates in clean top-down tiers (Settlor / Trust $\to$ Holding Vehicles $\to$ Operating Subsidiaries $\to$ SPVs).
-  - Eliminates line crossings with stepped orthogonal connectors.
-  - "Auto-Tidy" button restores optimal visual alignment at any time while preserving manual drag tweaks.
+  - Eliminates line crossings with stepped orthogonal connectors or optional straight/curved line styling.
+  - "Auto-Tidy" button restores optimal visual alignment at any time while preserving manual drag tweaks and custom positioning.
+  - Smart flanking and branch distribution for complex multi-parent trust structures.
+
+- **Interactive Drag-and-Drop Canvas & Omnidirectional Connections**:
+  - **Floating Shape Dock**: Canvas palette allowing users to drag-and-drop or click-to-add Entities, Trusts, Persons / Associated Parties, and Banks directly onto the canvas.
+  - **Omnidirectional Connection Handles**: 4-point connection handles (North, South, East, West) on all entity cards for flexible ownership and advisory connections.
+  - **Connection Quick Picker**: On-the-fly popover modal upon dragging a connection handle to configure ownership percentage, relationship type, or swap source/target direction.
+  - **Structural Integrity Guards**: Automatic validation preventing circular ownership loops and self-referential connections.
+
+- **Bank Entities & Associated Parties**:
+  - Specialized styling and iconography for **Bank / Financial Institution** entity types.
+  - Staged Person and Associated Party nodes (Protectors, Enforcers, Nominees, Custodians, Settlors).
+  - **Fiduciary Legend**: On-canvas interactive legend detailing entity color schemes, legal entity types, and fiduciary badge statuses.
 
 - **Configurable Sibling Sorting**:
   - **Alphabetical (A–Z)**: Sorts subsidiary cards alphabetically by entity name.
@@ -35,56 +49,69 @@ This utility solves these challenges with an **algorithmic layout engine**, **cu
   - **Manual Mode**: Preserves custom drag-and-drop placements.
 
 - **Dual-Mode Data Entry**:
-  - **Tree Outline**: Quick hierarchical outliner allowing one-click addition of subsidiaries (`+`) with automatic ownership links, root entity creation, and entity deletion.
-  - **Entity Details Form**: Edit entity names, legal types (Trust, HoldCo, OpCo, LLC, Foundation, Partnership), jurisdictions (with common fiduciary autocomplete suggestions), registration/tax numbers, and legal notes.
+  - **Tree Outline**: Hierarchical outliner allowing quick addition of subsidiaries (`+`) with automatic ownership links, root entity creation, and entity deletion.
+  - **Entity Details Form**: Edit entity names, legal types (Trust, HoldCo, OpCo, LLC, Foundation, Partnership, Bank), jurisdictions (with common fiduciary autocomplete suggestions), registration/tax numbers, and legal notes.
 
-- **Board of Directors & Spotlight Mode**:
+- **Board of Directors, Spotlight Mode & Director Cap**:
   - Track individual and corporate directors, appointment dates, and fiduciary status tags (e.g. local resident director requirement `RES`).
+  - **Director Cap**: Visual capacity thresholds on cards with compact overflow count badges (`+N more`) to prevent visual bloating on large boards.
   - **Cross-Structure Director Directory**: Aggregates all directors across the entire structure. Clicking or focusing any director spotlights all entities where they hold board seats while dimming unrelated cards.
+
+- **Read-Only Mode & Access Governance**:
+  - Non-destructive **Read-Only Mode** (`isReadOnly`) for client review and presentations—disables canvas mutations and shape palette while preserving smooth navigation, inspection, and allowed exports.
+  - Administrative export gating (`allowJsonBackup`) to enforce strict enterprise compliance policies.
+
+- **Encrypted JSON Backups & Export Engine**:
+  - **Encrypted JSON Backups**: Client-side AES-256-GCM encryption with PBKDF2 key derivation (100,000 iterations, SHA-256) and password protection for sensitive fiduciary matter files.
+  - Seamless backward compatibility: automatically detects plaintext vs. encrypted `.json` files upon import and prompts for password when required.
+  - Feature flags (`allowEncryptedJsonExport`, `allowJsonBackup`) for enterprise deployment control.
+  - **Print-Ready PDF**: A4 Landscape layout embedding structure title, client/matter reference, effective date, and confidentiality footer (`"STRICTLY CONFIDENTIAL - PREPARED FOR CLIENT REVIEW ONLY"`).
+  - **PowerPoint Presentation (.pptx)**: Export presentation slides directly to Microsoft PowerPoint via `pptxgenjs`.
+  - **High-Resolution PNG (2.5x DPI) & Vector SVG**: Crisp vector and raster formats for Word advisory memos and client deliverables.
+  - **Filename Sanitization**: Automatically sanitizes matter references and export filenames to prevent invalid character errors across operating systems.
 
 - **Excel Spreadsheet Import & Roundtrip Export (`xlsx`)**:
   - Full roundtrip compatibility: export the active canvas structure to a standard 12-column Excel workbook, or import existing client entity registers into editable interactive charts.
-  - Multi-parent ownership resolution, share classes, and director parsing.
+  - Multi-parent ownership resolution, share classes, percentage normalization (supporting decimal 0.0–1.0 and whole 0–100 scales), and director parsing.
 
 - **AI-Powered Photo & Hand-Drawn Chart OCR (Google Gemini Exclusive)**:
   - Transcribe photos of whiteboard sketches, diagrams, or hand-drawn trust structures directly into editable digital charts exclusively using Google Gemini multimodal vision (`@google/genai`).
+  - Multi-model catalog selection supporting Gemini 2.5 Flash, Gemini 1.5 Pro, and latest Gemini vision models.
+  - Built-in AI connection testing utility (`npm run test:ai` and in-app settings verification).
   - Interactive OCR review banner with one-click undo snapshot restoration.
   - **Fiduciary Data Privacy Notice**: Built-in enterprise compliance disclaimer deflecting liability and requiring users to ensure their Google AI API key is an Enterprise/Paid tier with model training disabled.
 
 - **Airgapped Zero-Telemetry & Mathematical Offline Architecture**:
   - **100% In-Browser Privacy**: Client data stays completely inside the user's browser or local machine. Zero unauthorized network egress, analytics, or background telemetry.
+  - **Vendored CSS Security**: Replaced external dependency CSS imports with locally audited `src/styles/xyflow-base.css` to eliminate remote injection vectors and enforce strict offline isolation.
   - **Compile-Time AST Restrictions**: ESLint `no-restricted-globals` statically forbids `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon` across all application modules, with an exception solely for explicit user-initiated Gemini OCR in `chartVisionService.ts`.
   - **Content Security Policy (CSP)**: Strict `<meta http-equiv="Content-Security-Policy">` restricting `connect-src` strictly to `'self'` and `https://generativelanguage.googleapis.com`.
   - **Electron Runtime Firewall & Chromium Hardening**: Suppresses Chromium background telemetry via 6 privacy flags (`disable-background-networking`, `disable-component-update`, `disable-domain-reliability`, `disable-sync`, `metrics-recording-only`, `no-report-upload`) and enforces an active network firewall via `session.defaultSession.webRequest.onBeforeRequest` that cancels unauthorized egress.
-  - **Automated Offline Isolation Suite**: Dedicated test suite (`src/__tests__/offline/networkIsolation.test.ts`) guaranteeing zero network requests across all entity operations, Dagre layout calculations, Excel imports, and document exports.
-
-- **Print-Ready Fiduciary Export Engine**:
-  - **Print-Ready PDF**: A4 Landscape layout embedding structure title, client/matter reference, effective date, and confidentiality footer (`"STRICTLY CONFIDENTIAL - PREPARED FOR CLIENT REVIEW ONLY"`).
-  - **PowerPoint Presentation (.pptx)**: Export presentation slides directly to Microsoft PowerPoint via `pptxgenjs`.
-  - **High-Resolution PNG (2.5x DPI) & Vector SVG**: Crisp vector and raster formats for Word advisory memos and client deliverables.
-  - **JSON Backup & Restore**: Save and load `.json` client files locally for individual client matters.
+  - **Automated Offline Isolation Suite**: Dedicated test suite (`src/__tests__/offline/networkIsolation.test.ts` and `src/__tests__/offline/cssSecurity.test.ts`) guaranteeing zero network requests across all entity operations, Dagre layout calculations, Excel imports, and document exports.
 
 - **Enterprise Quality & Security Safeguards**:
+  - **40 Automated Test Suites (464 Tests)**: Comprehensive unit, component, and integration coverage with Vitest and React Testing Library.
+  - **100% Test Coverage Threshold**: Strictly enforced across statements, branches, functions, and lines in CI and pre-commit hooks.
   - **Automated GitHub Actions CI/CD**: Unified quality and security pipeline preventing `--no-verify` bypass by running pre-commit and pre-push gates in CI on every push and pull request.
-  - **Guaranteed Linear String Primitives**: ReDoS-free URL/path utilities (`urlUtils.ts`) preventing catastrophic regular expression backtracking.
   - **Cognitive Complexity < 15**: Strictly enforced via `eslint-plugin-sonarjs` for maintainability.
-  - **Automated Git Lifecycle Guards**: Pre-commit and pre-push hooks via Husky enforcing 100% test coverage and zero security vulnerabilities.
+  - **Zero Security Vulnerabilities**: Automated npm security audits enforcing zero moderate, high, or critical vulnerabilities.
 
 ---
 
 ## Tech Stack
 
 - **Runtime / Desktop**: Electron 44+ (Node 22 / Chromium)
-- **Framework**: React 18 + TypeScript 5.7 + Vite 6
-- **Canvas & Graph UI**: `@xyflow/react` (React Flow)
+- **Framework**: React 19 + TypeScript 5.9 + Vite 8
+- **Canvas & Graph UI**: `@xyflow/react` 12+ (with locally vendored offline stylesheet)
 - **Graph Layout Engine**: `@dagrejs/dagre`
-- **Styling**: Tailwind CSS + Lucide React Icons
+- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) + Lucide React Icons
 - **State Management**: Zustand 5
-- **File I/O & Export Services**: `xlsx`, `jspdf`, `pptxgenjs`, `html-to-image`, `heic2any`
+- **Security & Cryptography**: Web Crypto API (AES-256-GCM, PBKDF2 with SHA-256)
+- **File I/O & Export Services**: `xlsx` (`@e965/xlsx`), `jspdf`, `pptxgenjs`, `html-to-image`, `heic2any`
 - **AI Multimodal Vision**: `@google/genai` (Google Gemini exclusively)
 - **Code Quality & Linting**: ESLint 10 (`eslint-plugin-sonarjs`, `eslint-plugin-regexp`), Husky 9
 - **Testing & Coverage**: Vitest 5 (v8 coverage) + React Testing Library (100% global threshold)
-- **CI/CD & Packaging**: GitHub Actions, `electron-builder`
+- **CI/CD & Packaging**: GitHub Actions, `electron-builder` 27
 
 ---
 
@@ -125,8 +152,9 @@ This utility solves these challenges with an **algorithmic layout engine**, **cu
 | `npm run dev` | Starts Vite local development server with HMR. | &mdash; |
 | `npm run lint` | Runs ESLint across `src/`. | Cognitive complexity < 15, ReDoS-free linear regex. |
 | `npm run lint:fix` | Automatically fixes auto-fixable lint issues. | &mdash; |
-| `npm test` | Runs all 26 unit and component test suites (298 tests) via Vitest. | 0 test failures. |
+| `npm test` | Runs all 40 unit and component test suites (464 tests) via Vitest. | 0 test failures. |
 | `npm run test:coverage` | Runs full test suite with V8 coverage reporting. | **100% threshold** across statements, branches, functions, and lines. |
+| `npm run test:ai` | Verifies Google Gemini AI API credentials and connectivity. | &mdash; |
 | `npm run audit:security` | Audits installed npm dependencies for vulnerabilities. | Blocks `moderate`, `high`, and `critical` vulnerabilities. |
 | `npm run verify:pre-commit` | **Pre-Commit Gate**: Runs `npm run lint` then `npm run test:coverage`. | Enforced automatically by Git pre-commit hook via Husky and GitHub Actions CI. |
 | `npm run verify:pre-push` | **Pre-Push Gate**: Runs `npm run build` then `npm run audit:security`. | Enforced automatically by Git pre-push hook via Husky and GitHub Actions CI. |
@@ -247,8 +275,8 @@ The project includes a ready-to-use **Electron** desktop wrapper that turns the 
    npm run electron:build
    ```
    This generates:
-   - **`release/JERMChart Setup 1.0.0.exe`**: Standard Windows installer with desktop and start-menu shortcuts.
-   - **`release/JERMChart 1.0.0.exe`**: Zero-install standalone portable `.exe` that users can copy to a USB drive or local folder and run immediately.
+   - **`release/JERMChart Setup 1.3.0.exe`**: Standard Windows installer with desktop and start-menu shortcuts.
+   - **`release/JERMChart 1.3.0.exe`**: Zero-install standalone portable `.exe` that users can copy to a USB drive or local folder and run immediately.
 
 4. **Automated GitHub Releases**:
    Pre-built Windows binaries are automatically generated and attached to GitHub Draft Releases via the [Windows Release Workflow](.github/workflows/release.yml), accompanied by cryptographic `SHA256SUMS.txt` hashes for binary integrity verification.
@@ -265,44 +293,56 @@ JERMChart/
 │       └── release.yml          # Windows Draft Release CD workflow with SHA-256 checksums
 ├── .husky/                      # Git hooks (pre-commit, pre-push)
 ├── docs/                        # Architecture documentation, standards, and specifications
+├── scripts/
+│   └── test-ai-connection.mjs   # Node CLI script to verify Gemini API key & model access
+├── ARCHITECTURE.md              # Architectural specification for JERMChart ecosystem
+├── DESIGN.md                    # Visual design specification, tokens, and UI layout
+├── PRODUCT.md                   # Product vision, user personas, and fiduciary workflows
 ├── index.html                   # HTML shell with strict Content Security Policy (CSP)
 ├── package.json                 # Project dependencies, scripts, and quality gates
+├── electron-builder.json        # Electron packaging & NSIS installer configuration
 ├── eslint.config.js             # ESLint 10 flat configuration (SonarJS, Regexp, AST network ban)
 ├── vite.config.ts               # Vite configuration and Vitest 100% coverage thresholds
-├── tailwind.config.js           # Corporate fiduciary color themes
 ├── tsconfig.json                # TypeScript compiler configuration
 ├── electron/                    # Native desktop application main (firewall) and preload wrappers
 ├── src/
 │   ├── main.tsx                 # Application entry point
 │   ├── App.tsx                  # Root layout (Header, Sidebar, Canvas, Modals)
-│   ├── index.css                # Tailwind directives and base styling
+│   ├── index.css                # Tailwind v4 directives, theme variables, and typography
+│   ├── config/
+│   │   └── featureFlags.ts      # Feature flags for export capabilities and permissions
+│   ├── styles/
+│   │   └── xyflow-base.css      # Audited local vendored stylesheet for React Flow canvas
 │   ├── types/
-│   │   └── structure.ts         # Fiduciary schema (Entity, Director, Edge, Metadata)
+│   │   └── structure.ts         # Fiduciary schema (Entity, Director, Edge, Metadata, Party)
 │   ├── data/
 │   │   └── sampleStructure.ts   # Aurelius Dynasty Trust demonstration template
 │   ├── store/
-│   │   └── useStructureStore.ts # Central Zustand state store with undo snapshots
+│   │   └── useStructureStore.ts # Central Zustand state store with read-only guards & undo snapshots
 │   ├── services/
 │   │   └── ai/                  # AI vision OCR integration (Gemini exclusively, AIConfig, ModelCatalog)
 │   ├── utils/
-│   │   ├── urlUtils.ts          # ReDoS-free linear string primitives for URL/path handling
+│   │   ├── cryptoService.ts     # AES-256-GCM encryption & PBKDF2 password derivation
+│   │   ├── graphValidation.ts   # Circular ownership detection and self-reference guards
+│   │   ├── treeHierarchy.ts     # Hierarchical level calculation & parent-child trees
 │   │   ├── layoutEngine.ts      # Dagre auto-layout & sibling sorting algorithms
-│   │   ├── entityStyle.ts       # Fiduciary entity styling & color schemes
+│   │   ├── entityStyle.ts       # Fiduciary entity styling, colors, and border styles
 │   │   ├── excelExporter.ts     # Excel workbook (.xlsx) chart serializer
-│   │   ├── excelParser.ts       # Excel spreadsheet importer & column normalizer
-│   │   ├── exportService.ts     # PNG, SVG, PDF, PowerPoint generation & JSON backup
+│   │   ├── excelParser.ts       # Excel spreadsheet importer & percentage normalizer
+│   │   ├── exportService.ts     # PDF, PPTX, PNG, SVG generation & encrypted JSON backups
 │   │   └── imagePreprocessing.ts# Client-side HEIC/JPEG conversion & resizing
 │   ├── components/
-│   │   ├── header/              # Top action bar, sorting switcher, auto-tidy
+│   │   ├── header/              # Top action bar, sorting switcher, line toggle, auto-tidy
 │   │   ├── sidebar/             # Outliner tree, entity form, director directory
-│   │   ├── canvas/              # React Flow interactive canvas & OCR review banner
-│   │   ├── nodes/               # Custom executive entity card & trust triangle nodes
-│   │   ├── edges/               # Custom stepped orthogonal ownership connector
+│   │   ├── canvas/              # React Flow canvas, FloatingShapeDock, ConnectionQuickPicker, Legend
+│   │   ├── common/              # Common modals (PasswordPromptModal, AlertModal, ConfirmationModal)
+│   │   ├── nodes/               # Custom entity card nodes & staged person nodes
+│   │   ├── edges/               # Custom stepped orthogonal and straight ownership connectors
 │   │   ├── import/              # Excel spreadsheet & AI photo OCR import modals
-│   │   ├── settings/            # Gemini API key manager & Enterprise Compliance Notice
-│   │   └── export/              # Export modal for PDF/PNG/SVG/PPTX and JSON
-│   └── __tests__/               # Isolated unit, component, and integration test suites (Rule 6)
-│       └── offline/             # Automated network isolation suite verifying zero outbound egress
+│   │   ├── settings/            # Gemini API key manager, model selector & Enterprise Compliance Notice
+│   │   └── export/              # Export modal for PDF/PNG/SVG/PPTX and encrypted JSON
+│   └── __tests__/               # Isolated test suites (40 suites, 464 tests, 100% coverage)
+│       └── offline/             # Automated network isolation & CSS security suites
 ```
 
 ---
