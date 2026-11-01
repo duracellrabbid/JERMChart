@@ -61,7 +61,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/services/ai/chartVisionService.ts'],
+    files: ['src/services/ai/chartVisionService.ts', 'src/services/ai/ollamaService.ts'],
     rules: {
       // Scoped exception for explicit user-triggered Vision OCR
       'no-restricted-globals': 'off',
