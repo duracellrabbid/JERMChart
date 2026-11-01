@@ -397,12 +397,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     if (newProvider === 'ollama') {
       setIsCustom(false);
       const url = config.ollamaUrl;
-      const firstVision = ollamaModels.find((m) => m.isVisionCapable)?.name || ollamaModels[0]?.name || '';
       setConfig((prev) => ({
         ...prev,
         provider: 'ollama',
         ollamaUrl: url,
-        model: prev.model.startsWith('gemini') ? firstVision : prev.model,
+        model: prev.model.startsWith('gemini') ? '' : prev.model,
       }));
     } else {
       setIsCustom(isCustomModel('gemini', config.model));
@@ -432,14 +431,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     setTestResult(null);
     if (selected === CUSTOM_MODEL_VALUE) {
       setIsCustom(true);
+      const isKnown = ollamaModels.some((m) => m.name === config.model);
       setConfig((prev) => ({
         ...prev,
-        model: prev.model && !ollamaModels.some((m) => m.name === prev.model) ? prev.model : '',
+        model: isKnown ? '' : prev.model,
       }));
     } else {
       setIsCustom(false);
       setConfig((prev) => ({ ...prev, model: selected }));
     }
+  };
+
+  const handleCustomModelChange = (customId: string) => {
+    setConfig((prev) => ({ ...prev, model: customId }));
+    setTestResult(null);
+  };
+
+  const handleApiKeyChange = (apiKey: string) => {
+    setConfig((prev) => ({ ...prev, apiKey }));
+    setTestResult(null);
+  };
+
+  const handleToggleShowApiKey = () => {
+    setShowApiKey((prev) => !prev);
+  };
+
+  const handleOllamaUrlChange = (url: string) => {
+    setConfig((prev) => ({ ...prev, ollamaUrl: url }));
+    setTestResult(null);
+  };
+
+  const handleRefreshOllamaModels = () => {
+    setTestResult(null);
+    loadOllamaModels(config.ollamaUrl);
   };
 
   const handleSave = () => {
@@ -491,15 +515,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               isCustom={isCustom}
               showApiKey={showApiKey}
               onModelChange={handleGeminiModelChange}
-              onCustomModelInputChange={(customId) => {
-                setConfig((prev) => ({ ...prev, model: customId }));
-                setTestResult(null);
-              }}
-              onApiKeyChange={(apiKey) => {
-                setConfig((prev) => ({ ...prev, apiKey }));
-                setTestResult(null);
-              }}
-              onToggleShowApiKey={() => setShowApiKey(!showApiKey)}
+              onCustomModelInputChange={handleCustomModelChange}
+              onApiKeyChange={handleApiKeyChange}
+              onToggleShowApiKey={handleToggleShowApiKey}
             />
           ) : (
             <OllamaSettingsSection
@@ -507,19 +525,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               models={ollamaModels}
               isLoadingModels={isLoadingModels}
               isCustom={isCustom}
-              onUrlChange={(url) => {
-                setConfig((prev) => ({ ...prev, ollamaUrl: url }));
-                setTestResult(null);
-              }}
+              onUrlChange={handleOllamaUrlChange}
               onModelChange={handleOllamaModelChange}
-              onCustomModelChange={(customId) => {
-                setConfig((prev) => ({ ...prev, model: customId }));
-                setTestResult(null);
-              }}
-              onRefreshModels={() => {
-                setTestResult(null);
-                loadOllamaModels(config.ollamaUrl);
-              }}
+              onCustomModelChange={handleCustomModelChange}
+              onRefreshModels={handleRefreshOllamaModels}
             />
           )}
 

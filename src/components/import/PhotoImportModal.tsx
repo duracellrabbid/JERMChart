@@ -144,7 +144,7 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => {
     const currentConfig = getAIConfig();
@@ -158,10 +158,8 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
         URL.revokeObjectURL(previewUrlRef.current);
         previewUrlRef.current = null;
       }
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+      clearInterval(timerRef.current);
+      timerRef.current = undefined;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
@@ -216,8 +214,8 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
 
   const handleCancelAnalysis = () => {
     abortControllerRef.current?.abort();
-    clearInterval(timerRef.current!);
-    timerRef.current = null;
+    clearInterval(timerRef.current);
+    timerRef.current = undefined;
     setIsProcessing(false);
     setErrorMsg('Analysis was cancelled by user.');
   };
@@ -236,7 +234,7 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
     }, 1000);
     timerRef.current = timer;
 
-    let stepTimer: ReturnType<typeof setTimeout> | null = null;
+    let stepTimer: ReturnType<typeof setTimeout> | undefined;
 
     try {
       if (entities.length > 0) {
@@ -264,8 +262,6 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
         controller.signal
       );
 
-      clearTimeout(stepTimer);
-
       setProgressStep('Calculating automatic hierarchy and canvas layout...');
       loadStructure(result.chart);
 
@@ -276,7 +272,6 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
 
       onClose();
     } catch (err: any) {
-      clearTimeout(stepTimer);
       if (err?.name === 'AbortError' || controller.signal.aborted) {
         setErrorMsg('Analysis was cancelled by user.');
       } else {
@@ -284,8 +279,8 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
       }
     } finally {
       clearTimeout(stepTimer);
-      clearInterval(timerRef.current!);
-      timerRef.current = null;
+      clearInterval(timerRef.current);
+      timerRef.current = undefined;
       setIsProcessing(false);
       abortControllerRef.current = null;
     }
