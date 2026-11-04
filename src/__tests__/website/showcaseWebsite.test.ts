@@ -52,4 +52,17 @@ describe('Showcase Website Offline & Theme Security', () => {
     expect(heroSvg).toContain('Apex International Trust');
     expect(heroSvg).toContain('Global Holdings Ltd');
   });
+
+  it('main.css and components.css define required layout classes', () => {
+    const mainCss = fs.readFileSync(path.join(websiteDir, 'styles', 'main.css'), 'utf-8');
+    expect(mainCss).toContain('box-sizing: border-box');
+    expect(mainCss).toContain('font-family: var(--font-sans)');
+
+    const compCss = fs.readFileSync(path.join(websiteDir, 'styles', 'components.css'), 'utf-8');
+    expect(compCss).toContain('.navbar');
+    expect(compCss).toContain('.hero-section');
+    expect(compCss).toContain('.feature-grid');
+    expect(compCss).toContain('.callout-pin');
+    expect(compCss).toContain('.modal-dialog');
+  });
 });
