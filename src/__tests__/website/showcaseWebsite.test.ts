@@ -48,6 +48,36 @@ describe('Showcase Website Offline & Theme Security', () => {
     checkDirRecursively(websiteDir);
   });
 
+  it('index.html contains all required sections, anchors, and modal containers', () => {
+    const html = fs.readFileSync(path.join(websiteDir, 'index.html'), 'utf-8');
+    expect(html).toContain('<!DOCTYPE html>');
+    expect(html).toContain('<title>JERMChart - Fiduciary Structure Chart Utility</title>');
+    
+    // Check navigation anchors
+    expect(html).toContain('id="features"');
+    expect(html).toContain('id="capabilities"');
+    expect(html).toContain('id="security"');
+    expect(html).toContain('id="exports"');
+    expect(html).toContain('id="quickstart"');
+
+    // Check CTAs
+    expect(html).toContain('Download for Windows');
+    expect(html).toContain('https://github.com/duracellrabbid/JERMChart');
+
+    // Check Callout Pins
+    expect(html).toContain('data-pin="dagre"');
+    expect(html).toContain('data-pin="directors"');
+    expect(html).toContain('data-pin="encryption"');
+    expect(html).toContain('data-pin="vision"');
+
+    // Check Placeholders
+    expect(html).toContain('id="privacy-modal"');
+    expect(html).toContain('id="terms-modal"');
+    expect(html).toContain('aria-label="Social Link: X"');
+    expect(html).toContain('aria-label="Social Link: LinkedIn"');
+    expect(html).toContain('aria-label="Social Link: Discord"');
+  });
+
   it('logo-placeholder.svg and hero-structure.svg exist and contain valid SVG markup', () => {
     const logoSvg = fs.readFileSync(path.join(websiteDir, 'assets', 'logo-placeholder.svg'), 'utf-8');
     expect(logoSvg).toContain('<svg');
