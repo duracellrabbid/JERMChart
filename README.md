@@ -286,6 +286,19 @@ The project includes a ready-to-use **Electron** desktop wrapper that turns the 
 
 ---
 
+## Showcase Website
+
+A standalone, zero-telemetry showcase landing page is available in the `website/` directory. It requires zero build tools and can be previewed or deployed directly to any static web server (such as GitHub Pages or Nginx):
+
+```bash
+# Preview locally:
+npx serve website
+# or with Python:
+python -m http.server 8000 --directory website
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -298,6 +311,7 @@ JERMChart/
 ├── docs/                        # Architecture documentation, standards, and specifications
 ├── scripts/
 │   └── test-ai-connection.mjs   # Node CLI script to verify Gemini API key & model access
+├── website/                     # Standalone zero-telemetry showcase landing page
 ├── DESIGN.md                    # Visual design specification, tokens, and UI layout
 ├── PRODUCT.md                   # Product vision, user personas, and fiduciary workflows
 ├── index.html                   # HTML shell with strict Content Security Policy (CSP)
