@@ -41,4 +41,15 @@ describe('Showcase Website Offline & Theme Security', () => {
     };
     checkDirRecursively(websiteDir);
   });
+
+  it('logo-placeholder.svg and hero-structure.svg exist and contain valid SVG markup', () => {
+    const logoSvg = fs.readFileSync(path.join(websiteDir, 'assets', 'logo-placeholder.svg'), 'utf-8');
+    expect(logoSvg).toContain('<svg');
+    expect(logoSvg).toContain('JERMChart');
+
+    const heroSvg = fs.readFileSync(path.join(websiteDir, 'assets', 'icons', 'hero-structure.svg'), 'utf-8');
+    expect(heroSvg).toContain('<svg');
+    expect(heroSvg).toContain('Apex International Trust');
+    expect(heroSvg).toContain('Global Holdings Ltd');
+  });
 });

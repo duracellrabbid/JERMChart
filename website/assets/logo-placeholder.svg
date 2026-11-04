@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" width="200" height="48" fill="none" role="img" aria-label="JERMChart Logo">
+  <!-- ========================================================================= -->
+  <!-- JERMChart Brand Mark / Placeholder Logo                                    -->
+  <!-- Standardized vector brand asset for navbar and documentation.              -->
+  <!-- SWAP NOTICE: When replacing with final production vector mark, preserve   -->
+  <!-- the viewBox="0 0 200 48" to maintain layout alignment.                     -->
+  <!-- ========================================================================= -->
+  <defs>
+    <linearGradient id="logo-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="logo-border-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#0284c7" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0.7" />
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="teal-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#0d9488" />
+    </linearGradient>
+    <radialGradient id="glow-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Ambient Glow Behind Icon -->
+  <circle cx="24" cy="24" r="22" fill="url(#glow-grad)" />
+
+  <!-- Icon Container Badge -->
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#logo-bg-grad)" stroke="url(#logo-border-grad)" stroke-width="1.5" />
+
+  <!-- Hierarchy Node Network Graphic -->
+  <!-- Connector Lines -->
+  <path d="M 24 16 L 24 23 M 15 27 L 24 23 L 33 27 M 15 27 L 15 31 M 33 27 L 33 31" 
+        stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Top Node: Trust / Apex Entity (Gold) -->
+  <circle cx="24" cy="14" r="4.5" fill="url(#gold-grad)" stroke="#fde68a" stroke-width="0.75" />
+  
+  <!-- Left Child Node: HoldCo / OpCo (Trust Blue) -->
+  <rect x="11.5" y="30" width="7" height="6" rx="1.5" fill="url(#blue-grad)" stroke="#7dd3fc" stroke-width="0.5" />
+  
+  <!-- Right Child Node: SPV / Asset (Teal) -->
+  <rect x="29.5" y="30" width="7" height="6" rx="1.5" fill="url(#teal-grad)" stroke="#5eead4" stroke-width="0.5" />
+
+  <!-- Brand Typography -->
+  <text x="52" y="27" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="21" font-weight="800" fill="#f8fafc" letter-spacing="-0.3">
+    JERM<tspan fill="#38bdf8">Chart</tspan>
+  </text>
+  <text x="53" y="39" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="7.5" font-weight="600" fill="#94a3b8" letter-spacing="2">
+    FIDUCIARY ARCHITECT
+  </text>
+</svg>
