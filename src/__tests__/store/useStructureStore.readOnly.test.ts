@@ -159,7 +159,46 @@ describe('useStructureStore - isReadOnly and allowJsonBackup', () => {
       expect(useStructureStore.getState().restoreUndoSnapshot()).toBe(false);
     });
 
-    it('permits non-mutating view actions and cloud hydration loadStructure', () => {
+    it('guards pushHistory from modifying history when isReadOnly is true', () => {
+      const initialHistoryLen = useStructureStore.getState().undoHistory.length;
+      useStructureStore.getState().pushHistory();
+      expect(useStructureStore.getState().undoHistory.length).toBe(initialHistoryLen);
+    });
+
+    it('guards loadStructure from replacing entities, relationships, metadata, or staged nodes', () => {
+      const initialEntitiesCount = useStructureStore.getState().entities.length;
+      const initialRelsCount = useStructureStore.getState().relationships.length;
+      const initialTitle = useStructureStore.getState().metadata.chartTitle;
+      const initialHistoryLen = useStructureStore.getState().undoHistory.length;
+
+      useStructureStore.getState().loadStructure({
+        metadata: {
+          chartTitle: 'Hacked Structure',
+          effectiveDate: '2026-01-01',
+          confidentialityNotice: 'NONE',
+        },
+        entities: [
+          {
+            id: 'hacked-1',
+            name: 'Unauthorized HoldCo',
+            type: 'Holding Company',
+            jurisdiction: 'Unknown',
+            status: 'Active',
+            associatedParties: [],
+          },
+        ],
+        relationships: [],
+        stagedNodes: [{ id: 'staged-1', name: 'Staged Node', type: 'Trust' }],
+      });
+
+      expect(useStructureStore.getState().entities.length).toBe(initialEntitiesCount);
+      expect(useStructureStore.getState().relationships.length).toBe(initialRelsCount);
+      expect(useStructureStore.getState().metadata.chartTitle).toBe(initialTitle);
+      expect(useStructureStore.getState().stagedNodes).toEqual([]);
+      expect(useStructureStore.getState().undoHistory.length).toBe(initialHistoryLen);
+    });
+
+    it('permits non-mutating view actions', () => {
       const store = useStructureStore.getState();
 
       store.setSelectedEntityId('entity-1');
@@ -188,16 +227,6 @@ describe('useStructureStore - isReadOnly and allowJsonBackup', () => {
 
       store.dismissOcrReview();
       expect(useStructureStore.getState().ocrReviewState).toBeNull();
-
-      // Cloud hydration via loadStructure must be permitted
-      store.loadStructure({
-        metadata: { chartTitle: 'Cloud Loaded Chart' },
-        entities: [{ id: 'cloud-1', name: 'Cloud Entity', type: 'Trust' }],
-        relationships: [],
-      });
-      expect(useStructureStore.getState().metadata.chartTitle).toBe('Cloud Loaded Chart');
-      expect(useStructureStore.getState().entities.length).toBe(1);
-      expect(useStructureStore.getState().entities[0].id).toBe('cloud-1');
     });
   });
 

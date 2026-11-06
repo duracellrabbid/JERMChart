@@ -395,6 +395,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   },
 
   loadStructure: (chart) => {
+    if (get().isReadOnly) return;
     get().pushHistory();
     set({
       metadata: { ...chart.metadata },
