@@ -7,6 +7,8 @@ export interface AIConfig {
   apiKey: string;
   model: string;
   ollamaUrl: string;
+  geminiModel?: string;
+  ollamaModel?: string;
 }
 
 const STORAGE_KEY = 'tmu_ai_config';
@@ -17,6 +19,8 @@ export const DEFAULT_CONFIG: AIConfig = {
   apiKey: '',
   model: 'gemini-3.8-flash',
   ollamaUrl: DEFAULT_OLLAMA_URL,
+  geminiModel: 'gemini-3.8-flash',
+  ollamaModel: '',
 };
 
 const LEGACY_GEMINI_MODELS = new Set([
@@ -76,6 +80,30 @@ function getStorage(): SimpleStorage {
   };
 }
 
+function resolveStoredGeminiModel(
+  parsed: Record<string, unknown>,
+  storedProvider: AIProvider,
+  fallbackModel: string
+): string {
+  if (typeof parsed.geminiModel === 'string') {
+    const trimmed = parsed.geminiModel.trim();
+    return trimmed ? migrateLegacyModel('gemini', trimmed) : 'gemini-3.8-flash';
+  }
+  return storedProvider === 'gemini' ? fallbackModel : 'gemini-3.8-flash';
+}
+
+function resolveStoredOllamaModel(
+  parsed: Record<string, unknown>,
+  storedProvider: AIProvider,
+  fallbackModel: string
+): string {
+  if (typeof parsed.ollamaModel === 'string') {
+    const trimmed = parsed.ollamaModel.trim();
+    return trimmed ? migrateLegacyModel('ollama', trimmed) : '';
+  }
+  return storedProvider === 'ollama' ? fallbackModel : '';
+}
+
 export function getAIConfig(): AIConfig {
   try {
     const storage = getStorage();
@@ -84,7 +112,10 @@ export function getAIConfig(): AIConfig {
     const parsed = JSON.parse(raw);
     const storedProvider: AIProvider = parsed.provider === 'ollama' ? 'ollama' : 'gemini';
     const rawModel = typeof parsed.model === 'string' ? parsed.model : '';
-    const model = migrateLegacyModel(storedProvider, rawModel);
+    const fallbackModel = migrateLegacyModel(storedProvider, rawModel);
+    const geminiModel = resolveStoredGeminiModel(parsed, storedProvider, fallbackModel);
+    const ollamaModel = resolveStoredOllamaModel(parsed, storedProvider, fallbackModel);
+    const model = storedProvider === 'ollama' ? ollamaModel : geminiModel;
     const rawOllamaUrl = typeof parsed.ollamaUrl === 'string' ? parsed.ollamaUrl.trim() : '';
     const ollamaUrl = rawOllamaUrl || DEFAULT_OLLAMA_URL;
     return {
@@ -92,10 +123,42 @@ export function getAIConfig(): AIConfig {
       apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '',
       model,
       ollamaUrl,
+      geminiModel,
+      ollamaModel,
     };
   } catch {
     return { ...DEFAULT_CONFIG };
   }
+}
+
+function resolveSavedModels(
+  current: AIConfig,
+  patch: Partial<AIConfig>,
+  provider: AIProvider
+): { model: string; geminiModel: string; ollamaModel: string } {
+  let geminiModel = patch.geminiModel !== undefined ? patch.geminiModel : current.geminiModel;
+  let ollamaModel = patch.ollamaModel !== undefined ? patch.ollamaModel : current.ollamaModel;
+
+  if (typeof patch.model === 'string') {
+    if (provider === 'gemini') {
+      geminiModel = patch.model;
+    } else {
+      ollamaModel = patch.model;
+    }
+  }
+
+  let model = current.model;
+  if (typeof patch.model === 'string') {
+    model = patch.model;
+  } else if (patch.geminiModel !== undefined && provider === 'gemini') {
+    model = patch.geminiModel;
+  } else if (patch.ollamaModel !== undefined && provider === 'ollama') {
+    model = patch.ollamaModel;
+  } else if (patch.provider !== undefined) {
+    model = provider === 'ollama' ? ollamaModel : geminiModel;
+  }
+
+  return { model, geminiModel, ollamaModel };
 }
 
 export function saveAIConfig(patch: Partial<AIConfig>): AIConfig {
@@ -104,15 +167,64 @@ export function saveAIConfig(patch: Partial<AIConfig>): AIConfig {
   const provider: AIProvider = rawProvider === 'ollama' ? 'ollama' : 'gemini';
   const rawOllamaUrl = patch.ollamaUrl ?? current.ollamaUrl;
   const ollamaUrl = (typeof rawOllamaUrl === 'string' ? rawOllamaUrl.trim() : '') || DEFAULT_OLLAMA_URL;
+
+  const { model, geminiModel, ollamaModel } = resolveSavedModels(current, patch, provider);
+
   const updated: AIConfig = {
     ...current,
     ...patch,
     provider,
+    model,
     ollamaUrl,
+    geminiModel,
+    ollamaModel,
   };
   const storage = getStorage();
   storage.setItem(STORAGE_KEY, JSON.stringify(updated));
   return updated;
+}
+
+export function isGeminiConfigured(config?: AIConfig): boolean {
+  const target = config || getAIConfig();
+  const apiKey = typeof target.apiKey === 'string' ? target.apiKey.trim() : '';
+  const modelCandidate = target.geminiModel || (target.provider === 'gemini' ? target.model : '');
+  const model = typeof modelCandidate === 'string' ? modelCandidate.trim() : '';
+  return apiKey.length > 0 && model.length > 0;
+}
+
+export function isOllamaConfigured(config?: AIConfig): boolean {
+  const target = config || getAIConfig();
+  const ollamaUrl = typeof target.ollamaUrl === 'string' ? target.ollamaUrl.trim() : '';
+  const modelCandidate = target.ollamaModel || (target.provider === 'ollama' ? target.model : '');
+  const model = typeof modelCandidate === 'string' ? modelCandidate.trim() : '';
+  return ollamaUrl.length > 0 && model.length > 0;
+}
+
+export function getConfiguredProviders(config?: AIConfig): AIProvider[] {
+  const target = config || getAIConfig();
+  const providers: AIProvider[] = [];
+  if (isGeminiConfigured(target)) {
+    providers.push('gemini');
+  }
+  if (isOllamaConfigured(target)) {
+    providers.push('ollama');
+  }
+  return providers;
+}
+
+export function getProviderModel(provider: AIProvider, config?: AIConfig): string {
+  const target = config || getAIConfig();
+  if (provider === 'gemini') {
+    return target.geminiModel || (target.provider === 'gemini' ? target.model : 'gemini-3.8-flash');
+  }
+  return target.ollamaModel || (target.provider === 'ollama' ? target.model : '');
+}
+
+export function getProviderDisplayName(provider: AIProvider): string {
+  if (provider === 'gemini') {
+    return 'Google Gemini';
+  }
+  return 'Ollama';
 }
 
 export function hasValidAIConfig(config?: AIConfig): boolean {
