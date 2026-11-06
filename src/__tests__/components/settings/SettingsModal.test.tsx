@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { SettingsModal } from '../../../components/settings/SettingsModal';
+import {
+  SettingsModal,
+  resolveRestoredGeminiModel,
+  resolveRestoredOllamaModel,
+  resolveIsCustomOllama,
+  resolveOllamaModelOnFetch,
+  getCurrentGeminiModel,
+  getCurrentOllamaModel,
+} from '../../../components/settings/SettingsModal';
 import * as aiConfig from '../../../services/ai/aiConfig';
 import { CUSTOM_MODEL_VALUE } from '../../../services/ai/modelCatalog';
 
@@ -637,6 +645,363 @@ describe('SettingsModal', () => {
 
       fireEvent.change(modelSelect, { target: { value: CUSTOM_MODEL_VALUE } });
       expect((customInput as HTMLInputElement).value).toBe('my-custom-active-model');
+    });
+  });
+
+  describe('Dual Provider Model Preservation', () => {
+    it('preserves both Gemini and Ollama models when switching back and forth between tabs', async () => {
+      const onClose = vi.fn();
+      render(<SettingsModal onClose={onClose} />);
+
+      // On Gemini tab: select gemini-3.7-flash
+      const geminiSelect = screen.getByLabelText(/google gemini vision model/i);
+      fireEvent.change(geminiSelect, { target: { value: 'gemini-3.7-flash' } });
+      expect((geminiSelect as HTMLSelectElement).value).toBe('gemini-3.7-flash');
+
+      // Switch to Ollama tab
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      // Select qwen2.5-coder:7b
+      const ollamaSelect = screen.getByLabelText(/ollama model/i);
+      fireEvent.change(ollamaSelect, { target: { value: 'qwen2.5-coder:7b' } });
+      expect((ollamaSelect as HTMLSelectElement).value).toBe('qwen2.5-coder:7b');
+
+      // Switch back to Gemini tab
+      fireEvent.click(screen.getByRole('button', { name: /google gemini/i }));
+      const geminiSelectBack = screen.getByLabelText(/google gemini vision model/i) as HTMLSelectElement;
+      expect(geminiSelectBack.value).toBe('gemini-3.7-flash');
+
+      // Switch back to Ollama tab
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      const ollamaSelectBack = screen.getByLabelText(/ollama model/i) as HTMLSelectElement;
+      expect(ollamaSelectBack.value).toBe('qwen2.5-coder:7b');
+
+      // Save settings
+      fireEvent.click(screen.getByRole('button', { name: /save settings/i }));
+      expect(onClose).toHaveBeenCalled();
+
+      const saved = aiConfig.getAIConfig();
+      expect(saved.provider).toBe('ollama');
+      expect(saved.model).toBe('qwen2.5-coder:7b');
+      expect(saved.geminiModel).toBe('gemini-3.7-flash');
+      expect(saved.ollamaModel).toBe('qwen2.5-coder:7b');
+    });
+
+    it('preserves custom model inputs when switching between tabs and saves both', async () => {
+      const onClose = vi.fn();
+      render(<SettingsModal onClose={onClose} />);
+
+      // Gemini tab: select custom model
+      const geminiSelect = screen.getByLabelText(/google gemini vision model/i);
+      fireEvent.change(geminiSelect, { target: { value: CUSTOM_MODEL_VALUE } });
+      const customGeminiInput = screen.getByLabelText(/custom model identifier/i);
+      fireEvent.change(customGeminiInput, { target: { value: 'custom-gemini-preview' } });
+
+      // Switch to Ollama tab
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      await waitFor(() => {
+        expect(screen.getByLabelText(/custom model identifier/i)).toBeInTheDocument();
+      });
+
+      // Ollama tab: enter custom model
+      const customOllamaInput = screen.getByLabelText(/custom model identifier/i);
+      fireEvent.change(customOllamaInput, { target: { value: 'custom-ollama-llama-vision' } });
+
+      // Switch back to Gemini
+      fireEvent.click(screen.getByRole('button', { name: /google gemini/i }));
+      const restoredCustomGemini = screen.getByLabelText(/custom model identifier/i) as HTMLInputElement;
+      expect(restoredCustomGemini.value).toBe('custom-gemini-preview');
+
+      // Switch back to Ollama
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      const restoredCustomOllama = screen.getByLabelText(/custom model identifier/i) as HTMLInputElement;
+      expect(restoredCustomOllama.value).toBe('custom-ollama-llama-vision');
+
+      // Switch back to Gemini and save
+      fireEvent.click(screen.getByRole('button', { name: /google gemini/i }));
+      fireEvent.click(screen.getByRole('button', { name: /save settings/i }));
+
+      const saved = aiConfig.getAIConfig();
+      expect(saved.provider).toBe('gemini');
+      expect(saved.model).toBe('custom-gemini-preview');
+      expect(saved.geminiModel).toBe('custom-gemini-preview');
+      expect(saved.ollamaModel).toBe('custom-ollama-llama-vision');
+    });
+
+    it('tests connection for the active provider tab with its respective model', async () => {
+      mockGenerateContent.mockResolvedValueOnce({ text: 'Pong' });
+
+      render(<SettingsModal onClose={vi.fn()} />);
+
+      // On Gemini tab
+      const keyInput = screen.getByPlaceholderText(/enter gemini api key/i);
+      fireEvent.change(keyInput, { target: { value: 'AIzaSyGeminiKey' } });
+
+      const geminiSelect = screen.getByLabelText(/google gemini vision model/i);
+      fireEvent.change(geminiSelect, { target: { value: 'gemini-3.7-flash' } });
+
+      const testBtn = screen.getByRole('button', { name: /test connection/i });
+      fireEvent.click(testBtn);
+
+      await waitFor(() => {
+        expect(mockGenerateContent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            model: 'gemini-3.7-flash',
+          })
+        );
+      });
+
+      // Switch to Ollama tab
+      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ollama model/i)).toBeInTheDocument();
+      });
+
+      const ollamaSelect = screen.getByLabelText(/ollama model/i);
+      fireEvent.change(ollamaSelect, { target: { value: 'qwen2.5-coder:7b' } });
+
+      mockTestOllamaConnection.mockResolvedValueOnce({
+        success: true,
+        message: 'Connected to Ollama with qwen2.5-coder:7b',
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /test connection/i }));
+
+      await waitFor(() => {
+        expect(mockTestOllamaConnection).toHaveBeenCalledWith(
+          'http://localhost:11434',
+          'qwen2.5-coder:7b'
+        );
+      });
+    });
+
+    it('preserves pre-existing ollamaModel when editing and saving Gemini settings', () => {
+      aiConfig.saveAIConfig({
+        provider: 'gemini',
+        model: 'gemini-3.8-flash',
+        geminiModel: 'gemini-3.8-flash',
+        ollamaModel: 'llava:latest',
+      });
+
+      const onClose = vi.fn();
+      render(<SettingsModal onClose={onClose} />);
+
+      const geminiSelect = screen.getByLabelText(/google gemini vision model/i);
+      fireEvent.change(geminiSelect, { target: { value: 'gemini-3.1-pro-preview' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /save settings/i }));
+
+      const saved = aiConfig.getAIConfig();
+      expect(saved.provider).toBe('gemini');
+      expect(saved.model).toBe('gemini-3.1-pro-preview');
+      expect(saved.geminiModel).toBe('gemini-3.1-pro-preview');
+      expect(saved.ollamaModel).toBe('llava:latest');
+    });
+  });
+
+  describe('SettingsModal Helper Functions', () => {
+    it('resolves restored gemini model under different config states', () => {
+      // Custom gemini model
+      expect(
+        resolveRestoredGeminiModel({
+          provider: 'ollama',
+          apiKey: '',
+          model: 'llama3',
+          ollamaUrl: '',
+          geminiModel: 'gemini-3.7-flash',
+        })
+      ).toBe('gemini-3.7-flash');
+
+      // Model starts with gemini
+      expect(
+        resolveRestoredGeminiModel({
+          provider: 'ollama',
+          apiKey: '',
+          model: 'gemini-3.1-pro-preview',
+          ollamaUrl: '',
+          geminiModel: 'gemini-3.8-flash',
+        })
+      ).toBe('gemini-3.1-pro-preview');
+
+      // Fallback
+      expect(
+        resolveRestoredGeminiModel({
+          provider: 'ollama',
+          apiKey: '',
+          model: 'custom-ollama',
+          ollamaUrl: '',
+          geminiModel: '',
+        })
+      ).toBe('gemini-3.8-flash');
+    });
+
+    it('resolves restored ollama model under different states and model lists', () => {
+      // Explicit ollamaModel
+      expect(
+        resolveRestoredOllamaModel(
+          {
+            provider: 'gemini',
+            apiKey: '',
+            model: 'gemini-3.8-flash',
+            ollamaUrl: '',
+            ollamaModel: 'llama3.2-vision',
+          },
+          []
+        )
+      ).toBe('llama3.2-vision');
+
+      // Model does not start with gemini
+      expect(
+        resolveRestoredOllamaModel(
+          {
+            provider: 'gemini',
+            apiKey: '',
+            model: 'my-custom-local-model',
+            ollamaUrl: '',
+            ollamaModel: '',
+          },
+          []
+        )
+      ).toBe('my-custom-local-model');
+
+      // Selects first vision model from loaded models
+      expect(
+        resolveRestoredOllamaModel(
+          {
+            provider: 'gemini',
+            apiKey: '',
+            model: 'gemini-3.8-flash',
+            ollamaUrl: '',
+            ollamaModel: '',
+          },
+          [
+            { name: 'llama3:8b', isVisionCapable: false },
+            { name: 'llama3.2-vision:latest', isVisionCapable: true },
+          ]
+        )
+      ).toBe('llama3.2-vision:latest');
+
+      // Selects first model if no vision model
+      expect(
+        resolveRestoredOllamaModel(
+          {
+            provider: 'gemini',
+            apiKey: '',
+            model: 'gemini-3.8-flash',
+            ollamaUrl: '',
+            ollamaModel: '',
+          },
+          [{ name: 'llama3:8b', isVisionCapable: false }]
+        )
+      ).toBe('llama3:8b');
+
+      // Fallback empty
+      expect(
+        resolveRestoredOllamaModel(
+          {
+            provider: 'gemini',
+            apiKey: '',
+            model: 'gemini-3.8-flash',
+            ollamaUrl: '',
+            ollamaModel: '',
+          },
+          []
+        )
+      ).toBe('');
+    });
+
+    it('resolves custom ollama model state accurately', () => {
+      expect(resolveIsCustomOllama('', [])).toBe(false);
+      expect(resolveIsCustomOllama('llama3.2-vision', [])).toBe(false);
+      expect(
+        resolveIsCustomOllama('llama3.2-vision', [{ name: 'llama3.2-vision', isVisionCapable: true }])
+      ).toBe(false);
+      expect(
+        resolveIsCustomOllama('unknown-custom-model', [{ name: 'llama3.2-vision', isVisionCapable: true }])
+      ).toBe(true);
+    });
+
+    it('resolves ollama model on fetch callback', () => {
+      // Non-ollama provider ignores
+      expect(
+        resolveOllamaModelOnFetch(
+          { provider: 'gemini', apiKey: '', model: 'gemini-3.8-flash', ollamaUrl: '' },
+          [{ name: 'llama3.2-vision', isVisionCapable: true }]
+        )
+      ).toBeNull();
+
+      // Empty fetched list returns null
+      expect(
+        resolveOllamaModelOnFetch(
+          { provider: 'ollama', apiKey: '', model: 'llama3.2-vision', ollamaUrl: '' },
+          []
+        )
+      ).toBeNull();
+    });
+
+    it('gets current provider models with fallbacks', () => {
+      expect(
+        getCurrentGeminiModel({
+          provider: 'gemini',
+          apiKey: '',
+          model: '',
+          ollamaUrl: '',
+          geminiModel: 'gemini-3.7-flash',
+        })
+      ).toBe('gemini-3.7-flash');
+
+      expect(
+        getCurrentGeminiModel({
+          provider: 'gemini',
+          apiKey: '',
+          model: 'gemini-custom',
+          ollamaUrl: '',
+          geminiModel: '',
+        })
+      ).toBe('gemini-custom');
+
+      expect(
+        getCurrentGeminiModel({
+          provider: 'gemini',
+          apiKey: '',
+          model: '',
+          ollamaUrl: '',
+          geminiModel: '',
+        })
+      ).toBe('gemini-3.8-flash');
+
+      expect(
+        getCurrentOllamaModel({
+          provider: 'ollama',
+          apiKey: '',
+          model: '',
+          ollamaUrl: '',
+          ollamaModel: 'qwen2.5-coder:7b',
+        })
+      ).toBe('qwen2.5-coder:7b');
+
+      expect(
+        getCurrentOllamaModel({
+          provider: 'ollama',
+          apiKey: '',
+          model: 'my-model',
+          ollamaUrl: '',
+          ollamaModel: '',
+        })
+      ).toBe('my-model');
+
+      expect(
+        getCurrentOllamaModel({
+          provider: 'ollama',
+          apiKey: '',
+          model: '',
+          ollamaUrl: '',
+          ollamaModel: '',
+        })
+      ).toBe('');
     });
   });
 });

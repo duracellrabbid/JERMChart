@@ -324,6 +324,83 @@ export const OllamaSettingsSection: React.FC<OllamaSettingsSectionProps> = ({
   );
 };
 
+export function resolveRestoredGeminiModel(config: AIConfig): string {
+  if (config.geminiModel && config.geminiModel !== 'gemini-3.8-flash') {
+    return config.geminiModel;
+  }
+  if (config.model.startsWith('gemini')) {
+    return config.model;
+  }
+  return config.geminiModel || 'gemini-3.8-flash';
+}
+
+export function resolveRestoredOllamaModel(
+  config: AIConfig,
+  models: OllamaModelItem[]
+): string {
+  if (config.ollamaModel && config.ollamaModel.length > 0) {
+    return config.ollamaModel;
+  }
+  if (!config.model.startsWith('gemini') && config.model.length > 0) {
+    return config.model;
+  }
+  if (models.length > 0) {
+    const firstVision = models.find((m) => m.isVisionCapable)?.name;
+    return firstVision || models[0].name;
+  }
+  return '';
+}
+
+export function resolveIsCustomOllama(targetModel: string, models: OllamaModelItem[]): boolean {
+  if (!targetModel || models.length === 0) {
+    return false;
+  }
+  return !models.some((m) => m.name === targetModel);
+}
+
+export interface OllamaModelResolution {
+  model: string;
+  ollamaModel: string;
+  isCustom: boolean;
+}
+
+export function resolveOllamaModelOnFetch(
+  prev: AIConfig,
+  fetched: OllamaModelItem[]
+): OllamaModelResolution | null {
+  if (prev.provider !== 'ollama') return null;
+  const currentModel = prev.ollamaModel || prev.model;
+  if (fetched.some((m) => m.name === currentModel)) {
+    return { model: currentModel, ollamaModel: currentModel, isCustom: false };
+  }
+  if (fetched.length === 0) {
+    return null;
+  }
+  const matchingTagged = fetched.find(
+    (m) => m.name.split(':')[0] === currentModel || m.name === `${currentModel}:latest`
+  );
+  if (matchingTagged) {
+    return { model: matchingTagged.name, ollamaModel: matchingTagged.name, isCustom: false };
+  }
+  if (!currentModel || currentModel.startsWith('gemini')) {
+    const firstVision = fetched.find((m) => m.isVisionCapable)?.name || fetched[0].name;
+    return { model: firstVision, ollamaModel: firstVision, isCustom: false };
+  }
+  return { model: currentModel, ollamaModel: currentModel, isCustom: true };
+}
+
+export function getCurrentGeminiModel(config: AIConfig): string {
+  if (config.geminiModel) return config.geminiModel;
+  if (config.model) return config.model;
+  return 'gemini-3.8-flash';
+}
+
+export function getCurrentOllamaModel(config: AIConfig): string {
+  if (config.ollamaModel) return config.ollamaModel;
+  if (config.model) return config.model;
+  return '';
+}
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [config, setConfig] = useState<AIConfig>(() => getAIConfig());
   const [isCustom, setIsCustom] = useState<boolean>(() =>
@@ -347,28 +424,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       const fetched = await fetchOllamaModels(url);
       setOllamaModels(fetched);
       setConfig((prev) => {
-        if (prev.provider !== 'ollama') return prev;
-        const currentExists = fetched.some((m) => m.name === prev.model);
-        if (currentExists) {
-          setIsCustom(false);
-          return prev;
-        }
-        if (fetched.length > 0) {
-          const matchingTagged = fetched.find(
-            (m) => m.name.split(':')[0] === prev.model || m.name === `${prev.model}:latest`
-          );
-          if (matchingTagged) {
-            setIsCustom(false);
-            return { ...prev, model: matchingTagged.name };
-          }
-          if (!prev.model || prev.model.startsWith('gemini')) {
-            setIsCustom(false);
-            const firstVision = fetched.find((m) => m.isVisionCapable)?.name || fetched[0].name;
-            return { ...prev, model: firstVision };
-          }
-          setIsCustom(true);
-        }
-        return prev;
+        const resolved = resolveOllamaModelOnFetch(prev, fetched);
+        if (!resolved) return prev;
+        setIsCustom(resolved.isCustom);
+        return {
+          ...prev,
+          model: resolved.model,
+          ollamaModel: resolved.ollamaModel,
+        };
       });
     } catch {
       setOllamaModels([]);
@@ -394,57 +457,91 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const handleProviderChange = (newProvider: AIProvider) => {
     if (newProvider === config.provider) return;
     setTestResult(null);
+
     if (newProvider === 'ollama') {
-      setIsCustom(false);
-      const url = config.ollamaUrl;
+      const currentGemini = getCurrentGeminiModel(config);
+      const restoredOllama = resolveRestoredOllamaModel(config, ollamaModels);
+      setIsCustom(resolveIsCustomOllama(restoredOllama, ollamaModels));
       setConfig((prev) => ({
         ...prev,
         provider: 'ollama',
-        ollamaUrl: url,
-        model: prev.model.startsWith('gemini') ? '' : prev.model,
+        geminiModel: currentGemini,
+        ollamaModel: restoredOllama,
+        model: restoredOllama,
       }));
-    } else {
-      setIsCustom(isCustomModel('gemini', config.model));
-      setConfig((prev) => ({
-        ...prev,
-        provider: 'gemini',
-        model: !prev.model || !prev.model.startsWith('gemini') ? 'gemini-3.8-flash' : prev.model,
-      }));
+      return;
     }
+
+    const currentOllama = getCurrentOllamaModel(config);
+    const restoredGemini = resolveRestoredGeminiModel(config);
+    setIsCustom(isCustomModel('gemini', restoredGemini));
+    setConfig((prev) => ({
+      ...prev,
+      provider: 'gemini',
+      ollamaModel: currentOllama,
+      geminiModel: restoredGemini,
+      model: restoredGemini,
+    }));
   };
 
   const handleGeminiModelChange = (selectedId: string) => {
     setTestResult(null);
     if (selectedId === CUSTOM_MODEL_VALUE) {
       setIsCustom(true);
-      setConfig((prev) => ({
-        ...prev,
-        model: isCustomModel('gemini', prev.model) ? prev.model : '',
-      }));
-    } else {
-      setIsCustom(false);
-      setConfig((prev) => ({ ...prev, model: selectedId }));
+      setConfig((prev) => {
+        const currentModel = prev.geminiModel;
+        const customModel = isCustomModel('gemini', currentModel) ? currentModel : '';
+        return {
+          ...prev,
+          geminiModel: customModel,
+          model: customModel,
+        };
+      });
+      return;
     }
+
+    setIsCustom(false);
+    setConfig((prev) => ({
+      ...prev,
+      geminiModel: selectedId,
+      model: selectedId,
+    }));
   };
 
   const handleOllamaModelChange = (selected: string) => {
     setTestResult(null);
     if (selected === CUSTOM_MODEL_VALUE) {
       setIsCustom(true);
-      const isKnown = ollamaModels.some((m) => m.name === config.model);
-      setConfig((prev) => ({
-        ...prev,
-        model: isKnown ? '' : prev.model,
-      }));
-    } else {
-      setIsCustom(false);
-      setConfig((prev) => ({ ...prev, model: selected }));
+      setConfig((prev) => {
+        const currentModel = prev.ollamaModel;
+        const isKnown = ollamaModels.some((m) => m.name === currentModel);
+        const customModel = isKnown ? '' : currentModel;
+        return {
+          ...prev,
+          ollamaModel: customModel,
+          model: customModel,
+        };
+      });
+      return;
     }
+
+    setIsCustom(false);
+    setConfig((prev) => ({
+      ...prev,
+      ollamaModel: selected,
+      model: selected,
+    }));
   };
 
   const handleCustomModelChange = (customId: string) => {
-    setConfig((prev) => ({ ...prev, model: customId }));
     setTestResult(null);
+    setConfig((prev) => ({
+      ...prev,
+      model: customId,
+      ...(prev.provider === 'gemini'
+        ? { geminiModel: customId }
+        : { ollamaModel: customId }),
+    }));
   };
 
   const handleApiKeyChange = (apiKey: string) => {
