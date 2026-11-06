@@ -336,10 +336,21 @@ export const SatelliteRoleCard = memo(({ data, selected }: SatelliteRoleCardProp
   const highlightedParty = useStructureStore((state) => state.highlightedParty);
   const setHighlightedParty = useStructureStore((state) => state.setHighlightedParty);
   const setSelectedEntityId = useStructureStore((state) => state.setSelectedEntityId);
+  const setActiveSidebarTab = useStructureStore((state) => state.setActiveSidebarTab);
+  const directorCap = useStructureStore((state) => state.directorCap);
+  const isExportMode = useStructureStore((state) => state.isExportMode);
 
   const roleStyle = getRoleBadgeStyle(satData.role);
   const parties = satData.parties || [];
   const isLeft = satData.side === 'left';
+
+  const effectiveCap = isExportMode || directorCap === 'all' ? parties.length : directorCap;
+  const visibleParties = parties.slice(0, effectiveCap);
+  const hiddenParties = parties.slice(effectiveCap);
+
+  const roleLabelLower = satData.role.toLowerCase();
+  const pluralRoleLabel = roleLabelLower.endsWith('s') ? roleLabelLower : roleLabelLower + 's';
+  const hiddenPartiesTooltip = 'Hidden: ' + hiddenParties.map((p) => p.name + ' (' + p.role + ')').join(', ');
 
   const containsHighlighted = parties.some((p) => p.name === highlightedParty);
   const isDimmed = Boolean(highlightedParty && !containsHighlighted);
@@ -398,7 +409,7 @@ export const SatelliteRoleCard = memo(({ data, selected }: SatelliteRoleCardProp
       </div>
 
       <div className="space-y-1">
-        {parties.map((p) => {
+        {visibleParties.map((p) => {
           const isTargeted = highlightedParty === p.name;
           return (
             <div
@@ -428,6 +439,22 @@ export const SatelliteRoleCard = memo(({ data, selected }: SatelliteRoleCardProp
             </div>
           );
         })}
+        {hiddenParties.length > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (satData.parentEntityId) {
+                setSelectedEntityId(satData.parentEntityId);
+                setActiveSidebarTab('directors');
+              }
+            }}
+            title={hiddenPartiesTooltip}
+            className="w-full text-left mt-1 pt-1 border-t border-slate-100 text-[9px] font-semibold text-sky-600 hover:text-sky-700 hover:underline cursor-pointer flex items-center justify-between"
+          >
+            <span>+{hiddenParties.length} more {pluralRoleLabel}...</span>
+          </button>
+        )}
       </div>
     </div>
   );

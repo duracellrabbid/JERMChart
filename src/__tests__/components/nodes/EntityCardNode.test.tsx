@@ -430,4 +430,83 @@ describe('EntityCardNode', () => {
     card = screen.getByTestId('bank-circle-card-node');
     expect(card.className).toContain('opacity-40');
   });
+
+  it('renders overflow badge when party count exceeds directorCap and switches to directors tab on click', () => {
+    act(() => {
+      useStructureStore.setState({ directorCap: 2, isExportMode: false });
+    });
+    const data = {
+      id: 'sat-1',
+      parentEntityId: 'ent-1',
+      role: 'Director',
+      side: 'left' as const,
+      parties: [
+        { id: 'p1', name: 'Alice', role: 'Director' },
+        { id: 'p2', name: 'Bob', role: 'Director' },
+        { id: 'p3', name: 'Charlie', role: 'Director' },
+      ],
+    };
+    render(
+      <ReactFlowProvider>
+        <SatelliteRoleCard data={data} />
+      </ReactFlowProvider>
+    );
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+    expect(screen.getByText('Bob')).toBeInTheDocument();
+    expect(screen.queryByText('Charlie')).not.toBeInTheDocument();
+    const overflowBtn = screen.getByText('+1 more directors...');
+    expect(overflowBtn).toBeInTheDocument();
+
+    fireEvent.click(overflowBtn);
+    expect(useStructureStore.getState().activeSidebarTab).toBe('directors');
+    expect(useStructureStore.getState().selectedEntityId).toBe('ent-1');
+  });
+
+  it('handles directorCap in export mode, all mode, and clicking overflow badge without parentEntityId', () => {
+    act(() => {
+      useStructureStore.setState({ directorCap: 'all', isExportMode: false, selectedEntityId: null, activeSidebarTab: 'tree' });
+    });
+    const dataWithoutParent = {
+      id: 'sat-orphan',
+      role: 'Protectors',
+      side: 'right' as const,
+      parties: [
+        { id: 'p1', name: 'Alice', role: 'Protector' },
+        { id: 'p2', name: 'Bob', role: 'Protector' },
+      ],
+    };
+    const { rerender } = render(
+      <ReactFlowProvider>
+        <SatelliteRoleCard data={dataWithoutParent} />
+      </ReactFlowProvider>
+    );
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+    expect(screen.getByText('Bob')).toBeInTheDocument();
+
+    // Export mode with capped number should show all parties and no overflow button
+    act(() => {
+      useStructureStore.setState({ directorCap: 1, isExportMode: true });
+    });
+    rerender(
+      <ReactFlowProvider>
+        <SatelliteRoleCard data={dataWithoutParent} />
+      </ReactFlowProvider>
+    );
+    expect(screen.getByText('Bob')).toBeInTheDocument();
+    expect(screen.queryByText(/\+1 more/)).not.toBeInTheDocument();
+
+    // Not export mode, capped to 1, but without parentEntityId -> clicking overflow should not crash
+    act(() => {
+      useStructureStore.setState({ directorCap: 1, isExportMode: false });
+    });
+    rerender(
+      <ReactFlowProvider>
+        <SatelliteRoleCard data={dataWithoutParent} />
+      </ReactFlowProvider>
+    );
+    const overflowBtn = screen.getByText('+1 more protectors...');
+    expect(overflowBtn).toBeInTheDocument();
+    fireEvent.click(overflowBtn);
+    expect(useStructureStore.getState().selectedEntityId).toBeNull();
+  });
 });

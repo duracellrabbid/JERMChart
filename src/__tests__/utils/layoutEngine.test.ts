@@ -526,5 +526,25 @@ describe('layoutEngine', () => {
       const autoNode = resultAuto.nodes.find((n) => n.id === entityWithPos.id);
       expect(autoNode?.position).not.toEqual(customPos);
     });
+
+    it('calculates capped satellite dimensions when directorCap is active and not in export mode', () => {
+      const entity: EntityNodeData = {
+        id: 'ent-1',
+        name: 'HoldCo Alpha',
+        type: 'Holding Company',
+        jurisdiction: 'BVI',
+        status: 'Active',
+        associatedParties: [
+          { id: 'p1', name: 'Director 1', role: 'Director' },
+          { id: 'p2', name: 'Director 2', role: 'Director' },
+          { id: 'p3', name: 'Director 3', role: 'Director' },
+          { id: 'p4', name: 'Director 4', role: 'Director' },
+          { id: 'p5', name: 'Director 5', role: 'Director' },
+        ],
+      };
+      const cappedFlanks = calculateEntityFlanks(entity, 'balanced', 3, false);
+      const uncappedFlanks = calculateEntityFlanks(entity, 'balanced', 'all', false);
+      expect(cappedFlanks.totalHeight).toBeLessThan(uncappedFlanks.totalHeight);
+    });
   });
 });

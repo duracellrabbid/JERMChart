@@ -127,12 +127,30 @@ export function distributeRoleGroups(
   };
 }
 
+export function getEffectiveSatellitePartyCount(
+  totalCount: number,
+  cap?: number | 'all',
+  isExportMode?: boolean
+): number {
+  if (isExportMode || cap === 'all' || cap === undefined) {
+    return totalCount;
+  }
+  return totalCount > cap ? cap + 1 : totalCount;
+}
+
 export function getSatelliteCardHeight(partyCount: number): number {
   return Math.max(48, 30 + partyCount * 22);
 }
 
-function calculateColumnTotalHeight(groups: RoleGroup[]): number {
-  const heights = groups.map((g) => getSatelliteCardHeight(g.parties.length));
+function calculateColumnTotalHeight(
+  groups: RoleGroup[],
+  cap?: number | 'all',
+  isExportMode?: boolean
+): number {
+  const heights = groups.map((g) => {
+    const effectiveCount = getEffectiveSatellitePartyCount(g.parties.length, cap, isExportMode);
+    return getSatelliteCardHeight(effectiveCount);
+  });
   const sum = heights.reduce((acc, h) => acc + h, 0);
   return sum + (groups.length - 1) * VERTICAL_SATELLITE_GAP;
 }
@@ -174,6 +192,8 @@ interface SatellitePlacementContext {
   anchorX: number;
   centerY: number;
   groups: RoleGroup[];
+  cap?: number | 'all';
+  isExportMode?: boolean;
 }
 
 function buildSatelliteColumn(
@@ -181,12 +201,13 @@ function buildSatelliteColumn(
   nodes: Node[],
   edges: Edge[]
 ): void {
-  const { entityId, side, anchorX, centerY, groups } = ctx;
-  const totalH = calculateColumnTotalHeight(groups);
+  const { entityId, side, anchorX, centerY, groups, cap, isExportMode } = ctx;
+  const totalH = calculateColumnTotalHeight(groups, cap, isExportMode);
   let currentY = centerY - totalH / 2;
 
   groups.forEach((group, idx) => {
-    const cardH = getSatelliteCardHeight(group.parties.length);
+    const effectiveCount = getEffectiveSatellitePartyCount(group.parties.length, cap, isExportMode);
+    const cardH = getSatelliteCardHeight(effectiveCount);
     const satId = `sat-${entityId}-${side}-${idx}`;
 
     nodes.push({
@@ -260,7 +281,9 @@ export function determineFlankPreference(
 
 export function calculateEntityFlanks(
   entity: EntityNodeData,
-  preference: FlankPreference
+  preference: FlankPreference,
+  cap?: number | 'all',
+  isExportMode?: boolean
 ): EntityFlanks {
   const groups = groupPartiesByRole(entity.associatedParties);
   const { left, right } = distributeRoleGroups(groups, preference);
@@ -269,8 +292,8 @@ export function calculateEntityFlanks(
   const leftWidth = left.length > 0 ? SATELLITE_CARD_WIDTH + HORIZONTAL_SATELLITE_GAP : 0;
   const rightWidth = right.length > 0 ? SATELLITE_CARD_WIDTH + HORIZONTAL_SATELLITE_GAP : 0;
 
-  const leftHeight = calculateColumnTotalHeight(left);
-  const rightHeight = calculateColumnTotalHeight(right);
+  const leftHeight = calculateColumnTotalHeight(left, cap, isExportMode);
+  const rightHeight = calculateColumnTotalHeight(right, cap, isExportMode);
 
   const totalWidth = dims.width + leftWidth + rightWidth;
   const totalHeight = Math.max(dims.height, leftHeight, rightHeight);
@@ -289,8 +312,8 @@ export function calculateSortedLayout(
   entities: EntityNodeData[],
   relationships: OwnershipEdgeData[],
   sortCriteria: SiblingSortCriteria = 'alphabetical',
-  _cap?: number | 'all',
-  _isExportMode?: boolean
+  cap?: number | 'all',
+  isExportMode?: boolean
 ): { nodes: Node[]; edges: Edge[] } {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -332,7 +355,7 @@ export function calculateSortedLayout(
   entities.forEach((entity) => {
     const siblings = entitySiblingMap.get(entity.id);
     const pref = determineFlankPreference(entity.id, siblings);
-    const flanks = calculateEntityFlanks(entity, pref);
+    const flanks = calculateEntityFlanks(entity, pref, cap, isExportMode);
     entityFlanksMap.set(entity.id, flanks);
 
     dagreGraph.setNode(entity.id, {
@@ -389,6 +412,8 @@ export function calculateSortedLayout(
           anchorX: coreX - SATELLITE_CARD_WIDTH - HORIZONTAL_SATELLITE_GAP,
           centerY,
           groups: flanks.left,
+          cap,
+          isExportMode,
         },
         nodes,
         edges
@@ -403,6 +428,8 @@ export function calculateSortedLayout(
           anchorX: coreX + dims.width + HORIZONTAL_SATELLITE_GAP,
           centerY,
           groups: flanks.right,
+          cap,
+          isExportMode,
         },
         nodes,
         edges
