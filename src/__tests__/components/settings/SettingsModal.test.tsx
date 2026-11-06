@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import {
   SettingsModal,
   resolveRestoredGeminiModel,
@@ -278,7 +278,9 @@ describe('SettingsModal', () => {
       const ollamaBtn = screen.getByRole('button', { name: /ollama/i });
       expect(ollamaBtn).toBeInTheDocument();
 
-      fireEvent.click(ollamaBtn);
+      await act(async () => {
+        fireEvent.click(ollamaBtn);
+      });
 
       expect(screen.getByText(/zero cloud egress/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/ollama server url/i)).toBeInTheDocument();
@@ -289,22 +291,30 @@ describe('SettingsModal', () => {
     it('switches back from Ollama to Gemini cleanly', async () => {
       render(<SettingsModal onClose={vi.fn()} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      });
       expect(screen.getByLabelText(/ollama server url/i)).toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /google gemini/i }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /google gemini/i }));
+      });
       expect(screen.getByPlaceholderText(/enter gemini api key/i)).toBeInTheDocument();
       expect(screen.getByText(/fiduciary privacy & enterprise disclaimer/i)).toBeInTheDocument();
     });
 
     it('updates Ollama server URL on input change', async () => {
       render(<SettingsModal onClose={vi.fn()} />);
-      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      });
 
       const urlInput = screen.getByLabelText(/ollama server url/i) as HTMLInputElement;
       expect(urlInput.value).toBe('http://localhost:11434');
 
-      fireEvent.change(urlInput, { target: { value: 'http://192.168.1.100:11434' } });
+      await act(async () => {
+        fireEvent.change(urlInput, { target: { value: 'http://192.168.1.100:11434' } });
+      });
       expect(urlInput.value).toBe('http://192.168.1.100:11434');
     });
 
@@ -583,7 +593,7 @@ describe('SettingsModal', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('handles switching to Ollama when ollamaUrl is empty and model does not start with gemini', () => {
+    it('handles switching to Ollama when ollamaUrl is empty and model does not start with gemini', async () => {
       aiConfig.saveAIConfig({
         provider: 'gemini',
         ollamaUrl: '',
@@ -591,20 +601,24 @@ describe('SettingsModal', () => {
       });
 
       render(<SettingsModal onClose={vi.fn()} />);
-      fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /ollama/i }));
+      });
 
       const urlInput = screen.getByLabelText(/ollama server url/i) as HTMLInputElement;
       expect(urlInput.value).toBe('http://localhost:11434');
     });
 
-    it('preserves existing model when switching to Gemini if it starts with gemini', () => {
+    it('preserves existing model when switching to Gemini if it starts with gemini', async () => {
       aiConfig.saveAIConfig({
         provider: 'ollama',
         model: 'gemini-3.7-flash',
       });
 
       render(<SettingsModal onClose={vi.fn()} />);
-      fireEvent.click(screen.getByRole('button', { name: /google gemini/i }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /google gemini/i }));
+      });
 
       const modelSelect = screen.getByLabelText(/google gemini vision model/i) as HTMLSelectElement;
       expect(modelSelect.value).toBe('gemini-3.7-flash');
