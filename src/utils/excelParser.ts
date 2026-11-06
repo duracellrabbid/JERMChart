@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import {
   AssociatedParty,
   AssociatedRole,
@@ -154,9 +153,10 @@ export function normalizeOwnershipPercentage(rawVal: unknown): number {
   return pct;
 }
 
-export function parseExcelWorkbook(
+export async function parseExcelWorkbook(
   fileBuffer: ArrayBuffer | Uint8Array
-): { chart: TrustStructureChart; warnings: string[] } {
+): Promise<{ chart: TrustStructureChart; warnings: string[] }> {
+  const XLSX = await import('xlsx');
   const wb = XLSX.read(fileBuffer, { type: 'array' });
   const sheetName = wb.SheetNames[0];
   if (!sheetName) throw new Error('Excel workbook contains no sheets.');
@@ -286,7 +286,7 @@ export function parseExcelWorkbook(
   return { chart, warnings };
 }
 
-export function generateExcelTemplate(): Uint8Array {
+export async function generateExcelTemplate(): Promise<Uint8Array> {
   const sampleRows = [
     {
       'Entity Name': 'The Sterling Family Trust',
@@ -346,6 +346,7 @@ export function generateExcelTemplate(): Uint8Array {
     },
   ];
 
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(sampleRows);
 

@@ -1,6 +1,4 @@
 import { toPng, toSvg } from 'html-to-image';
-import { jsPDF } from 'jspdf';
-import pptxgen from 'pptxgenjs';
 import { ChartMetadata, TrustStructureChart } from '../types/structure';
 import { exportChartToExcel } from './excelExporter';
 
@@ -57,8 +55,8 @@ export function downloadEncryptedJsonBackup(encryptedJson: string, filename?: st
   revokeObjectURLDeferred(url);
 }
 
-export function downloadExcelStructure(chart: TrustStructureChart): void {
-  const bytes = exportChartToExcel(chart);
+export async function downloadExcelStructure(chart: TrustStructureChart): Promise<void> {
+  const bytes = await exportChartToExcel(chart);
   const blob = new Blob([bytes.buffer as ArrayBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
@@ -219,6 +217,7 @@ export async function exportToPdf(
   });
 
   // Create A4 Landscape PDF (297 x 210 mm)
+  const { jsPDF } = await import('jspdf');
   const pdf = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
@@ -290,6 +289,8 @@ export async function exportToPptx(
     ...(width && height ? { width, height, style } : {}),
   });
 
+  const pptxMod = await import('pptxgenjs');
+  const pptxgen = (pptxMod as any).default;
   const pptx = new pptxgen();
   pptx.layout = 'LAYOUT_16x9';
 

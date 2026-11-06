@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { AssociatedParty, TrustStructureChart } from '../types/structure';
 
 export function formatAssociatedPartiesString(parties: AssociatedParty[]): string {
@@ -84,7 +83,8 @@ export function buildExcelRowsFromChart(chart: TrustStructureChart): Record<stri
   return rows;
 }
 
-export function exportChartToExcel(chart: TrustStructureChart): Uint8Array {
+export async function exportChartToExcel(chart: TrustStructureChart): Promise<Uint8Array> {
+  const XLSX = await import('xlsx');
   const rows = buildExcelRowsFromChart(chart);
   const worksheet = XLSX.utils.json_to_sheet(rows);
 

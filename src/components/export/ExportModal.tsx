@@ -95,8 +95,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
     );
   };
 
-  const handleExportExcel = () => {
-    downloadExcelStructure({ metadata, entities, relationships });
+  const handleExportExcel = async () => {
+    await downloadExcelStructure({ metadata, entities, relationships });
     setSuccessMsg('Excel workbook (.xlsx) downloaded successfully.');
   };
 

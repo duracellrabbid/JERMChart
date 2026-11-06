@@ -90,7 +90,7 @@ describe('excelExporter', () => {
     ]);
   });
 
-  it('produces an XLSX binary buffer that parses back accurately', () => {
+  it('produces an XLSX binary buffer that parses back accurately', async () => {
     const chart: TrustStructureChart = {
       metadata: {
         chartTitle: 'Roundtrip Test',
@@ -120,11 +120,11 @@ describe('excelExporter', () => {
       ],
     };
 
-    const bytes = exportChartToExcel(chart);
+    const bytes = await exportChartToExcel(chart);
     expect(bytes).toBeInstanceOf(Uint8Array);
     expect(bytes.length).toBeGreaterThan(100);
 
-    const { chart: parsedChart } = parseExcelWorkbook(bytes);
+    const { chart: parsedChart } = await parseExcelWorkbook(bytes);
     expect(parsedChart.entities).toHaveLength(2);
     expect(parsedChart.relationships).toHaveLength(1);
     expect(parsedChart.relationships[0].ownershipPercentage).toBe(100);

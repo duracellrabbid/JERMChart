@@ -170,11 +170,11 @@ describe('Offline Network Isolation Test Suite', () => {
     expect(networkCalls).toHaveLength(0);
   });
 
-  it('guarantees zero network calls during Excel template generation and spreadsheet parsing', () => {
-    const templateBytes = generateExcelTemplate();
+  it('guarantees zero network calls during Excel template generation and spreadsheet parsing', async () => {
+    const templateBytes = await generateExcelTemplate();
     expect(templateBytes.length).toBeGreaterThan(0);
 
-    const parseResult = parseExcelWorkbook(templateBytes.buffer as ArrayBuffer);
+    const parseResult = await parseExcelWorkbook(templateBytes.buffer as ArrayBuffer);
     expect(parseResult.chart.entities.length).toBeGreaterThan(0);
 
     expect(networkCalls).toHaveLength(0);
@@ -187,7 +187,7 @@ describe('Offline Network Isolation Test Suite', () => {
     expect(parsedBackup.metadata.chartTitle).toBe(sampleTrustStructure.metadata.chartTitle);
 
     // 2. Excel Structure
-    downloadExcelStructure(sampleTrustStructure);
+    await downloadExcelStructure(sampleTrustStructure);
 
     // Setup DOM element for viewport exports
     const containerId = 'test-flow-container';
@@ -216,8 +216,8 @@ describe('Offline Network Isolation Test Suite', () => {
     const store = useStructureStore.getState();
 
     // 1. Generate & parse Excel import
-    const template = generateExcelTemplate();
-    const parsed = parseExcelWorkbook(template.buffer as ArrayBuffer);
+    const template = await generateExcelTemplate();
+    const parsed = await parseExcelWorkbook(template.buffer as ArrayBuffer);
     store.loadStructure(parsed.chart);
 
     // 2. Layout computation
@@ -242,7 +242,7 @@ describe('Offline Network Isolation Test Suite', () => {
       relationships: useStructureStore.getState().relationships,
     };
     downloadJsonBackup(currentChart);
-    downloadExcelStructure(currentChart);
+    await downloadExcelStructure(currentChart);
 
     // Strict zero-egress assertion
     expect(networkCalls).toEqual([]);

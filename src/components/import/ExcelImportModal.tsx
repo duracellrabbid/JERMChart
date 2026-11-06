@@ -42,8 +42,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose }) =
     };
   }, [onClose]);
 
-  const handleDownloadTemplate = () => {
-    const bytes = generateExcelTemplate();
+  const handleDownloadTemplate = async () => {
+    const bytes = await generateExcelTemplate();
     const blob = new Blob([bytes.buffer as ArrayBuffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
@@ -63,7 +63,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose }) =
 
     try {
       const buffer = await file.arrayBuffer();
-      const result = parseExcelWorkbook(buffer);
+      const result = await parseExcelWorkbook(buffer);
       if (result.chart.entities.length === 0) {
         setErrorMsg('No valid entities found in the file. Ensure "Entity Name" column is filled.');
         setParsedData(null);

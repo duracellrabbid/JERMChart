@@ -58,12 +58,15 @@ describe('ExcelImportModal Component', () => {
     expect(mockOnClose).toHaveBeenCalledTimes(2);
   });
 
-  it('downloads Excel template when Download Excel Template button is clicked and defers revocation', () => {
+  it('downloads Excel template when Download Excel Template button is clicked and defers revocation', async () => {
     vi.useFakeTimers();
     render(<ExcelImportModal onClose={mockOnClose} />);
 
     const downloadBtn = screen.getByRole('button', { name: /Download Excel Template/i });
     fireEvent.click(downloadBtn);
+
+    // Allow promise microtask to resolve
+    await Promise.resolve();
 
     expect(excelParser.generateExcelTemplate).toHaveBeenCalledTimes(1);
     expect(createObjectURLSpy).toHaveBeenCalled();

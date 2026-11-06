@@ -1,5 +1,3 @@
-import heic2any from 'heic2any';
-
 export function isHeicFile(file: Blob, filename?: string): boolean {
   const name = filename || (file instanceof File ? file.name : '');
   const lowerName = name.toLowerCase();
@@ -33,6 +31,8 @@ export function calculateOptimalDimensions(
 
 export async function convertHeicIfNeeded(file: File): Promise<Blob> {
   if (!isHeicFile(file)) return file;
+  const mod = await import('heic2any');
+  const heic2any = (mod as any).default;
   const converted = await heic2any({
     blob: file,
     toType: 'image/jpeg',

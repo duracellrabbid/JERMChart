@@ -60,8 +60,8 @@ describe('excelParser', () => {
     expect(normalizeColumnHeader('Random Unrelated Column')).toBe('unknown');
   });
 
-  it('generates a valid binary Excel template workbook', () => {
-    const templateBytes = generateExcelTemplate();
+  it('generates a valid binary Excel template workbook', async () => {
+    const templateBytes = await generateExcelTemplate();
     const wb = XLSX.read(templateBytes, { type: 'array' });
     expect(wb.SheetNames.length).toBeGreaterThan(0);
     const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -74,7 +74,7 @@ describe('excelParser', () => {
     expect(firstRow).toHaveProperty('Jurisdiction');
   });
 
-  it('parses a complete spreadsheet into entities and relationships', () => {
+  it('parses a complete spreadsheet into entities and relationships', async () => {
     const rows = [
       {
         'Entity Name': 'Heritage Family Trust',
@@ -108,7 +108,7 @@ describe('excelParser', () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Structure');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
 
-    const { chart, warnings } = parseExcelWorkbook(buffer);
+    const { chart, warnings } = await parseExcelWorkbook(buffer);
     expect(warnings).toEqual([]);
     expect(chart.entities.length).toBe(3);
     expect(chart.relationships.length).toBe(2);
@@ -117,7 +117,7 @@ describe('excelParser', () => {
     expect(chart.metadata.chartTitle).toBe('Heritage Family Trust Structure');
   });
 
-  it('generates warnings for unlinked parent entities without failing', () => {
+  it('generates warnings for unlinked parent entities without failing', async () => {
     const rows = [
       {
         'Entity Name': 'Isolated Subsidiary Ltd',
@@ -129,14 +129,14 @@ describe('excelParser', () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Structure');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
 
-    const { chart, warnings } = parseExcelWorkbook(buffer);
+    const { chart, warnings } = await parseExcelWorkbook(buffer);
     expect(chart.entities.length).toBe(1);
     expect(chart.relationships.length).toBe(0);
     expect(warnings.length).toBe(1);
     expect(warnings[0]).toContain('Non Existent Parent Co');
   });
 
-  it('handles multi-parent entities by merging rows', () => {
+  it('handles multi-parent entities by merging rows', async () => {
     const rows = [
       {
         'Entity Name': 'Parent Alpha',
@@ -168,7 +168,7 @@ describe('excelParser', () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Structure');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
 
-    const { chart, warnings } = parseExcelWorkbook(buffer);
+    const { chart, warnings } = await parseExcelWorkbook(buffer);
     expect(warnings).toEqual([]);
     expect(chart.entities.length).toBe(3);
     expect(chart.relationships.length).toBe(2);
@@ -176,7 +176,7 @@ describe('excelParser', () => {
     expect(chart.relationships[1].ownershipPercentage).toBe(40);
   });
 
-  it('parses CSV input buffer seamlessly', () => {
+  it('parses CSV input buffer seamlessly', async () => {
     const csvContent = [
       'Entity Name,Parent Entity,Ownership %,Entity Type,Jurisdiction',
       'Oceanic Trust,,,Trust,Cook Islands',
@@ -186,7 +186,7 @@ describe('excelParser', () => {
     const encoder = new TextEncoder();
     const buffer = encoder.encode(csvContent);
 
-    const { chart, warnings } = parseExcelWorkbook(buffer);
+    const { chart, warnings } = await parseExcelWorkbook(buffer);
     expect(warnings).toEqual([]);
     expect(chart.entities.length).toBe(2);
     expect(chart.relationships.length).toBe(1);
@@ -210,16 +210,16 @@ describe('excelParser', () => {
     expect(parsed[1].isCorporate).toBe(true);
   });
 
-  it('throws an error when workbook has no sheets', () => {
+  it('throws an error when workbook has no sheets', async () => {
     (globalThis as any).__mockEmptySheets = true;
     try {
-      expect(() => parseExcelWorkbook(new Uint8Array())).toThrow('Excel workbook contains no sheets.');
+      await expect(parseExcelWorkbook(new Uint8Array())).rejects.toThrow('Excel workbook contains no sheets.');
     } finally {
       (globalThis as any).__mockEmptySheets = false;
     }
   });
 
-  it('handles empty rows, invalid ownership, fallback types, and fallback titles', () => {
+  it('handles empty rows, invalid ownership, fallback types, and fallback titles', async () => {
     const rows = [
       {
         'Entity Name': '', // Should be skipped
@@ -247,7 +247,7 @@ describe('excelParser', () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Data');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
 
-    const { chart, warnings } = parseExcelWorkbook(buffer);
+    const { chart, warnings } = await parseExcelWorkbook(buffer);
     expect(warnings).toEqual([]);
     expect(chart.entities.length).toBe(1);
     expect(chart.entities[0].type).toBe('Holding Company');
@@ -255,7 +255,7 @@ describe('excelParser', () => {
     expect(chart.metadata.chartTitle).toBe('Imported Structure Chart');
   });
 
-  it('falls back to default jurisdiction and default shareClass when omitted', () => {
+  it('falls back to default jurisdiction and default shareClass when omitted', async () => {
     const rows = [
       {
         'Entity Name': 'Parent Co',
@@ -277,7 +277,7 @@ describe('excelParser', () => {
     const ws = XLSX.utils.json_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, 'Data');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-    const { chart } = parseExcelWorkbook(buffer);
+    const { chart } = await parseExcelWorkbook(buffer);
     expect(chart.entities[0].jurisdiction).toBe('Unknown Jurisdiction');
     expect(chart.relationships[0].shareClass).toBe('Ordinary Shares');
     expect(chart.relationships[1].shareClass).toBe('Ordinary Shares');
@@ -291,7 +291,7 @@ describe('excelParser', () => {
     expect(directors[1].name).toBe('Bob Jones');
   });
 
-  it('falls back when crypto is undefined during excel parsing', () => {
+  it('falls back when crypto is undefined during excel parsing', async () => {
     const originalCrypto = globalThis.crypto;
     Object.defineProperty(globalThis, 'crypto', {
       value: undefined,
@@ -304,7 +304,7 @@ describe('excelParser', () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Data');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
 
-    const { chart } = parseExcelWorkbook(buffer);
+    const { chart } = await parseExcelWorkbook(buffer);
     expect(chart.entities).toHaveLength(1);
 
     Object.defineProperty(globalThis, 'crypto', {
@@ -313,7 +313,7 @@ describe('excelParser', () => {
     });
   });
 
-  it('parses Dormant, In Liquidation, and Nominee statuses and preserves custom shareClass on multi-parent rows', () => {
+  it('parses Dormant, In Liquidation, and Nominee statuses and preserves custom shareClass on multi-parent rows', async () => {
     const rows = [
       { 'Entity Name': 'Parent A', 'Status': 'Dormant' },
       { 'Entity Name': 'Parent B', 'Status': 'In Liquidation' },
@@ -336,7 +336,7 @@ describe('excelParser', () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Data');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
 
-    const { chart } = parseExcelWorkbook(buffer);
+    const { chart } = await parseExcelWorkbook(buffer);
     expect(chart.entities.find((e) => e.name === 'Parent A')?.status).toBe('Dormant');
     expect(chart.entities.find((e) => e.name === 'Parent B')?.status).toBe('In Liquidation');
     expect(chart.entities.find((e) => e.name === 'Multi Sub')?.status).toBe('Nominee');
@@ -345,7 +345,7 @@ describe('excelParser', () => {
     expect(chart.relationships[1].shareClass).toBe('Preferred B');
   });
 
-  it('resolves diverse entity types including Trust Company, LLC, Foundation, Partnership, and Individual', () => {
+  it('resolves diverse entity types including Trust Company, LLC, Foundation, Partnership, and Individual', async () => {
     const rows = [
       { 'Entity Name': 'TC', 'Entity Type': 'Trust Company' },
       { 'Entity Name': 'LLC Ent', 'Entity Type': 'LLC' },
@@ -358,7 +358,7 @@ describe('excelParser', () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Data');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
 
-    const { chart } = parseExcelWorkbook(buffer);
+    const { chart } = await parseExcelWorkbook(buffer);
     expect(chart.entities.find((e) => e.name === 'TC')?.type).toBe('Trust Company');
     expect(chart.entities.find((e) => e.name === 'LLC Ent')?.type).toBe('LLC');
     expect(chart.entities.find((e) => e.name === 'Found')?.type).toBe('Foundation');
@@ -366,7 +366,7 @@ describe('excelParser', () => {
     expect(chart.entities.find((e) => e.name === 'Ind')?.type).toBe('Individual');
   });
 
-  it('disambiguates edge IDs when an entity has multiple share classes from the same parent', () => {
+  it('disambiguates edge IDs when an entity has multiple share classes from the same parent', async () => {
     const rows = [
       {
         'Entity Name': 'Parent HoldCo',
@@ -391,7 +391,7 @@ describe('excelParser', () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Data');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
 
-    const { chart } = parseExcelWorkbook(buffer);
+    const { chart } = await parseExcelWorkbook(buffer);
     expect(chart.entities).toHaveLength(2);
     expect(chart.relationships).toHaveLength(2);
     expect(chart.relationships[0].id).not.toBe(chart.relationships[1].id);
@@ -399,7 +399,7 @@ describe('excelParser', () => {
     expect(chart.relationships[1].shareClass).toBe('Preference Class B');
   });
 
-  it('normalizes decimal Excel percentages and respects literal percent strings in parseExcelWorkbook', () => {
+  it('normalizes decimal Excel percentages and respects literal percent strings in parseExcelWorkbook', async () => {
     const rows = [
       { 'Entity Name': 'Parent', 'Entity Type': 'Holding Company' },
       { 'Entity Name': 'Sub A', 'Parent Entity': 'Parent', 'Ownership %': 0.5 },
@@ -415,7 +415,7 @@ describe('excelParser', () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Data');
     const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
 
-    const { chart } = parseExcelWorkbook(buffer);
+    const { chart } = await parseExcelWorkbook(buffer);
     const getPct = (targetName: string) => {
       const target = chart.entities.find((e) => e.name === targetName);
       return chart.relationships.find((r) => r.target === target?.id)?.ownershipPercentage;

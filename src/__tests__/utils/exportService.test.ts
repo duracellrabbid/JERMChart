@@ -349,9 +349,9 @@ describe('exportService', () => {
       vi.restoreAllMocks();
     });
 
-    it('triggers Excel file download with correct filename and cleans up object URL after delay', () => {
+    it('triggers Excel file download with correct filename and cleans up object URL after delay', async () => {
       vi.useFakeTimers();
-      downloadExcelStructure(sampleTrustStructure);
+      await downloadExcelStructure(sampleTrustStructure);
 
       expect(createObjectURLSpy).toHaveBeenCalled();
       expect(clickSpy).toHaveBeenCalled();
@@ -362,13 +362,13 @@ describe('exportService', () => {
       vi.useRealTimers();
     });
 
-    it('falls back to default title "Trust" when chartTitle is missing', () => {
+    it('falls back to default title "Trust" when chartTitle is missing', async () => {
       const chartNoTitle = {
         metadata: { chartTitle: '', effectiveDate: '2026-01-01', confidentialityNotice: '' },
         entities: [],
         relationships: [],
       };
-      downloadExcelStructure(chartNoTitle as any);
+      await downloadExcelStructure(chartNoTitle as any);
       expect(createObjectURLSpy).toHaveBeenCalled();
     });
   });
