@@ -489,7 +489,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     if (selectedId === CUSTOM_MODEL_VALUE) {
       setIsCustom(true);
       setConfig((prev) => {
-        const currentModel = prev.geminiModel;
+        const currentModel = prev.geminiModel as string;
         const customModel = isCustomModel('gemini', currentModel) ? currentModel : '';
         return {
           ...prev,
@@ -513,7 +513,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     if (selected === CUSTOM_MODEL_VALUE) {
       setIsCustom(true);
       setConfig((prev) => {
-        const currentModel = prev.ollamaModel;
+        const currentModel = prev.ollamaModel as string;
         const isKnown = ollamaModels.some((m) => m.name === currentModel);
         const customModel = isKnown ? '' : currentModel;
         return {

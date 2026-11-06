@@ -136,8 +136,8 @@ function resolveSavedModels(
   patch: Partial<AIConfig>,
   provider: AIProvider
 ): { model: string; geminiModel: string; ollamaModel: string } {
-  let geminiModel = patch.geminiModel !== undefined ? patch.geminiModel : current.geminiModel;
-  let ollamaModel = patch.ollamaModel !== undefined ? patch.ollamaModel : current.ollamaModel;
+  let geminiModel = patch.geminiModel !== undefined ? patch.geminiModel : (current.geminiModel as string);
+  let ollamaModel = patch.ollamaModel !== undefined ? patch.ollamaModel : (current.ollamaModel as string);
 
   if (typeof patch.model === 'string') {
     if (provider === 'gemini') {
