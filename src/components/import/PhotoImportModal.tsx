@@ -1,5 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { hasValidAIConfig, getAIConfig, AIProvider } from '../../services/ai/aiConfig';
+import {
+  getAIConfig,
+  saveAIConfig,
+  isGeminiConfigured,
+  isOllamaConfigured,
+  getProviderModel,
+  getProviderDisplayName,
+  AIProvider,
+  AIConfig,
+} from '../../services/ai/aiConfig';
 import { preprocessImageFile } from '../../utils/imagePreprocessing';
 import { analyzeChartImage } from '../../services/ai/chartVisionService';
 import { isVisionModel } from '../../services/ai/ollamaService';
@@ -120,6 +129,98 @@ export const ProcessingView: React.FC<{
   </div>
 );
 
+export function getInitialProvider(config: AIConfig): AIProvider {
+  const geminiReady = isGeminiConfigured(config);
+  const ollamaReady = isOllamaConfigured(config);
+  if (config.provider === 'gemini' && geminiReady) return 'gemini';
+  if (config.provider === 'ollama' && ollamaReady) return 'ollama';
+  if (geminiReady) return 'gemini';
+  if (ollamaReady) return 'ollama';
+  return config.provider;
+}
+
+function buildEmptyEntitiesError(
+  warnings: string[],
+  inferenceConfig: AIConfig
+): string {
+  const baseReason =
+    warnings.length > 0
+      ? warnings.join(' ')
+      : 'No entities could be identified from the uploaded chart image.';
+  if (inferenceConfig.provider === 'ollama' && !isVisionModel(inferenceConfig.model)) {
+    return `${baseReason} Note: "${inferenceConfig.model}" may lack vision capabilities. For chart OCR, please install and select a multimodal vision model (such as llama3.2-vision or qwen2.5-vl).`;
+  }
+  return baseReason;
+}
+
+export interface ProviderSelectionSectionProps {
+  config: AIConfig;
+  selectedProvider: AIProvider;
+  onSelectProvider: (provider: AIProvider) => void;
+  disabled?: boolean;
+}
+
+export const ProviderSelectionSection: React.FC<ProviderSelectionSectionProps> = ({
+  config,
+  selectedProvider,
+  onSelectProvider,
+  disabled = false,
+}) => {
+  const geminiReady = isGeminiConfigured(config);
+  const ollamaReady = isOllamaConfigured(config);
+  const bothConfigured = geminiReady && ollamaReady;
+  const displayName = getProviderDisplayName(selectedProvider);
+  const modelName = getProviderModel(selectedProvider, config);
+
+  return (
+    <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex flex-col gap-2.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-slate-500 font-medium">Active Provider</span>
+        <span className="font-semibold text-slate-800">
+          Using {displayName} ({modelName})
+        </span>
+      </div>
+
+      {bothConfigured && (
+        <div
+          role="radiogroup"
+          aria-label="Select AI Provider"
+          className="grid grid-cols-2 p-1 bg-slate-200/70 rounded-lg gap-1"
+        >
+          <button
+            type="button"
+            role="radio"
+            aria-checked={selectedProvider === 'gemini'}
+            disabled={disabled}
+            onClick={() => onSelectProvider('gemini')}
+            className={`py-1.5 px-3 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+              selectedProvider === 'gemini'
+                ? 'bg-white text-sky-700 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>Google Gemini</span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={selectedProvider === 'ollama'}
+            disabled={disabled}
+            onClick={() => onSelectProvider('ollama')}
+            className={`py-1.5 px-3 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+              selectedProvider === 'ollama'
+                ? 'bg-white text-sky-700 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>Ollama</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   onClose,
   onOpenSettings,
@@ -132,7 +233,9 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   const setOcrReviewState = useStructureStore((state) => state.setOcrReviewState);
 
   const [config, setConfig] = useState(() => getAIConfig());
-  const [hasConfig, setHasConfig] = useState(() => hasValidAIConfig());
+  const [selectedProvider, setSelectedProvider] = useState<AIProvider>(() =>
+    getInitialProvider(config)
+  );
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -142,6 +245,8 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showConfirmReplace, setShowConfirmReplace] = useState(false);
 
+  const hasConfig = isGeminiConfigured(config) || isOllamaConfigured(config);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -150,7 +255,7 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   useEffect(() => {
     const currentConfig = getAIConfig();
     setConfig(currentConfig);
-    setHasConfig(hasValidAIConfig(currentConfig));
+    setSelectedProvider(getInitialProvider(currentConfig));
   }, []);
 
   useEffect(() => {
@@ -220,6 +325,12 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
     setIsProcessing(false);
   };
 
+  const handleSelectProvider = (newProvider: AIProvider) => {
+    setSelectedProvider(newProvider);
+    const updated = saveAIConfig({ provider: newProvider });
+    setConfig(updated);
+  };
+
   const executeAnalysis = async () => {
     setShowConfirmReplace(false);
     setIsProcessing(true);
@@ -245,8 +356,14 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
       const preprocessed = await preprocessImageFile(file!);
 
       const currentConfig = getAIConfig();
+      const inferenceConfig: AIConfig = {
+        ...currentConfig,
+        provider: selectedProvider,
+        model: getProviderModel(selectedProvider, currentConfig),
+      };
+
       setProgressStep(
-        currentConfig.provider === 'ollama'
+        selectedProvider === 'ollama'
           ? 'Connecting to local Ollama vision model...'
           : 'Connecting to Google Gemini vision AI...'
       );
@@ -258,19 +375,12 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
       const result = await analyzeChartImage(
         preprocessed.base64Data,
         preprocessed.mimeType,
-        currentConfig,
+        inferenceConfig,
         controller.signal
       );
 
       if (result.chart.entities.length === 0) {
-        let failureReason =
-          result.warnings.length > 0
-            ? result.warnings.join(' ')
-            : 'No entities could be identified from the uploaded chart image.';
-        if (currentConfig.provider === 'ollama' && !isVisionModel(currentConfig.model)) {
-          failureReason += ` Note: "${currentConfig.model}" may lack vision capabilities. For chart OCR, please install and select a multimodal vision model (such as llama3.2-vision or qwen2.5-vl).`;
-        }
-        throw new Error(failureReason);
+        throw new Error(buildEmptyEntitiesError(result.warnings, inferenceConfig));
       }
 
       setProgressStep('Calculating automatic hierarchy and canvas layout...');
@@ -340,6 +450,13 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
 
     return (
       <>
+        <ProviderSelectionSection
+          config={config}
+          selectedProvider={selectedProvider}
+          onSelectProvider={handleSelectProvider}
+          disabled={isProcessing}
+        />
+
         {/* Dropzone */}
         <div
           onDragOver={handleDragOver}

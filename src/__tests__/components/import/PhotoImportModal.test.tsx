@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { PhotoImportModal, ConfirmReplaceNotice, ProcessingView } from '../../../components/import/PhotoImportModal';
+import { PhotoImportModal, ConfirmReplaceNotice, ProcessingView, ProviderSelectionSection, getInitialProvider } from '../../../components/import/PhotoImportModal';
 import * as aiConfig from '../../../services/ai/aiConfig';
 import * as imagePreprocessing from '../../../utils/imagePreprocessing';
 import * as chartVisionService from '../../../services/ai/chartVisionService';
@@ -606,5 +606,250 @@ describe('PhotoImportModal', () => {
     expect(screen.getByText(/elapsed: 12s/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /cancel analysis/i }));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  describe('Task 3: Provider Selection & Label UI', () => {
+    it('shows provider label with model and hides selection controls when only Gemini is configured', () => {
+      aiConfig.saveAIConfig({
+        provider: 'gemini',
+        apiKey: 'test-gemini-key',
+        geminiModel: 'gemini-3.8-flash',
+        ollamaUrl: '',
+        ollamaModel: '',
+      });
+
+      render(<PhotoImportModal onClose={vi.fn()} onOpenSettings={vi.fn()} />);
+
+      expect(screen.getByText(/using google gemini \(gemini-3\.8-flash\)/i)).toBeInTheDocument();
+      expect(screen.queryByRole('radiogroup', { name: /select ai provider/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('radio', { name: /ollama/i })).not.toBeInTheDocument();
+    });
+
+    it('shows provider label with model and hides selection controls when only Ollama is configured', () => {
+      aiConfig.saveAIConfig({
+        provider: 'ollama',
+        apiKey: '',
+        geminiModel: '',
+        ollamaUrl: 'http://localhost:11434',
+        ollamaModel: 'llama3.2-vision',
+      });
+
+      render(<PhotoImportModal onClose={vi.fn()} onOpenSettings={vi.fn()} />);
+
+      expect(screen.getByText(/using ollama \(llama3\.2-vision\)/i)).toBeInTheDocument();
+      expect(screen.queryByRole('radiogroup', { name: /select ai provider/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('radio', { name: /google gemini/i })).not.toBeInTheDocument();
+    });
+
+    it('shows provider selector and active label when both providers are configured', () => {
+      aiConfig.saveAIConfig({
+        provider: 'gemini',
+        apiKey: 'test-gemini-key',
+        geminiModel: 'gemini-3.8-flash',
+        ollamaUrl: 'http://localhost:11434',
+        ollamaModel: 'llama3.2-vision',
+      });
+
+      render(<PhotoImportModal onClose={vi.fn()} onOpenSettings={vi.fn()} />);
+
+      expect(screen.getByText(/using google gemini \(gemini-3\.8-flash\)/i)).toBeInTheDocument();
+      const radiogroup = screen.getByRole('radiogroup', { name: /select ai provider/i });
+      expect(radiogroup).toBeInTheDocument();
+
+      const geminiRadio = screen.getByRole('radio', { name: /google gemini/i });
+      const ollamaRadio = screen.getByRole('radio', { name: /ollama/i });
+      expect(geminiRadio).toHaveAttribute('aria-checked', 'true');
+      expect(ollamaRadio).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('switches provider when clicked, updates status label, and persists selection', () => {
+      aiConfig.saveAIConfig({
+        provider: 'gemini',
+        apiKey: 'test-gemini-key',
+        geminiModel: 'gemini-3.8-flash',
+        ollamaUrl: 'http://localhost:11434',
+        ollamaModel: 'llama3.2-vision',
+      });
+
+      render(<PhotoImportModal onClose={vi.fn()} onOpenSettings={vi.fn()} />);
+
+      const ollamaRadio = screen.getByRole('radio', { name: /ollama/i });
+      fireEvent.click(ollamaRadio);
+
+      expect(screen.getByText(/using ollama \(llama3\.2-vision\)/i)).toBeInTheDocument();
+      expect(ollamaRadio).toHaveAttribute('aria-checked', 'true');
+      expect(screen.getByRole('radio', { name: /google gemini/i })).toHaveAttribute('aria-checked', 'false');
+
+      expect(aiConfig.getAIConfig().provider).toBe('ollama');
+
+      const geminiRadio = screen.getByRole('radio', { name: /google gemini/i });
+      fireEvent.click(geminiRadio);
+
+      expect(screen.getByText(/using google gemini \(gemini-3\.8-flash\)/i)).toBeInTheDocument();
+      expect(geminiRadio).toHaveAttribute('aria-checked', 'true');
+      expect(ollamaRadio).toHaveAttribute('aria-checked', 'false');
+      expect(aiConfig.getAIConfig().provider).toBe('gemini');
+    });
+
+    it('routes inference with selected provider and its respective model in executeAnalysis', async () => {
+      aiConfig.saveAIConfig({
+        provider: 'gemini',
+        apiKey: 'test-gemini-key',
+        geminiModel: 'gemini-3.8-flash',
+        ollamaUrl: 'http://localhost:11434',
+        ollamaModel: 'llama3.2-vision',
+      });
+
+      render(<PhotoImportModal onClose={vi.fn()} onOpenSettings={vi.fn()} />);
+
+      // Switch provider to Ollama
+      const ollamaRadio = screen.getByRole('radio', { name: /ollama/i });
+      fireEvent.click(ollamaRadio);
+
+      // Select image file
+      const file = new File(['mock-img'], 'chart.png', { type: 'image/png' });
+      const fileInput = screen.getByLabelText(/upload photo/i, { selector: 'input' });
+      fireEvent.change(fileInput, { target: { files: [file] } });
+
+      // Click analyze
+      const analyzeBtn = screen.getByRole('button', { name: /analyze & create chart/i });
+      fireEvent.click(analyzeBtn);
+
+      await waitFor(() => {
+        expect(chartVisionService.analyzeChartImage).toHaveBeenCalledWith(
+          'mockbase64',
+          'image/jpeg',
+          expect.objectContaining({
+            provider: 'ollama',
+            model: 'llama3.2-vision',
+          }),
+          expect.any(AbortSignal)
+        );
+      });
+    });
+
+    it('automatically falls back to configured provider if default config.provider is not configured', () => {
+      // Saved provider is 'gemini', but gemini is unconfigured (empty key) while Ollama is configured
+      aiConfig.saveAIConfig({
+        provider: 'gemini',
+        apiKey: '',
+        geminiModel: 'gemini-3.8-flash',
+        ollamaUrl: 'http://localhost:11434',
+        ollamaModel: 'llama3.2-vision',
+      });
+
+      render(<PhotoImportModal onClose={vi.fn()} onOpenSettings={vi.fn()} />);
+
+      // Drops directly to upload UI (hasConfig is true) with Ollama active
+      expect(screen.getByText(/upload hand-drawn structure chart/i)).toBeInTheDocument();
+      expect(screen.getByText(/using ollama \(llama3\.2-vision\)/i)).toBeInTheDocument();
+      expect(screen.queryByRole('radiogroup', { name: /select ai provider/i })).not.toBeInTheDocument();
+    });
+
+    it('renders ProviderSelectionSection directly and handles interaction and disabled state', () => {
+      const onSelect = vi.fn();
+      const mockConfig: aiConfig.AIConfig = {
+        provider: 'gemini',
+        apiKey: 'key',
+        model: 'gemini-3.8-flash',
+        geminiModel: 'gemini-3.8-flash',
+        ollamaUrl: 'http://localhost:11434',
+        ollamaModel: 'llama3.2-vision',
+      };
+
+      const { rerender } = render(
+        <ProviderSelectionSection
+          config={mockConfig}
+          selectedProvider="gemini"
+          onSelectProvider={onSelect}
+          disabled={false}
+        />
+      );
+
+      expect(screen.getByText(/using google gemini \(gemini-3\.8-flash\)/i)).toBeInTheDocument();
+      const ollamaBtn = screen.getByRole('radio', { name: /ollama/i });
+      fireEvent.click(ollamaBtn);
+      expect(onSelect).toHaveBeenCalledWith('ollama');
+
+      const geminiBtn = screen.getByRole('radio', { name: /google gemini/i });
+      fireEvent.click(geminiBtn);
+      expect(onSelect).toHaveBeenCalledWith('gemini');
+
+      // Test disabled state
+      rerender(
+        <ProviderSelectionSection
+          config={mockConfig}
+          selectedProvider="gemini"
+          onSelectProvider={onSelect}
+          disabled={true}
+        />
+      );
+
+      const disabledGeminiBtn = screen.getByRole('radio', { name: /google gemini/i });
+      expect(disabledGeminiBtn).toBeDisabled();
+      expect(screen.getByRole('radio', { name: /ollama/i })).toBeDisabled();
+    });
+
+    it('getInitialProvider correctly resolves initial provider in all scenarios', () => {
+      // Both ready, provider is gemini
+      expect(
+        getInitialProvider({
+          provider: 'gemini',
+          apiKey: 'k',
+          model: 'm',
+          ollamaUrl: 'http://localhost:11434',
+          geminiModel: 'g',
+          ollamaModel: 'o',
+        })
+      ).toBe('gemini');
+
+      // Both ready, provider is ollama
+      expect(
+        getInitialProvider({
+          provider: 'ollama',
+          apiKey: 'k',
+          model: 'm',
+          ollamaUrl: 'http://localhost:11434',
+          geminiModel: 'g',
+          ollamaModel: 'o',
+        })
+      ).toBe('ollama');
+
+      // Only gemini ready, provider was set to ollama
+      expect(
+        getInitialProvider({
+          provider: 'ollama',
+          apiKey: 'k',
+          model: 'm',
+          ollamaUrl: '',
+          geminiModel: 'g',
+          ollamaModel: '',
+        })
+      ).toBe('gemini');
+
+      // Only ollama ready, provider was set to gemini
+      expect(
+        getInitialProvider({
+          provider: 'gemini',
+          apiKey: '',
+          model: 'm',
+          ollamaUrl: 'http://localhost:11434',
+          geminiModel: '',
+          ollamaModel: 'o',
+        })
+      ).toBe('ollama');
+
+      // Neither ready
+      expect(
+        getInitialProvider({
+          provider: 'gemini',
+          apiKey: '',
+          model: '',
+          ollamaUrl: '',
+          geminiModel: '',
+          ollamaModel: '',
+        })
+      ).toBe('gemini');
+    });
   });
 });
