@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const { mockExposeInMainWorld } = vi.hoisted(() => ({
   mockExposeInMainWorld: vi.fn(),
@@ -35,5 +37,19 @@ describe('electron/preload.cjs', () => {
       isDesktop: true,
       platform: process.platform,
     });
+  });
+
+  it('verifies electron-builder.json isolates production bundles from test files', () => {
+    const configPath = path.resolve(__dirname, '../../../electron-builder.json');
+    expect(fs.existsSync(configPath)).toBe(true);
+
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    expect(config.files).toEqual([
+      'dist/**/*',
+      'electron/**/*',
+      'package.json',
+    ]);
+    expect(config.extraMetadata?.main).toBe('electron/main.cjs');
+    expect(config.directories?.output).toBe('release');
   });
 });

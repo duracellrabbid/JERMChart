@@ -1,26 +1,20 @@
 {
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.duracellrabbid.jermchart",
   "productName": "JERMChart",
   "directories": {
     "output": "release"
   },
-  "fileOptions": {
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "package.json",
-      "!**/__tests__/**",
-      "!**/*.test.*"
-    ]
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "extraMetadata": {
+    "main": "electron/main.cjs"
   },
   "win": {
-    "verifyUpdateCodeSignature": false,
-    "updateManifest": false,
     "target": [
-      {
-        "target": "portable",
-        "arch": ["x64"]
-      },
       {
         "target": "nsis",
         "arch": ["x64"]
@@ -32,13 +26,5 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true
-  },
-  "mac": {
-    "category": "public.app-category.business",
-    "target": ["dmg", "zip"]
-  },
-  "linux": {
-    "target": ["AppImage", "deb"],
-    "category": "Office"
   }
 }
