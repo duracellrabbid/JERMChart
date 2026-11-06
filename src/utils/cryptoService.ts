@@ -21,11 +21,13 @@ export const MAX_KDF_ITERATIONS = 1_000_000;
 
 export function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const CHUNK_SIZE = 8192;
+  const chunks: string[] = [];
+  for (let i = 0; i < bytes.byteLength; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+    chunks.push(String.fromCharCode.apply(null, chunk as unknown as number[]));
   }
-  return btoa(binary);
+  return btoa(chunks.join(''));
 }
 
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {

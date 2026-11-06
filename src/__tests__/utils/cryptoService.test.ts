@@ -45,6 +45,18 @@ describe('cryptoService', () => {
     expect(decoded2).toEqual(bytes);
   });
 
+  it('efficiently encodes large buffers (>64KB) to base64 and roundtrips with base64ToArrayBuffer', () => {
+    const largeBuffer = new Uint8Array(100 * 1024);
+    for (let i = 0; i < largeBuffer.length; i++) {
+      largeBuffer[i] = i % 256;
+    }
+    const b64 = arrayBufferToBase64(largeBuffer);
+    const restored = new Uint8Array(base64ToArrayBuffer(b64));
+    expect(restored.length).toBe(largeBuffer.length);
+    expect(restored[500]).toBe(500 % 256);
+    expect(restored[65536]).toBe(65536 % 256);
+  });
+
   it('validates encrypted chart envelope structure', () => {
     expect(isEncryptedEnvelope(null)).toBe(false);
     expect(isEncryptedEnvelope(undefined)).toBe(false);
