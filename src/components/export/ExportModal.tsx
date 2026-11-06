@@ -230,129 +230,150 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
           </div>
         )}
 
-        <div className="mt-4 space-y-3">
-          {FEATURE_FLAGS.enablePdfExport && (
-            <button
-              onClick={handleExportPdf}
-              disabled={isExporting}
-              className="w-full p-3 rounded-lg border border-slate-200 hover:border-sky-500 hover:bg-sky-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded bg-rose-100 text-rose-700">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-semibold text-xs text-slate-900">
-                    Print-Ready PDF (A4 Landscape)
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    Includes trust header, date, and confidentiality notice
-                  </div>
-                </div>
+        <div className="mt-4 space-y-4">
+          {(FEATURE_FLAGS.enablePdfExport || FEATURE_FLAGS.enablePptxExport) && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Executive & Board Presentations
               </div>
-              <span className="text-xs font-semibold text-sky-600 group-hover:underline">
-                {isExporting ? 'Exporting...' : 'Download'}
-              </span>
-            </button>
+              <div className="space-y-2">
+                {FEATURE_FLAGS.enablePdfExport && (
+                  <button
+                    onClick={handleExportPdf}
+                    disabled={isExporting}
+                    className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-sky-500 hover:bg-sky-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded bg-rose-100 text-rose-700">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-xs text-slate-900">
+                            Print-Ready PDF (A4 Landscape)
+                          </span>
+                          <span className="px-1.5 py-0.2 bg-rose-100 text-rose-800 text-[9px] font-bold rounded">
+                            Board Decks
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          Includes trust header, date, and confidentiality notice
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-sky-600 group-hover:underline">
+                      {isExporting ? 'Exporting...' : 'Download'}
+                    </span>
+                  </button>
+                )}
+
+                {FEATURE_FLAGS.enablePptxExport && (
+                  <button
+                    onClick={handleExportPptx}
+                    disabled={isExporting}
+                    className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-orange-500 hover:bg-orange-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded bg-orange-100 text-orange-700">
+                        <Presentation className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-xs text-slate-900">
+                          PowerPoint (.pptx)
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          Widescreen 16:9 slide with corporate branding & chart
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-sky-600 group-hover:underline">
+                      {isExporting ? 'Exporting...' : 'Download'}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
           )}
 
-          {FEATURE_FLAGS.enablePptxExport && (
-            <button
-              onClick={handleExportPptx}
-              disabled={isExporting}
-              className="w-full p-3 rounded-lg border border-slate-200 hover:border-orange-500 hover:bg-orange-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded bg-orange-100 text-orange-700">
-                  <Presentation className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-semibold text-xs text-slate-900">
-                    PowerPoint (.pptx)
+          <div className="space-y-2">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Data, Spreadsheet & Vector Records
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={handleExportExcel}
+                disabled={isExporting}
+                className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-emerald-100 text-emerald-700">
+                    <FileSpreadsheet className="w-5 h-5" />
                   </div>
-                  <div className="text-[11px] text-slate-500">
-                    Widescreen 16:9 slide with corporate branding & chart
+                  <div>
+                    <div className="font-semibold text-xs text-slate-900">
+                      Excel Spreadsheet (.xlsx)
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Editable structure table matching import template
+                    </div>
                   </div>
                 </div>
-              </div>
-              <span className="text-xs font-semibold text-sky-600 group-hover:underline">
-                {isExporting ? 'Exporting...' : 'Download'}
-              </span>
-            </button>
-          )}
+                <span className="text-xs font-semibold text-sky-600 group-hover:underline">
+                  Download
+                </span>
+              </button>
 
-          <button
-            onClick={handleExportExcel}
-            disabled={isExporting}
-            className="w-full p-3 rounded-lg border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded bg-emerald-100 text-emerald-700">
-                <FileSpreadsheet className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-xs text-slate-900">
-                  Excel Spreadsheet (.xlsx)
+              <button
+                onClick={handleExportPng}
+                disabled={isExporting}
+                className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-sky-500 hover:bg-sky-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-sky-100 text-sky-700">
+                    <Image className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-xs text-slate-900">
+                      High-Resolution PNG (2.5x DPI)
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Crisp raster image for PowerPoint and Word decks
+                    </div>
+                  </div>
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Editable structure table matching import template
-                </div>
-              </div>
-            </div>
-            <span className="text-xs font-semibold text-sky-600 group-hover:underline">
-              Download
-            </span>
-          </button>
+                <span className="text-xs font-semibold text-sky-600 group-hover:underline">
+                  {isExporting ? 'Exporting...' : 'Download'}
+                </span>
+              </button>
 
-          <button
-            onClick={handleExportPng}
-            disabled={isExporting}
-            className="w-full p-3 rounded-lg border border-slate-200 hover:border-sky-500 hover:bg-sky-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded bg-sky-100 text-sky-700">
-                <Image className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-xs text-slate-900">
-                  High-Resolution PNG (2.5x DPI)
+              <button
+                onClick={handleExportSvg}
+                disabled={isExporting}
+                className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-sky-500 hover:bg-sky-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-amber-100 text-amber-700">
+                    <Image className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-xs text-slate-900">Vector SVG</div>
+                    <div className="text-[11px] text-slate-500">
+                      Infinite scaling without quality loss
+                    </div>
+                  </div>
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Crisp raster image for PowerPoint and Word decks
-                </div>
-              </div>
+                <span className="text-xs font-semibold text-sky-600 group-hover:underline">
+                  {isExporting ? 'Exporting...' : 'Download'}
+                </span>
+              </button>
             </div>
-            <span className="text-xs font-semibold text-sky-600 group-hover:underline">
-              {isExporting ? 'Exporting...' : 'Download'}
-            </span>
-          </button>
-
-          <button
-            onClick={handleExportSvg}
-            disabled={isExporting}
-            className="w-full p-3 rounded-lg border border-slate-200 hover:border-sky-500 hover:bg-sky-50/40 flex items-center justify-between transition text-left group disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded bg-amber-100 text-amber-700">
-                <Image className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-xs text-slate-900">Vector SVG</div>
-                <div className="text-[11px] text-slate-500">
-                  Infinite scaling without quality loss
-                </div>
-              </div>
-            </div>
-            <span className="text-xs font-semibold text-sky-600 group-hover:underline">
-              {isExporting ? 'Exporting...' : 'Download'}
-            </span>
-          </button>
+          </div>
         </div>
 
         {/* Local File Backup & Restore */}
         {allowJsonBackup && (
-          <div className="mt-5 pt-4 border-t border-slate-200">
-            <div className="text-xs font-semibold text-slate-700 mb-2">
+          <div className="mt-4 pt-3 border-t border-slate-200">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
               Local File Backup & Restore
             </div>
             <div className={isReadOnly ? 'flex' : 'grid grid-cols-2 gap-2'}>

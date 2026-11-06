@@ -332,6 +332,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <Sparkles className="w-3.5 h-3.5" /> Auto-Tidy
         </button>
 
+        <div className="h-4 w-px bg-slate-700/80 mx-0.5 hidden sm:block" aria-hidden="true" />
+
         {/* Reset / New Dropdown */}
         {!isReadOnly && (
           <div className="relative" ref={resetMenuRef}>
@@ -420,6 +422,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             )}
           </div>
         )}
+
+        <div className="h-4 w-px bg-slate-700/80 mx-0.5 hidden sm:block" aria-hidden="true" />
 
         {/* Export Trigger */}
         <button

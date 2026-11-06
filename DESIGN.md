@@ -39,6 +39,12 @@ typography:
     fontWeight: 600
     lineHeight: 1.3
     letterSpacing: "normal"
+  subtitle:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+    fontSize: "13px"
+    fontWeight: 600
+    lineHeight: 1.35
+    letterSpacing: "-0.01em"
   title:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
     fontSize: "12px"
@@ -51,14 +57,33 @@ typography:
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: "normal"
+  caption:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+    fontSize: "11px"
+    fontWeight: 500
+    lineHeight: 1.4
+    letterSpacing: "normal"
   label:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
     fontSize: "10px"
     fontWeight: 600
     lineHeight: 1.2
     letterSpacing: "0.05em"
+  micro:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+    fontSize: "9px"
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: "normal"
+  nano:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+    fontSize: "8px"
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: "normal"
 rounded:
   xs: "2px"
+  thumb: "3px"
   sm: "4px"
   md: "6px"
   lg: "8px"
@@ -169,10 +194,14 @@ The palette is anchored in an authoritative institutional harmony of deep obsidi
 ### Hierarchy
 - **Display** (Bold 700, `14px`, line-height `1.25`, tracking `-0.01em`): Top application header structure title and primary modal dialog headers.
 - **Headline** (Semibold 600, `14px`, line-height `1.3`): Section titles, group headers, and export configuration titles.
+- **Subtitle** (Semibold 600, `13px`, line-height `1.35`, tracking `-0.01em`): Primary entity card titles on canvas.
 - **Title** (Semibold 600, `12px`, line-height `1.35`, tracking `-0.01em`): Legal entity names inside cards and tree outliner rows.
 - **Body** (Regular 400, `12px`, line-height `1.5`): Form fields, inspector descriptions, dialog explanatory paragraphs, and fiduciary notes.
+- **Caption** (Medium 500, `11px`, line-height `1.4`): Compact secondary descriptions, modal helper notes, and button controls.
 - **Label** (Semibold 600, `10px`, line-height `1.2`, tracking `0.05em`, uppercase): Entity type pills, governance badges (`RES`, `DIR`), and table column headers.
-- **Tabular Mono** (Regular 400, `9px-11px`, `tabular-nums lining-nums`): Registration numbers, tax IDs, share class percentages, and date metadata.
+- **Micro** (Medium 500, `9px`, line-height `1.2`): Handle connection tags, edge percentage labels, and auxiliary counts.
+- **Nano** (Medium 500, `8px`, line-height `1.2`): Micro governance indicators and compact status dots.
+- **Tabular Mono** (Regular 400, `8px-11px`, `tabular-nums lining-nums`): Registration numbers, tax IDs, share class percentages, and date metadata.
 
 ### Named Rules
 **The Tabular Precision Rule.** Every numeric figure, ownership percentage, registration code, and monetary/share value must enforce `font-variant-numeric: tabular-nums lining-nums` to guarantee vertical column alignment.

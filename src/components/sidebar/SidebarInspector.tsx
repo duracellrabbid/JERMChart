@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TreeOutlineTab } from './TreeOutlineTab';
 import { EntityDetailsTab } from './EntityDetailsTab';
 import { DirectorsDirectoryTab } from './DirectorsDirectoryTab';
 import { FolderTree, FileEdit, Users, ChevronLeft, ChevronRight } from 'lucide-react';
-
-type Tab = 'tree' | 'details' | 'directors';
+import { useStructureStore } from '../../store/useStructureStore';
 
 export const SidebarInspector: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('tree');
+  const activeTab = useStructureStore((state) => state.activeSidebarTab);
+  const setActiveTab = useStructureStore((state) => state.setActiveSidebarTab);
+  const selectedEntityId = useStructureStore((state) => state.selectedEntityId);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (selectedEntityId && isCollapsed) {
+      setIsCollapsed(false);
+    }
+  }, [selectedEntityId, isCollapsed]);
 
   if (isCollapsed) {
     return (

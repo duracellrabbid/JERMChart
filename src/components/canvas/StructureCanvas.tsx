@@ -358,7 +358,7 @@ export const StructureCanvasContent: React.FC = () => {
         maxZoom={1.8}
       >
         <Background color="#94a3b8" gap={20} size={1} />
-        <Controls className="!bg-white !border !border-slate-300 !shadow-md !rounded-lg" />
+        <Controls position="bottom-right" className="!bg-white !border !border-slate-300 !shadow-md !rounded-lg" />
         <MiniMap
           nodeColor="#0284c7"
           maskColor="rgba(241, 245, 249, 0.7)"

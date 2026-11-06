@@ -35,8 +35,10 @@ export interface StructureState {
   isReadOnly: boolean;
   allowJsonBackup: boolean;
   stagedNodes: StagedNodeData[];
+  activeSidebarTab: 'tree' | 'details' | 'directors';
 
   // Actions
+  setActiveSidebarTab: (tab: 'tree' | 'details' | 'directors') => void;
   setMetadata: (meta: Partial<ChartMetadata>) => void;
   setReadOnly: (isReadOnly: boolean) => void;
   setAllowJsonBackup: (allow: boolean) => void;
@@ -107,7 +109,9 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   isReadOnly: false,
   allowJsonBackup: true,
   stagedNodes: [],
+  activeSidebarTab: 'tree',
 
+  setActiveSidebarTab: (tab) => set({ activeSidebarTab: tab }),
   setReadOnly: (isReadOnly) => set({ isReadOnly }),
   setAllowJsonBackup: (allow) => set({ allowJsonBackup: allow }),
 

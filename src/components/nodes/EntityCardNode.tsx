@@ -443,6 +443,7 @@ export const EntityCardNode = memo(({ id, data, selected }: NodeProps) => {
 
   const selectedEntityId = useStructureStore((state) => state.selectedEntityId);
   const setSelectedEntityId = useStructureStore((state) => state.setSelectedEntityId);
+  const setActiveSidebarTab = useStructureStore((state) => state.setActiveSidebarTab);
   const highlightedParty = useStructureStore((state) => state.highlightedParty);
 
   if (entityData.isSatelliteRoleNode && entityData.satelliteData) {
@@ -457,6 +458,7 @@ export const EntityCardNode = memo(({ id, data, selected }: NodeProps) => {
 
   const handleSelect = () => {
     setSelectedEntityId(id);
+    setActiveSidebarTab('details');
   };
 
   const commonProps: ShapeNodeProps = {

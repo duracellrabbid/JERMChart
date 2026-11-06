@@ -36,6 +36,19 @@ describe('SidebarInspector', () => {
     expect(screen.getByRole('button', { name: /Tree/i })).toBeInTheDocument();
   });
 
+  it('auto-expands the sidebar when an entity is selected while collapsed', () => {
+    render(<SidebarInspector />);
+    const collapseBtn = screen.getByTitle('Collapse Sidebar');
+    fireEvent.click(collapseBtn);
+    expect(screen.queryByRole('button', { name: /Tree/i })).not.toBeInTheDocument();
+
+    act(() => {
+      useStructureStore.setState({ selectedEntityId: 'entity-1' });
+    });
+
+    expect(screen.getByRole('button', { name: /Tree/i })).toBeInTheDocument();
+  });
+
   it('switches between tabs', () => {
     render(<SidebarInspector />);
 

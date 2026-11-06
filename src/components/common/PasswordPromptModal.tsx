@@ -99,6 +99,16 @@ export const PasswordPromptModal: React.FC<PasswordPromptModalProps> = ({
               : 'This chart is password-protected. Enter the password used during export to decrypt.'}
           </p>
 
+          {isExport && (
+            <div className="p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-lg flex items-start gap-2 text-[11px] text-amber-900 leading-relaxed">
+              <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-semibold block text-amber-950">Zero-Knowledge Architecture</strong>
+                JERMChart cannot recover forgotten passwords. Archive this passphrase in your firm's secret vault.
+              </div>
+            </div>
+          )}
+
           {errorMessage && (
             <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-md flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />

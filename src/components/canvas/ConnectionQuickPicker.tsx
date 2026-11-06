@@ -36,8 +36,27 @@ export interface ConnectionQuickPickerProps {
   onCancel: () => void;
 }
 
-const SHARE_CLASSES = ['Ordinary Shares', 'Preference Shares', 'Non-Voting Shares', 'Class A Shares', 'Class B Shares'];
-const ROLES = ['Director', 'Settlor', 'Protector', 'Enforcer', 'Beneficiary', 'Authorised Signatory', 'Fund Manager'];
+const SHARE_CLASSES = [
+  'Ordinary Shares',
+  'Preference Shares',
+  'Non-Voting Shares',
+  'Class A Shares',
+  'Class B Shares',
+  'Nominee Holding',
+  'Bare Trust Title',
+  'Custodian / Escrow',
+];
+const ROLES = [
+  'Director',
+  'Settlor',
+  'Protector',
+  'Enforcer',
+  'Beneficiary',
+  'Nominee',
+  'Custodian',
+  'Authorised Signatory',
+  'Fund Manager',
+];
 
 export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
   connection,

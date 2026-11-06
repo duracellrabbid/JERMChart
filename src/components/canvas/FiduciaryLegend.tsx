@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Layers } from 'lucide-react';
+import { ChevronUp, Layers } from 'lucide-react';
 
 export const FiduciaryLegend: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,11 +19,11 @@ export const FiduciaryLegend: React.FC = () => {
           <Layers className="w-3.5 h-3.5 text-sky-600" />
           <span>Fiduciary Notation Key</span>
         </div>
-        {isOpen ? (
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-        ) : (
-          <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
-        )}
+        <ChevronUp
+          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+        />
       </button>
 
       {isOpen && (
