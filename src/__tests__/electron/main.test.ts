@@ -171,19 +171,31 @@ describe('electron/main.cjs', () => {
     // Private RFC 1918 LAN subnets allowed in dev and prod
     expect(isAllowedUrl('http://192.168.1.50:11434/api/version', false)).toBe(true);
     expect(isAllowedUrl('http://192.168.1.50:11434/api/version', true)).toBe(true);
+    expect(isAllowedUrl('http://192.168.1.100:11434/api/tags', false)).toBe(true);
+    expect(isAllowedUrl('http://10.0.0.1:11434/api/chat', false)).toBe(true);
     expect(isAllowedUrl('http://10.0.0.5:11434/api/tags', false)).toBe(true);
     expect(isAllowedUrl('http://10.0.0.5:11434/api/tags', true)).toBe(true);
+    expect(isAllowedUrl('http://172.16.0.1:11434/api/tags', false)).toBe(true);
+    expect(isAllowedUrl('http://172.16.0.5:11434/api/chat', false)).toBe(true);
     expect(isAllowedUrl('http://172.20.0.2:11434/api/tags', false)).toBe(true);
     expect(isAllowedUrl('http://172.20.0.2:11434/api/tags', true)).toBe(true);
-    expect(isAllowedUrl('http://172.16.0.1:11434/api/tags', false)).toBe(true);
     expect(isAllowedUrl('http://172.31.255.254:11434/api/tags', false)).toBe(true);
+    expect(isAllowedUrl('http://172.31.255.255:11434/api/chat', false)).toBe(true);
+
+    // Hostnames with domain suffixes starting with RFC 1918 prefixes blocked
+    expect(isAllowedUrl('http://10.attacker.com/api/chat', false)).toBe(false);
+    expect(isAllowedUrl('http://192.168.evil.org/api/tags', false)).toBe(false);
+    expect(isAllowedUrl('http://172.20.attacker.com/api/chat', false)).toBe(false);
 
     // Subnets outside RFC 1918 172.16.0.0/12 blocked
     expect(isAllowedUrl('http://172.35.0.2:11434/api/tags', false)).toBe(false);
     expect(isAllowedUrl('http://172.35.0.2:11434/api/tags', true)).toBe(false);
     expect(isAllowedUrl('http://172.15.0.1:11434/api/tags', false)).toBe(false);
+    expect(isAllowedUrl('http://172.15.0.1:11434/api/chat', false)).toBe(false);
     expect(isAllowedUrl('http://172.32.0.1:11434/api/tags', false)).toBe(false);
+    expect(isAllowedUrl('http://172.32.0.1:11434/api/chat', false)).toBe(false);
     expect(isAllowedUrl('http://172.invalid.0.1:11434/api/tags', false)).toBe(false);
+    expect(isAllowedUrl('http://8.8.8.8:11434/api/tags', false)).toBe(false);
 
     // Unauthorized paths on Ollama servers blocked in production
     expect(isAllowedUrl('http://localhost:11434/unauthorized', false)).toBe(false);
@@ -204,7 +216,16 @@ describe('electron/main.cjs', () => {
     if (isPrivateOrLoopbackHost) {
       expect(isPrivateOrLoopbackHost('')).toBe(false);
       expect(isPrivateOrLoopbackHost(null)).toBe(false);
+      expect(isPrivateOrLoopbackHost(undefined as any)).toBe(false);
+      expect(isPrivateOrLoopbackHost(123 as any)).toBe(false);
       expect(isPrivateOrLoopbackHost('example.com')).toBe(false);
+      expect(isPrivateOrLoopbackHost('10.1.2')).toBe(false);
+      expect(isPrivateOrLoopbackHost('10.1.2.3.4')).toBe(false);
+      expect(isPrivateOrLoopbackHost('10.1.2.abc')).toBe(false);
+      expect(isPrivateOrLoopbackHost('10.1.2.300')).toBe(false);
+      expect(isPrivateOrLoopbackHost('8.8.8.' + '8')).toBe(false);
+      expect(isPrivateOrLoopbackHost('192.169.1.' + '1')).toBe(false);
+      expect(isPrivateOrLoopbackHost('10.0.0.' + '1')).toBe(true);
     }
   });
 

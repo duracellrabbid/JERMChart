@@ -24,19 +24,38 @@ const DEV_HOSTS = new Set(['localhost', '127.0.0.1']);
 const ALLOWED_OLLAMA_PATHS = new Set(['/api/tags', '/api/chat', '/api/version']);
 
 function isRfc1918Subnet(hostname) {
-  if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) {
-    return true;
-  } else if (hostname.startsWith('172.')) {
-    const parts = hostname.split('.');
-    const secondOctet = Number(parts[1]);
-    return Number.isInteger(secondOctet) && secondOctet >= 16 && secondOctet <= 31;
-  } else {
+  const parts = hostname.split('.');
+  if (parts.length !== 4) {
     return false;
+  } else {
+    for (let i = 0; i < 4; i++) {
+      if (!/^\d{1,3}$/.test(parts[i])) {
+        return false;
+      } else {
+        const num = Number(parts[i]);
+        if (num > 255) {
+          return false;
+        } else {
+          // valid octet
+        }
+      }
+    }
+    const first = Number(parts[0]);
+    const second = Number(parts[1]);
+    if (first === 10) {
+      return true;
+    } else if (first === 192 && second === 168) {
+      return true;
+    } else if (first === 172 && second >= 16 && second <= 31) {
+      return true;
+    } else {
+      return false;
+    }
   }
 }
 
 function isPrivateOrLoopbackHost(hostname) {
-  if (!hostname) {
+  if (typeof hostname !== 'string' || !hostname) {
     return false;
   } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return true;
