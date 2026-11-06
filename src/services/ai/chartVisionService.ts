@@ -164,12 +164,17 @@ export function parseRawAiResponse(jsonText: string): { chart: TrustStructureCha
 async function callGeminiVision(
   base64Image: string,
   mimeType: string,
-  config: AIConfig
+  config: AIConfig,
+  signal?: AbortSignal
 ): Promise<string> {
+  if (signal?.aborted) {
+    throw new DOMException('The user aborted a request.', 'AbortError');
+  }
+
   const model = config.model || 'gemini-3.8-flash';
   const ai = new GoogleGenAI({ apiKey: config.apiKey.trim() });
 
-  const response = await ai.models.generateContent({
+  const generatePromise = ai.models.generateContent({
     model,
     contents: [
       {
@@ -188,6 +193,22 @@ async function callGeminiVision(
       responseSchema: CHART_VISION_RESPONSE_SCHEMA,
     },
   });
+
+  let response: any;
+  if (!signal) {
+    response = await generatePromise;
+  } else {
+    response = await Promise.race([
+      generatePromise,
+      new Promise<never>((_, reject) => {
+        signal.addEventListener(
+          'abort',
+          () => reject(new DOMException('The user aborted a request.', 'AbortError')),
+          { once: true }
+        );
+      }),
+    ]);
+  }
 
   const text = response.text;
   if (!text) throw new Error('AI returned an empty response.');
@@ -212,6 +233,6 @@ export async function analyzeChartImage(
     throw new Error('API key is required. Please set your API key in Settings.');
   }
 
-  const jsonText = await callGeminiVision(base64Image, mimeType, config);
+  const jsonText = await callGeminiVision(base64Image, mimeType, config, signal);
   return parseRawAiResponse(jsonText);
 }

@@ -385,4 +385,64 @@ describe('chartVisionService', () => {
       ).rejects.toThrow('Ollama Server URL is required. Please configure it in Settings.');
     });
   });
+
+  describe('analyzeChartImage with Gemini provider and AbortSignal', () => {
+    it('rejects with AbortError when signal is already aborted prior to Gemini vision request', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        analyzeChartImage(
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+          'image/png',
+          { provider: 'gemini', apiKey: 'test-key', model: 'gemini-3.8-flash', ollamaUrl: '' },
+          controller.signal
+        )
+      ).rejects.toThrow('The user aborted a request.');
+
+      expect(mockGenerateContent).not.toHaveBeenCalled();
+    });
+
+    it('rejects with AbortError when signal is aborted while Gemini vision request is in-flight', async () => {
+      const controller = new AbortController();
+
+      mockGenerateContent.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({ text: JSON.stringify({ chartTitle: 'Delayed', entities: [], relationships: [] }) });
+            }, 100);
+          })
+      );
+
+      const promise = analyzeChartImage(
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+        'image/png',
+        { provider: 'gemini', apiKey: 'test-key', model: 'gemini-3.8-flash', ollamaUrl: '' },
+        controller.signal
+      );
+
+      controller.abort();
+
+      await expect(promise).rejects.toThrow('The user aborted a request.');
+    });
+
+    it('completes Gemini vision request successfully when signal is provided but not aborted', async () => {
+      const controller = new AbortController();
+
+      mockGenerateContent.mockResolvedValueOnce({
+        text: JSON.stringify({ chartTitle: 'Active Gemini Chart', entities: [{ name: 'E1' }], relationships: [] }),
+      });
+
+      const result = await analyzeChartImage(
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+        'image/png',
+        { provider: 'gemini', apiKey: 'test-key', model: 'gemini-3.8-flash', ollamaUrl: '' },
+        controller.signal
+      );
+
+      expect(result.chart.metadata.chartTitle).toBe('Active Gemini Chart');
+      expect(result.chart.entities).toHaveLength(1);
+    });
+  });
 });
