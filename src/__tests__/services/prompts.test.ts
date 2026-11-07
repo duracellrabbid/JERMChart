@@ -13,6 +13,30 @@ describe('prompts', () => {
       expect(SYSTEM_INSTRUCTION).toContain('You are an expert trust, corporate law, and fiduciary chart analyst.');
       expect(SYSTEM_INSTRUCTION).toContain('Extraction Rules:');
     });
+
+    it('contains clear distinction rules between individuals and corporate organizations', () => {
+      expect(SYSTEM_INSTRUCTION).toContain('INDIVIDUAL VS ORGANIZATION');
+      expect(SYSTEM_INSTRUCTION).toContain('INDIVIDUAL: Represents a natural human person');
+      expect(SYSTEM_INSTRUCTION).toContain('NEVER "Holding Company" or "Operating Company"');
+      expect(SYSTEM_INSTRUCTION).toContain('ORGANIZATION (CORPORATE ENTITIES)');
+    });
+
+    it('enforces corporate suffix precedence rule for entity classification', () => {
+      expect(SYSTEM_INSTRUCTION).toContain('Corporate suffix rule:');
+      expect(SYSTEM_INSTRUCTION).toContain('George 1 PL');
+      expect(SYSTEM_INSTRUCTION).toContain('NEVER an "Individual"');
+    });
+
+    it('provides clear guidelines for trust, trust company, and bank entities', () => {
+      expect(SYSTEM_INSTRUCTION).toContain('"Trust": Express trusts');
+      expect(SYSTEM_INSTRUCTION).toContain('"Trust Company": Corporate trustees');
+      expect(SYSTEM_INSTRUCTION).toContain('"Bank": Financial institutions');
+    });
+
+    it('instructs model not to invent or hallucinate registration numbers or tax IDs', () => {
+      expect(SYSTEM_INSTRUCTION).toContain('Do NOT invent or hallucinate registration numbers or tax IDs');
+      expect(SYSTEM_INSTRUCTION).toContain('return empty string ""');
+    });
   });
 
   describe('VISION_USER_PROMPT', () => {

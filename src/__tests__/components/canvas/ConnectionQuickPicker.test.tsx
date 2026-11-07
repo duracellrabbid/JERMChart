@@ -179,10 +179,64 @@ describe('ConnectionQuickPicker Component', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onConfirm).toHaveBeenCalledWith({
       connectionKind: 'person-to-entity',
+      personName: 'Alexander Wright',
       role: 'Protector',
       isResident: true,
       isCorporate: true,
     });
+  });
+
+  it('allows editing person name and submits custom name on confirmation', () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+
+    render(
+      <ConnectionQuickPicker
+        connection={defaultPersonConnection}
+        position={{ x: 100, y: 150 }}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    );
+
+    const nameInput = screen.getByLabelText(/person name/i);
+    expect(nameInput).toHaveValue('Alexander Wright');
+
+    fireEvent.change(nameInput, { target: { value: 'Eleanor Vance' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /assign role/i }));
+
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionKind: 'person-to-entity',
+        personName: 'Eleanor Vance',
+      })
+    );
+  });
+
+  it('falls back to connection.sourceName or New Person if person name is cleared', () => {
+    const onConfirm = vi.fn();
+
+    render(
+      <ConnectionQuickPicker
+        connection={{ ...defaultPersonConnection, sourceName: '' }}
+        position={{ x: 100, y: 150 }}
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />
+    );
+
+    const nameInput = screen.getByLabelText(/person name/i);
+    fireEvent.change(nameInput, { target: { value: '   ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /assign role/i }));
+
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionKind: 'person-to-entity',
+        personName: 'New Person',
+      })
+    );
   });
 
   it('triggers onCancel when cancel button is clicked', () => {
@@ -259,10 +313,11 @@ describe('ConnectionQuickPicker Component', () => {
     );
 
     const dialog = screen.getByRole('dialog');
-    const expectedLeft = `${Math.max(16, window.innerWidth - 320)}px`;
-    const expectedTop = `${Math.max(16, window.innerHeight - 340)}px`;
+    const expectedLeft = `${Math.max(16, window.innerWidth - 300 - 16)}px`;
+    const expectedTop = `${Math.max(16, window.innerHeight - 440 - 16)}px`;
     expect(dialog.style.left).toBe(expectedLeft);
     expect(dialog.style.top).toBe(expectedTop);
+    expect(dialog.className).toContain('fixed');
   });
 
   it('clamps modal position to minimum margin when near top-left boundary', () => {
@@ -276,6 +331,40 @@ describe('ConnectionQuickPicker Component', () => {
     );
 
     const dialog = screen.getByRole('dialog');
+    expect(dialog.style.left).toBe('16px');
+    expect(dialog.style.top).toBe('16px');
+    expect(dialog.className).toContain('fixed');
+  });
+
+  it('uses fixed positioning and clamps to viewport bounds when near extreme screen edges', () => {
+    const { rerender } = render(
+      <ConnectionQuickPicker
+        connection={defaultEntityConnection}
+        position={{ x: 1910, y: 1050 }}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    let dialog = screen.getByRole('dialog');
+    expect(dialog.className).toContain('fixed');
+    const MODAL_WIDTH = 300;
+    const MODAL_HEIGHT = 440;
+    const PADDING = 16;
+    expect(dialog.style.left).toBe(`${Math.max(PADDING, Math.min(1910 - 140, window.innerWidth - MODAL_WIDTH - PADDING))}px`);
+    expect(dialog.style.top).toBe(`${Math.max(PADDING, Math.min(1050 - 120, window.innerHeight - MODAL_HEIGHT - PADDING))}px`);
+
+    rerender(
+      <ConnectionQuickPicker
+        connection={defaultEntityConnection}
+        position={{ x: 0, y: 0 }}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    dialog = screen.getByRole('dialog');
+    expect(dialog.className).toContain('fixed');
     expect(dialog.style.left).toBe('16px');
     expect(dialog.style.top).toBe('16px');
   });

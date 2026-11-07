@@ -65,6 +65,18 @@ function findStagedAndEntityPair(
   return null;
 }
 
+function deleteSingleNode(
+  node: Node,
+  unstageNode: (id: string) => void,
+  deleteEntity: (id: string) => void
+) {
+  if (node.type === 'stagedPersonNode') {
+    unstageNode(node.id);
+  } else if (node.type === 'entityNode') {
+    deleteEntity(node.id);
+  }
+}
+
 export const StructureCanvasContent: React.FC = () => {
   const entities = useStructureStore((state) => state.entities);
   const relationships = useStructureStore((state) => state.relationships);
@@ -75,7 +87,9 @@ export const StructureCanvasContent: React.FC = () => {
   const isReadOnly = useStructureStore((state) => state.isReadOnly);
   const addEntity = useStructureStore((state) => state.addEntity);
   const updateEntity = useStructureStore((state) => state.updateEntity);
+  const deleteEntity = useStructureStore((state) => state.deleteEntity);
   const stageNode = useStructureStore((state) => state.stageNode);
+  const unstageNode = useStructureStore((state) => state.unstageNode);
   const updateStagedNodePosition = useStructureStore((state) => state.updateStagedNodePosition);
   const addRelationship = useStructureStore((state) => state.addRelationship);
   const connectStagedPersonToEntity = useStructureStore(
@@ -277,6 +291,7 @@ export const StructureCanvasContent: React.FC = () => {
         });
       } else {
         connectStagedPersonToEntity(info.sourceId, info.targetId, {
+          name: result.personName,
           role: result.role,
           isResident: result.isResident,
           isCorporate: result.isCorporate,
@@ -285,6 +300,14 @@ export const StructureCanvasContent: React.FC = () => {
       setPendingConnection(null);
     },
     [pendingConnection, addRelationship, connectStagedPersonToEntity, relationships]
+  );
+
+  const onNodesDelete = useCallback(
+    (deletedNodes: Node[]) => {
+      if (isReadOnly) return;
+      deletedNodes.forEach((node) => deleteSingleNode(node, unstageNode, deleteEntity));
+    },
+    [isReadOnly, unstageNode, deleteEntity]
   );
 
   const onPaneClick = useCallback(() => {
@@ -349,6 +372,8 @@ export const StructureCanvasContent: React.FC = () => {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
+        onNodesDelete={onNodesDelete}
+        deleteKeyCode={['Backspace', 'Delete']}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}

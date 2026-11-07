@@ -22,6 +22,7 @@ export type EntityConnectionResult = {
 
 export type PersonConnectionResult = {
   connectionKind: 'person-to-entity';
+  personName: string;
   role: string;
   isResident: boolean;
   isCorporate: boolean;
@@ -73,6 +74,7 @@ export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
   const [targetId, setTargetId] = useState<string>(connection.targetId);
   const [targetName, setTargetName] = useState<string>(connection.targetName);
 
+  const [personName, setPersonName] = useState<string>(connection.sourceName || 'New Person');
   const [role, setRole] = useState<string>('Director');
   const [isResident, setIsResident] = useState<boolean>(false);
   const [isCorporate, setIsCorporate] = useState<boolean>(false);
@@ -82,6 +84,7 @@ export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
     setSourceName(connection.sourceName);
     setTargetId(connection.targetId);
     setTargetName(connection.targetName);
+    setPersonName(connection.sourceName || 'New Person');
   }, [connection]);
 
   const handleSwapDirection = () => {
@@ -117,14 +120,18 @@ export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
     e.preventDefault();
     onConfirm({
       connectionKind: 'person-to-entity',
+      personName: personName.trim() || connection.sourceName || 'New Person',
       role,
       isResident,
       isCorporate,
     });
   };
 
-  const modalLeft = Math.min(Math.max(16, position.x - 140), Math.max(16, window.innerWidth - 320));
-  const modalTop = Math.min(Math.max(16, position.y - 120), Math.max(16, window.innerHeight - 340));
+  const MODAL_WIDTH = 300;
+  const MODAL_HEIGHT = 440;
+  const PADDING = 16;
+  const modalLeft = Math.max(PADDING, Math.min(position.x - 140, window.innerWidth - MODAL_WIDTH - PADDING));
+  const modalTop = Math.max(PADDING, Math.min(position.y - 120, window.innerHeight - MODAL_HEIGHT - PADDING));
 
   return (
     <div
@@ -134,7 +141,7 @@ export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
         top: modalTop,
         left: modalLeft,
       }}
-      className="absolute z-50 w-72 bg-white rounded-xl shadow-2xl border border-slate-200 p-4 text-xs select-none"
+      className="fixed z-50 w-72 bg-white rounded-xl shadow-2xl border border-slate-200 p-4 text-xs select-none"
     >
       <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-100">
         <div className="flex items-center gap-1.5 font-bold text-slate-800">
@@ -278,6 +285,21 @@ export const ConnectionQuickPicker: React.FC<ConnectionQuickPickerProps> = ({
         </form>
       ) : (
         <form onSubmit={handlePersonSubmit} className="space-y-3">
+          <div>
+            <label htmlFor="person-name-input" className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Person Name
+            </label>
+            <input
+              id="person-name-input"
+              type="text"
+              value={personName}
+              onChange={(e) => setPersonName(e.target.value)}
+              className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-slate-800 font-medium focus:ring-1 focus:ring-purple-500 focus:outline-none"
+              placeholder="Enter person name"
+              maxLength={120}
+            />
+          </div>
+
           <div>
             <label htmlFor="role-select" className="block text-[11px] font-semibold text-slate-700 mb-1">
               Appointed Role

@@ -570,5 +570,95 @@ describe('StructureCanvas', () => {
     const unaffectedEntity = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
     expect(unaffectedEntity?.position).toEqual({ x: 550, y: 350 });
   });
+
+  it('handles onNodesDelete to remove staged person nodes and entities', () => {
+    let stagedId = '';
+    act(() => {
+      const staged = useStructureStore.getState().stageNode({
+        kind: 'person',
+        name: 'Node To Delete',
+        position: { x: 50, y: 50 },
+      });
+      stagedId = staged.id;
+    });
+
+    render(<StructureCanvas />);
+    expect(capturedProps.onNodesDelete).toBeDefined();
+    expect(capturedProps.deleteKeyCode).toEqual(['Backspace', 'Delete']);
+
+    // Delete staged person node via onNodesDelete
+    act(() => {
+      capturedProps.onNodesDelete([
+        { id: stagedId, type: 'stagedPersonNode', position: { x: 0, y: 0 }, data: {} },
+      ]);
+    });
+
+    expect(useStructureStore.getState().stagedNodes.find((n) => n.id === stagedId)).toBeUndefined();
+
+    // Delete entity node via onNodesDelete
+    expect(useStructureStore.getState().entities.some((e) => e.id === 'entity-5')).toBe(true);
+    act(() => {
+      capturedProps.onNodesDelete([
+        { id: 'entity-5', type: 'entityNode', position: { x: 0, y: 0 }, data: {} },
+      ]);
+    });
+    expect(useStructureStore.getState().entities.some((e) => e.id === 'entity-5')).toBe(false);
+
+    // Verify onNodesDelete ignores unrecognized node types
+    act(() => {
+      capturedProps.onNodesDelete([
+        { id: 'satellite-1', type: 'satelliteNode', position: { x: 0, y: 0 }, data: {} },
+      ]);
+    });
+
+    // Verify onNodesDelete does nothing when isReadOnly is true
+    act(() => {
+      useStructureStore.setState({ isReadOnly: true });
+    });
+    act(() => {
+      capturedProps.onNodesDelete([
+        { id: 'entity-1', type: 'entityNode', position: { x: 0, y: 0 }, data: {} },
+      ]);
+    });
+    expect(useStructureStore.getState().entities.some((e) => e.id === 'entity-1')).toBe(true);
+  });
+
+  it('passes edited person name to connectStagedPersonToEntity when connecting person to entity', () => {
+    act(() => {
+      useStructureStore.getState().stageNode({
+        kind: 'person',
+        name: 'Default Name',
+        role: 'Director',
+        position: { x: 100, y: 100 },
+      });
+    });
+
+    const stagedId = useStructureStore.getState().stagedNodes[0].id;
+    render(<StructureCanvas />);
+
+    act(() => {
+      capturedOnConnect?.({
+        source: stagedId,
+        target: 'entity-1',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    });
+
+    // Edit the person name in the quick picker
+    const nameInput = screen.getByLabelText(/person name/i);
+    expect(nameInput).toHaveValue('Default Name');
+    fireEvent.change(nameInput, { target: { value: 'Sir Reginald Hargreeves' } });
+
+    const assignBtn = screen.getByRole('button', { name: /assign role/i });
+    fireEvent.click(assignBtn);
+
+    // Verify staged node is removed and party was created with the edited name
+    expect(useStructureStore.getState().stagedNodes.length).toBe(0);
+    const entity1 = useStructureStore.getState().entities.find((e) => e.id === 'entity-1');
+    const createdParty = entity1?.associatedParties.find((p) => p.name === 'Sir Reginald Hargreeves');
+    expect(createdParty).toBeDefined();
+    expect(createdParty?.name).toBe('Sir Reginald Hargreeves');
+  });
 });
 

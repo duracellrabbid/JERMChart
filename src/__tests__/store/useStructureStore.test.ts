@@ -274,6 +274,102 @@ describe('useStructureStore', () => {
     expect(useStructureStore.getState().highlightedDirector).toBe('Marcus Aurelius');
   });
 
+  it('deletes an associated party by name across all entities and clears highlights', () => {
+    const store = useStructureStore.getState();
+
+    // Add the same party to entity-1 and entity-2
+    store.addAssociatedParty('entity-1', {
+      name: 'Common Officer',
+      role: 'Director',
+    });
+    store.addAssociatedParty('entity-2', {
+      name: 'Common Officer',
+      role: 'Protector',
+    });
+
+    // Verify they exist
+    expect(
+      useStructureStore
+        .getState()
+        .entities.find((e) => e.id === 'entity-1')
+        ?.associatedParties.some((p) => p.name === 'Common Officer')
+    ).toBe(true);
+    expect(
+      useStructureStore
+        .getState()
+        .entities.find((e) => e.id === 'entity-2')
+        ?.associatedParties.some((p) => p.name === 'Common Officer')
+    ).toBe(true);
+
+    // Highlight the party
+    store.setHighlightedParty('Common Officer');
+    expect(useStructureStore.getState().highlightedParty).toBe('Common Officer');
+    expect(useStructureStore.getState().highlightedDirector).toBe('Common Officer');
+
+    // Delete by name
+    store.deleteAssociatedPartyByName('Common Officer');
+
+    // Verify deleted across all entities
+    expect(
+      useStructureStore
+        .getState()
+        .entities.find((e) => e.id === 'entity-1')
+        ?.associatedParties.some((p) => p.name === 'Common Officer')
+    ).toBe(false);
+    expect(
+      useStructureStore
+        .getState()
+        .entities.find((e) => e.id === 'entity-2')
+        ?.associatedParties.some((p) => p.name === 'Common Officer')
+    ).toBe(false);
+
+    // Verify highlights are cleared
+    expect(useStructureStore.getState().highlightedParty).toBeNull();
+    expect(useStructureStore.getState().highlightedDirector).toBeNull();
+
+    // Verify undo restores the deleted parties
+    useStructureStore.getState().undo();
+    expect(
+      useStructureStore
+        .getState()
+        .entities.find((e) => e.id === 'entity-1')
+        ?.associatedParties.some((p) => p.name === 'Common Officer')
+    ).toBe(true);
+    expect(
+      useStructureStore
+        .getState()
+        .entities.find((e) => e.id === 'entity-2')
+        ?.associatedParties.some((p) => p.name === 'Common Officer')
+    ).toBe(true);
+
+    // Verify deleteAssociatedPartyByName on entity with undefined associatedParties
+    useStructureStore.setState({
+      entities: [
+        ...useStructureStore.getState().entities,
+        {
+          id: 'entity-undef',
+          name: 'Undef Entity',
+          type: 'Operating Company',
+          jurisdiction: 'BVI',
+          status: 'Active',
+          associatedParties: undefined as any,
+        },
+      ],
+    });
+    useStructureStore.getState().deleteAssociatedPartyByName('Nonexistent Officer');
+
+    // Verify isReadOnly guard
+    useStructureStore.setState({ isReadOnly: true });
+    useStructureStore.getState().deleteAssociatedPartyByName('Common Officer');
+    expect(
+      useStructureStore
+        .getState()
+        .entities.find((e) => e.id === 'entity-1')
+        ?.associatedParties.some((p) => p.name === 'Common Officer')
+    ).toBe(true);
+    useStructureStore.setState({ isReadOnly: false });
+  });
+
   it('updates metadata and sorting criteria', () => {
     useStructureStore.getState().setMetadata({ chartTitle: 'Updated Trust Title' });
     expect(useStructureStore.getState().metadata.chartTitle).toBe('Updated Trust Title');

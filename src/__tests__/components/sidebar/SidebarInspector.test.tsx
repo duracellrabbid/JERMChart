@@ -511,5 +511,60 @@ describe('SidebarInspector', () => {
       expect(screen.getByText('Roleless Person')).toBeInTheDocument();
       expect(screen.getByText('Director')).toBeInTheDocument();
     });
+
+    it('opens ConfirmationModal when delete person is clicked, and cancels without deleting', () => {
+      render(<SidebarInspector />);
+      fireEvent.click(screen.getByRole('button', { name: /Directors/i }));
+
+      const deleteBtn = screen.getByRole('button', { name: 'Delete person Julian Vance' });
+      expect(deleteBtn).toBeInTheDocument();
+      fireEvent.click(deleteBtn);
+
+      expect(screen.getByText('Delete Person')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Are you sure you want to delete "Julian Vance"\? This person will be removed from all entities where they are appointed across the entire structure\./i
+        )
+      ).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(screen.queryByText('Delete Person')).not.toBeInTheDocument();
+      const stillHasJulian = useStructureStore
+        .getState()
+        .entities.some((e) => e.associatedParties?.some((p) => p.name === 'Julian Vance'));
+      expect(stillHasJulian).toBe(true);
+    });
+
+    it('deletes person across all entities when confirmed in ConfirmationModal', () => {
+      render(<SidebarInspector />);
+      fireEvent.click(screen.getByRole('button', { name: /Directors/i }));
+
+      const deleteBtn = screen.getByRole('button', { name: 'Delete person Julian Vance' });
+      fireEvent.click(deleteBtn);
+
+      expect(screen.getByText('Delete Person')).toBeInTheDocument();
+      const confirmBtn = screen.getByRole('button', { name: 'Confirm Delete' });
+      fireEvent.click(confirmBtn);
+
+      expect(screen.queryByText('Delete Person')).not.toBeInTheDocument();
+      const stillHasJulian = useStructureStore
+        .getState()
+        .entities.some((e) => e.associatedParties?.some((p) => p.name === 'Julian Vance'));
+      expect(stillHasJulian).toBe(false);
+      expect(screen.queryByText('Julian Vance')).not.toBeInTheDocument();
+    });
+
+    it('hides delete person button in Directors tab when isReadOnly is true', () => {
+      act(() => {
+        useStructureStore.setState({ isReadOnly: true });
+      });
+
+      render(<SidebarInspector />);
+      fireEvent.click(screen.getByRole('button', { name: /Directors/i }));
+
+      expect(screen.getByText('Julian Vance')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Delete person Julian Vance' })).not.toBeInTheDocument();
+    });
   });
 });

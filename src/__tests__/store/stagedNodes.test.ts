@@ -209,5 +209,95 @@ describe('Staged Nodes and Graph Validation', () => {
       expect(updated?.associatedParties.length).toBe(1);
       expect(updated?.associatedParties[0].name).toBe('Bare Director');
     });
+
+    it('updates staged node attributes via updateStagedNode with history and readOnly guard', () => {
+      const { stageNode, updateStagedNode, undo, redo } = useStructureStore.getState();
+
+      const staged = stageNode({
+        kind: 'person',
+        name: 'Initial Name',
+        role: 'Director',
+        position: { x: 100, y: 100 },
+      });
+
+      updateStagedNode(staged.id, { name: 'Updated Name', role: 'Protector' });
+
+      let node = useStructureStore.getState().stagedNodes.find((n) => n.id === staged.id);
+      expect(node?.name).toBe('Updated Name');
+      expect(node?.role).toBe('Protector');
+
+      // Undo reverts the update
+      undo();
+      node = useStructureStore.getState().stagedNodes.find((n) => n.id === staged.id);
+      expect(node?.name).toBe('Initial Name');
+      expect(node?.role).toBe('Director');
+
+      // Redo restores the update
+      redo();
+      node = useStructureStore.getState().stagedNodes.find((n) => n.id === staged.id);
+      expect(node?.name).toBe('Updated Name');
+
+      // Read-only guard prevents update
+      useStructureStore.setState({ isReadOnly: true });
+      updateStagedNode(staged.id, { name: 'Blocked Name' });
+      node = useStructureStore.getState().stagedNodes.find((n) => n.id === staged.id);
+      expect(node?.name).toBe('Updated Name');
+      useStructureStore.setState({ isReadOnly: false });
+    });
+
+    it('connectStagedPersonToEntity accepts optional name override in roleData', () => {
+      const { stageNode, connectStagedPersonToEntity } = useStructureStore.getState();
+
+      const staged = stageNode({
+        kind: 'person',
+        name: 'Original Person',
+        role: 'Director',
+        position: { x: 50, y: 50 },
+      });
+
+      const targetEntityId = 'entity-1';
+      connectStagedPersonToEntity(staged.id, targetEntityId, {
+        name: 'Overridden Name',
+        role: 'Enforcer',
+      });
+
+      const entity = useStructureStore.getState().entities.find((e) => e.id === targetEntityId);
+      const party = entity?.associatedParties.find((p) => p.name === 'Overridden Name');
+      expect(party).toBeDefined();
+      expect(party?.role).toBe('Enforcer');
+
+      // Test fallback to staged name if override is whitespace
+      const staged2 = stageNode({
+        kind: 'person',
+        name: 'Fallback Name',
+        role: 'Director',
+        position: { x: 60, y: 60 },
+      });
+      connectStagedPersonToEntity(staged2.id, targetEntityId, {
+        name: '   ',
+        role: 'Director',
+      });
+      const party2 = useStructureStore
+        .getState()
+        .entities.find((e) => e.id === targetEntityId)
+        ?.associatedParties.find((p) => p.name === 'Fallback Name');
+      expect(party2).toBeDefined();
+
+      // Test fallback to 'New Person' if both name override and staged name are empty
+      const staged3 = stageNode({
+        kind: 'person',
+        name: '',
+        role: 'Director',
+        position: { x: 70, y: 70 },
+      });
+      connectStagedPersonToEntity(staged3.id, targetEntityId, {
+        role: 'Director',
+      });
+      const party3 = useStructureStore
+        .getState()
+        .entities.find((e) => e.id === targetEntityId)
+        ?.associatedParties.find((p) => p.name === 'New Person');
+      expect(party3).toBeDefined();
+    });
   });
 });

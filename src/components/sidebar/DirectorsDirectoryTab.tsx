@@ -1,12 +1,16 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useStructureStore } from '../../store/useStructureStore';
-import { User, Landmark } from 'lucide-react';
+import { User, Landmark, Trash2 } from 'lucide-react';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 import { getRoleBadgeStyle } from '../../utils/entityStyle';
 
 export const DirectorsDirectoryTab: React.FC = () => {
   const entities = useStructureStore((state) => state.entities);
   const highlightedParty = useStructureStore((state) => state.highlightedParty);
   const setHighlightedParty = useStructureStore((state) => state.setHighlightedParty);
+  const isReadOnly = useStructureStore((state) => state.isReadOnly);
+  const deleteAssociatedPartyByName = useStructureStore((state) => state.deleteAssociatedPartyByName);
+  const [deletingPartyName, setDeletingPartyName] = useState<string | null>(null);
 
   const partiesSummary = useMemo(() => {
     const map = new Map<
@@ -80,6 +84,20 @@ export const DirectorsDirectoryTab: React.FC = () => {
                     <span className="font-tabular text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold" title={`${item.entities.length} entities`}>
                       {item.entities.length}
                     </span>
+                    {!isReadOnly && (
+                      <button
+                        type="button"
+                        title={`Delete person ${item.name}`}
+                        aria-label={`Delete person ${item.name}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingPartyName(item.name);
+                        }}
+                        className="p-1 hover:bg-rose-50 rounded text-slate-400 hover:text-rose-600 transition ml-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -91,6 +109,22 @@ export const DirectorsDirectoryTab: React.FC = () => {
           })
         )}
       </div>
+
+      {deletingPartyName && (
+        <ConfirmationModal
+          isOpen={true}
+          title="Delete Person"
+          message={`Are you sure you want to delete "${deletingPartyName}"? This person will be removed from all entities where they are appointed across the entire structure.`}
+          confirmLabel="Confirm Delete"
+          cancelLabel="Cancel"
+          variant="danger"
+          onConfirm={() => {
+            deleteAssociatedPartyByName(deletingPartyName);
+            setDeletingPartyName(null);
+          }}
+          onCancel={() => setDeletingPartyName(null)}
+        />
+      )}
     </div>
   );
 };

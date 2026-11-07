@@ -453,5 +453,53 @@ describe('chartVisionService', () => {
       expect(VISION_USER_PROMPT).toBe(rawVisionSpec.visionUserPrompt);
       expect(CHART_VISION_SCHEMA).toEqual(rawVisionSpec.schema);
     });
+
+    it('parses and preserves Individual alongside corporate entities with personal names', () => {
+      const response = JSON.stringify({
+        chartTitle: 'Family & Corporate Structure',
+        entities: [
+          {
+            tempId: 'e1',
+            name: 'Alex Tan',
+            type: 'Individual',
+            jurisdiction: 'Singapore',
+            status: 'Active',
+          },
+          {
+            tempId: 'e2',
+            name: 'George 1 PL',
+            type: 'Operating Company',
+            jurisdiction: 'Singapore',
+            status: 'Active',
+          },
+          {
+            tempId: 'e3',
+            name: 'Licenced Trustee A',
+            type: 'Trust Company',
+            jurisdiction: 'Singapore',
+            status: 'Active',
+          },
+        ],
+        relationships: [
+          {
+            sourceTempId: 'e1',
+            targetTempId: 'e2',
+            ownershipPercentage: 100,
+            shareClass: 'Ordinary Shares',
+          },
+        ],
+        warnings: [],
+      });
+
+      const parsed = parseRawAiResponse(response);
+      expect(parsed.chart.entities).toHaveLength(3);
+      expect(parsed.chart.entities[0].name).toBe('Alex Tan');
+      expect(parsed.chart.entities[0].type).toBe('Individual');
+      expect(parsed.chart.entities[1].name).toBe('George 1 PL');
+      expect(parsed.chart.entities[1].type).toBe('Operating Company');
+      expect(parsed.chart.entities[2].name).toBe('Licenced Trustee A');
+      expect(parsed.chart.entities[2].type).toBe('Trust Company');
+      expect(parsed.chart.relationships[0].ownershipPercentage).toBe(100);
+    });
   });
 });

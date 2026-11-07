@@ -65,17 +65,19 @@ export interface StructureState {
   // Associated Party mutations
   addAssociatedParty: (entityId: string, party: Omit<AssociatedParty, 'id'>) => void;
   removeAssociatedParty: (entityId: string, partyId: string) => void;
+  deleteAssociatedPartyByName: (partyName: string) => void;
   addDirector: (entityId: string, director: Omit<AssociatedParty, 'id'>) => void;
   removeDirector: (entityId: string, directorId: string) => void;
 
   // Staged node mutations
   stageNode: (node: Omit<StagedNodeData, 'id'>) => StagedNodeData;
   unstageNode: (id: string) => void;
+  updateStagedNode: (id: string, updates: Partial<StagedNodeData>) => void;
   updateStagedNodePosition: (id: string, position: { x: number; y: number }) => void;
   connectStagedPersonToEntity: (
     stagedId: string,
     targetEntityId: string,
-    roleData: { role: string; isResident?: boolean; isCorporate?: boolean }
+    roleData: { name?: string; role: string; isResident?: boolean; isCorporate?: boolean }
   ) => void;
 
   // Relationship mutations
@@ -309,6 +311,19 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   removeDirector: (entityId, directorId) =>
     get().removeAssociatedParty(entityId, directorId),
 
+  deleteAssociatedPartyByName: (partyName) => {
+    if (get().isReadOnly) return;
+    get().pushHistory();
+    set((state) => ({
+      entities: state.entities.map((e) => ({
+        ...e,
+        associatedParties: (e.associatedParties || []).filter((p) => p.name !== partyName),
+      })),
+      highlightedParty: state.highlightedParty === partyName ? null : state.highlightedParty,
+      highlightedDirector: state.highlightedDirector === partyName ? null : state.highlightedDirector,
+    }));
+  },
+
   stageNode: (node) => {
     if (get().isReadOnly) {
       return { ...node, id: '' } as StagedNodeData;
@@ -329,6 +344,14 @@ export const useStructureStore = create<StructureState>((set, get) => ({
     set((state) => ({ stagedNodes: state.stagedNodes.filter((n) => n.id !== id) }));
   },
 
+  updateStagedNode: (id, updates) => {
+    if (get().isReadOnly) return;
+    get().pushHistory();
+    set((state) => ({
+      stagedNodes: state.stagedNodes.map((n) => (n.id === id ? { ...n, ...updates } : n)),
+    }));
+  },
+
   updateStagedNodePosition: (id, position) => {
     if (get().isReadOnly) return;
     set((state) => ({
@@ -342,7 +365,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
     if (!staged) return;
     get().pushHistory();
 
-    const partyName = staged.name;
+    const partyName = roleData.name?.trim() || staged.name || 'New Person';
     const newParty: AssociatedParty = {
       id: `party-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       name: partyName,
