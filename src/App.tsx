@@ -6,18 +6,21 @@ import { ExportModal } from './components/export/ExportModal';
 import { ExcelImportModal } from './components/import/ExcelImportModal';
 import { PhotoImportModal } from './components/import/PhotoImportModal';
 import { SettingsModal } from './components/settings/SettingsModal';
+import { EnterpriseOcrAdapter } from './services/ai/aiConfig';
 import { useStructureStore } from './store/useStructureStore';
 
 export interface AppProps {
   headerLeftSlot?: React.ReactNode;
   headerRightSlot?: React.ReactNode;
   hideSettingsButton?: boolean;
+  enterpriseOcr?: EnterpriseOcrAdapter;
 }
 
 export default function App({
   headerLeftSlot,
   headerRightSlot,
   hideSettingsButton,
+  enterpriseOcr,
 }: AppProps = {}) {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
@@ -66,7 +69,7 @@ export default function App({
         onOpenSettings={() => setIsSettingsOpen(true)}
         headerLeftSlot={headerLeftSlot}
         headerRightSlot={headerRightSlot}
-        hideSettingsButton={hideSettingsButton}
+        hideSettingsButton={hideSettingsButton || Boolean(enterpriseOcr)}
       />
       <div className="flex-1 flex overflow-hidden relative">
         <SidebarInspector />
@@ -80,6 +83,7 @@ export default function App({
         <PhotoImportModal
           onClose={() => setIsPhotoImportOpen(false)}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          enterpriseOcr={enterpriseOcr}
         />
       )}
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}

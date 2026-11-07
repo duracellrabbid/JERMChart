@@ -2,6 +2,29 @@ import { getDefaultModelForProvider } from './modelCatalog';
 
 export type AIProvider = 'gemini' | 'ollama';
 
+export interface EnterpriseOcrStatus {
+  gemini_configured?: boolean;
+  ollama_configured?: boolean;
+  gemini_model?: string | null;
+  ollama_model?: string | null;
+  geminiConfigured?: boolean;
+  ollamaConfigured?: boolean;
+  geminiModel?: string | null;
+  ollamaModel?: string | null;
+  default_provider?: 'gemini' | 'ollama';
+  defaultProvider?: AIProvider;
+}
+
+export interface EnterpriseOcrAdapter {
+  status: EnterpriseOcrStatus | null;
+  onAnalyzeImage: (
+    base64Image: string,
+    mimeType: string,
+    provider?: 'gemini' | 'ollama' | AIProvider,
+    signal?: AbortSignal
+  ) => Promise<unknown>;
+}
+
 export interface AIConfig {
   provider: AIProvider;
   apiKey: string;

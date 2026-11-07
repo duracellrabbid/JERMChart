@@ -8,9 +8,11 @@ import {
   getProviderDisplayName,
   AIProvider,
   AIConfig,
+  EnterpriseOcrAdapter,
+  EnterpriseOcrStatus,
 } from '../../services/ai/aiConfig';
 import { preprocessImageFile } from '../../utils/imagePreprocessing';
-import { analyzeChartImage } from '../../services/ai/chartVisionService';
+import { analyzeChartImage, parseRawAiResponse } from '../../services/ai/chartVisionService';
 import { isVisionModel } from '../../services/ai/ollamaService';
 import { useStructureStore } from '../../store/useStructureStore';
 import {
@@ -23,17 +25,66 @@ import {
   Loader2,
   Sparkles,
   ArrowRight,
+  ShieldAlert,
+  Server,
 } from 'lucide-react';
 
-interface PhotoImportModalProps {
+export interface PhotoImportModalProps {
   onClose: () => void;
   onOpenSettings: () => void;
+  enterpriseOcr?: EnterpriseOcrAdapter;
 }
 
 function isHeicFile(filename: string): boolean {
   const lower = filename.toLowerCase();
   return lower.endsWith('.heic') || lower.endsWith('.heif');
 }
+
+export function isEnterpriseGeminiReady(status?: EnterpriseOcrStatus | null): boolean {
+  if (!status) return false;
+  return Boolean(status.gemini_configured ?? status.geminiConfigured);
+}
+
+export function isEnterpriseOllamaReady(status?: EnterpriseOcrStatus | null): boolean {
+  if (!status) return false;
+  return Boolean(status.ollama_configured ?? status.ollamaConfigured);
+}
+
+export function getEnterpriseGeminiModel(status?: EnterpriseOcrStatus | null): string {
+  if (!status) return 'gemini-3.8-flash';
+  return status.gemini_model || status.geminiModel || 'gemini-3.8-flash';
+}
+
+export function getEnterpriseOllamaModel(status?: EnterpriseOcrStatus | null): string {
+  if (!status) return 'llama3.2-vision';
+  return status.ollama_model || status.ollamaModel || 'llama3.2-vision';
+}
+
+export function getEnterpriseInitialProvider(status?: EnterpriseOcrStatus | null): AIProvider {
+  const geminiReady = isEnterpriseGeminiReady(status);
+  const ollamaReady = isEnterpriseOllamaReady(status);
+  const def = status?.default_provider || status?.defaultProvider;
+  if (def === 'gemini' && geminiReady) return 'gemini';
+  if (def === 'ollama' && ollamaReady) return 'ollama';
+  if (geminiReady) return 'gemini';
+  if (ollamaReady) return 'ollama';
+  return def || 'gemini';
+}
+
+export const EnterpriseConfigRequiredNotice: React.FC = () => (
+  <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-700 space-y-3">
+    <div className="flex items-center gap-2 font-bold text-slate-800 text-sm">
+      <ShieldAlert className="w-4 h-4 text-amber-600" />
+      <span>AI OCR Not Configured</span>
+    </div>
+    <p className="leading-relaxed">
+      AI OCR has not been configured for your organization. Optical character recognition for handwritten
+      and photographed structure charts is managed centrally by your enterprise administrator. Please contact
+      your organization administrator to enable Google Gemini or an enterprise Ollama endpoint in the Admin
+      Dashboard.
+    </p>
+  </div>
+);
 
 export const ConfigRequiredNotice: React.FC<{
   provider: AIProvider;
@@ -221,9 +272,98 @@ export const ProviderSelectionSection: React.FC<ProviderSelectionSectionProps> =
   );
 };
 
+export function parseEnterpriseOcrResult(rawResult: unknown): {
+  chart: import('../../types/structure').TrustStructureChart;
+  warnings: string[];
+} {
+  if (!rawResult || typeof rawResult !== 'object') {
+    throw new Error('Enterprise OCR returned an empty or invalid response.');
+  }
+  const candidate = rawResult as Record<string, unknown>;
+  if (typeof candidate.raw_json === 'string') {
+    return parseRawAiResponse(candidate.raw_json);
+  }
+  if (candidate.chart && typeof candidate.chart === 'object') {
+    const rawWarnings = Array.isArray(candidate.warnings) ? candidate.warnings : [];
+    return {
+      chart: candidate.chart as import('../../types/structure').TrustStructureChart,
+      warnings: rawWarnings.map(String).filter(Boolean),
+    };
+  }
+  throw new Error('Enterprise OCR returned an unexpected payload structure.');
+}
+
+export const EnterpriseProviderSection: React.FC<{
+  status?: EnterpriseOcrStatus | null;
+  selectedProvider: AIProvider;
+  onSelectProvider: (provider: AIProvider) => void;
+  disabled?: boolean;
+}> = ({ status, selectedProvider, onSelectProvider, disabled = false }) => {
+  const geminiReady = isEnterpriseGeminiReady(status);
+  const ollamaReady = isEnterpriseOllamaReady(status);
+  const bothConfigured = geminiReady && ollamaReady;
+  const activeModel =
+    selectedProvider === 'gemini'
+      ? getEnterpriseGeminiModel(status)
+      : getEnterpriseOllamaModel(status);
+  const displayName = getProviderDisplayName(selectedProvider);
+
+  return (
+    <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex flex-col gap-2.5">
+      <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1.5 text-slate-600 font-medium">
+          <Server className="w-3.5 h-3.5 text-sky-600" />
+          <span>Organization Vision AI</span>
+        </div>
+        <span className="font-semibold text-slate-800">
+          Using {displayName} ({activeModel})
+        </span>
+      </div>
+
+      {bothConfigured && (
+        <div
+          role="radiogroup"
+          aria-label="Select enterprise vision provider"
+          className="grid grid-cols-2 p-1 bg-slate-200/70 rounded-lg gap-1"
+        >
+          <button
+            type="button"
+            role="radio"
+            aria-checked={selectedProvider === 'gemini'}
+            disabled={disabled}
+            onClick={() => onSelectProvider('gemini')}
+            className={`py-1.5 px-3 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+              selectedProvider === 'gemini'
+                ? 'bg-white text-sky-700 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>Google Gemini</span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={selectedProvider === 'ollama'}
+            disabled={disabled}
+            onClick={() => onSelectProvider('ollama')}
+            className={`py-1.5 px-3 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+              selectedProvider === 'ollama'
+                ? 'bg-white text-sky-700 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>Ollama</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   onClose,
   onOpenSettings,
+  enterpriseOcr,
 }) => {
   const metadata = useStructureStore((state) => state.metadata);
   const entities = useStructureStore((state) => state.entities);
@@ -245,7 +385,13 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showConfirmReplace, setShowConfirmReplace] = useState(false);
 
-  const hasConfig = isGeminiConfigured(config) || isOllamaConfigured(config);
+  const isEnterprise = Boolean(enterpriseOcr);
+  const enterpriseReady =
+    isEnterpriseGeminiReady(enterpriseOcr?.status) ||
+    isEnterpriseOllamaReady(enterpriseOcr?.status);
+  const hasConfig = isEnterprise
+    ? enterpriseReady
+    : isGeminiConfigured(config) || isOllamaConfigured(config);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
@@ -253,10 +399,14 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => {
+    if (enterpriseOcr) {
+      setSelectedProvider(getEnterpriseInitialProvider(enterpriseOcr.status));
+      return;
+    }
     const currentConfig = getAIConfig();
     setConfig(currentConfig);
     setSelectedProvider(getInitialProvider(currentConfig));
-  }, []);
+  }, [enterpriseOcr]);
 
   useEffect(() => {
     return () => {
@@ -327,8 +477,10 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
 
   const handleSelectProvider = (newProvider: AIProvider) => {
     setSelectedProvider(newProvider);
-    const updated = saveAIConfig({ provider: newProvider });
-    setConfig(updated);
+    if (!isEnterprise) {
+      const updated = saveAIConfig({ provider: newProvider });
+      setConfig(updated);
+    }
   };
 
   const executeAnalysis = async () => {
@@ -372,12 +524,24 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
         setProgressStep('Transcribing handwritten entities and relationships...');
       }, 800);
 
-      const result = await analyzeChartImage(
-        preprocessed.base64Data,
-        preprocessed.mimeType,
-        inferenceConfig,
-        controller.signal
-      );
+      let result: { chart: import('../../types/structure').TrustStructureChart; warnings: string[] };
+
+      if (enterpriseOcr) {
+        const rawEnterpriseResult = await enterpriseOcr.onAnalyzeImage(
+          preprocessed.base64Data,
+          preprocessed.mimeType,
+          selectedProvider,
+          controller.signal
+        );
+        result = parseEnterpriseOcrResult(rawEnterpriseResult);
+      } else {
+        result = await analyzeChartImage(
+          preprocessed.base64Data,
+          preprocessed.mimeType,
+          inferenceConfig,
+          controller.signal
+        );
+      }
 
       if (result.chart.entities.length === 0) {
         throw new Error(buildEmptyEntitiesError(result.warnings, inferenceConfig));
@@ -417,6 +581,9 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
 
   const renderModalBody = () => {
     if (!hasConfig) {
+      if (isEnterprise) {
+        return <EnterpriseConfigRequiredNotice />;
+      }
       return (
         <ConfigRequiredNotice
           provider={config.provider}
@@ -450,12 +617,21 @@ export const PhotoImportModal: React.FC<PhotoImportModalProps> = ({
 
     return (
       <>
-        <ProviderSelectionSection
-          config={config}
-          selectedProvider={selectedProvider}
-          onSelectProvider={handleSelectProvider}
-          disabled={isProcessing}
-        />
+        {isEnterprise ? (
+          <EnterpriseProviderSection
+            status={enterpriseOcr?.status}
+            selectedProvider={selectedProvider}
+            onSelectProvider={handleSelectProvider}
+            disabled={isProcessing}
+          />
+        ) : (
+          <ProviderSelectionSection
+            config={config}
+            selectedProvider={selectedProvider}
+            onSelectProvider={handleSelectProvider}
+            disabled={isProcessing}
+          />
+        )}
 
         {/* Dropzone */}
         <div

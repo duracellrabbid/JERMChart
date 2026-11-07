@@ -202,4 +202,43 @@ describe('App Integration', () => {
     expect(screen.getByTestId('app-right-slot')).toBeInTheDocument();
     expect(screen.queryByLabelText(/AI Settings/i)).not.toBeInTheDocument();
   });
+
+  it('automatically hides settings button and passes enterpriseOcr to PhotoImportModal when enterpriseOcr prop is provided', () => {
+    const mockEnterpriseOcr: aiConfig.EnterpriseOcrAdapter = {
+      status: {
+        gemini_configured: true,
+        ollama_configured: false,
+        gemini_model: 'gemini-3.8-flash',
+        ollama_model: null,
+        default_provider: 'gemini',
+      },
+      onAnalyzeImage: vi.fn().mockResolvedValue({
+        chart: {
+          metadata: { chartTitle: 'Enterprise Chart', effectiveDate: '2026-11-07', confidentialityNotice: '' },
+          entities: [{ id: 'ent-1', name: 'Corp', type: 'Holding Company', jurisdiction: 'Delaware', status: 'Active', associatedParties: [] }],
+          relationships: [],
+        },
+        warnings: [],
+      }),
+    };
+
+    render(
+      <App
+        enterpriseOcr={mockEnterpriseOcr}
+      />
+    );
+
+    // Settings gear button should be automatically hidden in enterprise mode
+    expect(screen.queryByLabelText(/AI Settings/i)).not.toBeInTheDocument();
+
+    // Opening photo import modal should display enterprise OCR mode
+    const importDropdown = screen.getByRole('button', { name: /^Import$/i });
+    fireEvent.click(importDropdown);
+    const photoImportBtn = screen.getByRole('button', { name: /Import from Photo/i });
+    fireEvent.click(photoImportBtn);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText(/Import from Photo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Organization Vision AI/i)).toBeInTheDocument();
+  });
 });

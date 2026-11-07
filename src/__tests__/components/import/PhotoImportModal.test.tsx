@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import * as PhotoImportModalModule from '../../../components/import/PhotoImportModal';
 import { PhotoImportModal, ConfirmReplaceNotice, ProcessingView, ProviderSelectionSection, getInitialProvider } from '../../../components/import/PhotoImportModal';
 import * as aiConfig from '../../../services/ai/aiConfig';
 import * as imagePreprocessing from '../../../utils/imagePreprocessing';
@@ -14,18 +15,22 @@ vi.mock('../../../utils/imagePreprocessing', () => ({
   }),
 }));
 
-vi.mock('../../../services/ai/chartVisionService', () => ({
-  analyzeChartImage: vi.fn().mockResolvedValue({
-    chart: {
-      metadata: { chartTitle: 'Inferred Chart', effectiveDate: '2026-09-21', confidentialityNotice: '' },
-      entities: [
-        { id: 'new-1', name: 'Inferred Trust', type: 'Trust', jurisdiction: 'Jersey', status: 'Active', directors: [] },
-      ],
-      relationships: [],
-    },
-    warnings: ['Illegible note on Trustee'],
-  }),
-}));
+vi.mock('../../../services/ai/chartVisionService', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../services/ai/chartVisionService')>();
+  return {
+    ...actual,
+    analyzeChartImage: vi.fn().mockResolvedValue({
+      chart: {
+        metadata: { chartTitle: 'Inferred Chart', effectiveDate: '2026-09-21', confidentialityNotice: '' },
+        entities: [
+          { id: 'new-1', name: 'Inferred Trust', type: 'Trust', jurisdiction: 'Jersey', status: 'Active', directors: [] },
+        ],
+        relationships: [],
+      },
+      warnings: ['Illegible note on Trustee'],
+    }),
+  };
+});
 
 describe('PhotoImportModal', () => {
   beforeEach(() => {
@@ -850,6 +855,383 @@ describe('PhotoImportModal', () => {
           ollamaModel: '',
         })
       ).toBe('gemini');
+    });
+  });
+
+  describe('Enterprise OCR Mode', () => {
+    it('renders EnterpriseConfigRequiredNotice when enterpriseOcr status has no configured provider', () => {
+      const mockOnClose = vi.fn();
+      const mockOnOpenSettings = vi.fn();
+      const unconfiguredAdapter: aiConfig.EnterpriseOcrAdapter = {
+        status: {
+          gemini_configured: false,
+          ollama_configured: false,
+          gemini_model: null,
+          ollama_model: null,
+          default_provider: 'gemini',
+        },
+        onAnalyzeImage: vi.fn(),
+      };
+
+      render(
+        <PhotoImportModal
+          onClose={mockOnClose}
+          onOpenSettings={mockOnOpenSettings}
+          enterpriseOcr={unconfiguredAdapter}
+        />
+      );
+
+      expect(screen.getByText(/AI OCR Not Configured/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/AI OCR has not been configured for your organization/i)
+      ).toBeInTheDocument();
+      // Must NOT display settings gear or "Configure in Settings" button
+      expect(screen.queryByRole('button', { name: /configure/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /settings/i })).not.toBeInTheDocument();
+    });
+
+    it('renders single configured provider badge and calls onAnalyzeImage on analyze', async () => {
+      const mockOnClose = vi.fn();
+      const mockAnalyze = vi.fn().mockResolvedValue({
+        chart: {
+          metadata: { chartTitle: 'Enterprise Trust', effectiveDate: '2026-11-07', confidentialityNotice: '' },
+          entities: [
+            { id: 'ent-1', name: 'Alpha Ltd', type: 'Operating Company', jurisdiction: 'UK', status: 'Active', associatedParties: [] },
+          ],
+          relationships: [],
+        },
+        warnings: [],
+      });
+
+      const singleProviderAdapter: aiConfig.EnterpriseOcrAdapter = {
+        status: {
+          gemini_configured: true,
+          ollama_configured: false,
+          gemini_model: 'gemini-3.8-flash',
+          ollama_model: null,
+          default_provider: 'gemini',
+        },
+        onAnalyzeImage: mockAnalyze,
+      };
+
+      render(
+        <PhotoImportModal
+          onClose={mockOnClose}
+          onOpenSettings={vi.fn()}
+          enterpriseOcr={singleProviderAdapter}
+        />
+      );
+
+      // Verify active provider banner showing model badge
+      expect(screen.getByText(/Organization Vision AI/i)).toBeInTheDocument();
+      expect(screen.getByText(/gemini-3.8-flash/i)).toBeInTheDocument();
+      // Should not have radio toggle when only one provider is configured
+      expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+
+      // Upload file and click analyze
+      const file = new File(['img-bytes'], 'chart.png', { type: 'image/png' });
+      const fileInput = screen.getByLabelText(/upload photo/i, { selector: 'input' });
+      fireEvent.change(fileInput, { target: { files: [file] } });
+
+      const analyzeBtn = screen.getByRole('button', { name: /analyze & create chart/i });
+      fireEvent.click(analyzeBtn);
+
+      await waitFor(() => {
+        expect(mockAnalyze).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockAnalyze).toHaveBeenCalledWith(
+        'mockbase64',
+        'image/jpeg',
+        'gemini',
+        expect.any(AbortSignal)
+      );
+      expect(mockOnClose).toHaveBeenCalled();
+      expect(useStructureStore.getState().entities).toHaveLength(1);
+      expect(useStructureStore.getState().entities[0].name).toBe('Alpha Ltd');
+    });
+
+    it('handles raw JSON string response from onAnalyzeImage in enterprise mode', async () => {
+      const mockOnClose = vi.fn();
+      const mockAnalyze = vi.fn().mockResolvedValue({
+        raw_json: JSON.stringify({
+          chartTitle: 'From Backend OCR',
+          entities: [
+            { tempId: 't1', name: 'Raw Enterprise Entity', type: 'LLC', jurisdiction: 'Delaware', status: 'Active' },
+          ],
+          relationships: [],
+        }),
+      });
+
+      const singleProviderAdapter: aiConfig.EnterpriseOcrAdapter = {
+        status: {
+          gemini_configured: false,
+          ollama_configured: true,
+          gemini_model: null,
+          ollama_model: 'llama3.2-vision:latest',
+          default_provider: 'ollama',
+        },
+        onAnalyzeImage: mockAnalyze,
+      };
+
+      render(
+        <PhotoImportModal
+          onClose={mockOnClose}
+          onOpenSettings={vi.fn()}
+          enterpriseOcr={singleProviderAdapter}
+        />
+      );
+
+      expect(screen.getByText(/llama3.2-vision:latest/i)).toBeInTheDocument();
+
+      const file = new File(['img-bytes'], 'chart.png', { type: 'image/png' });
+      const fileInput = screen.getByLabelText(/upload photo/i, { selector: 'input' });
+      fireEvent.change(fileInput, { target: { files: [file] } });
+
+      const analyzeBtn = screen.getByRole('button', { name: /analyze & create chart/i });
+      fireEvent.click(analyzeBtn);
+
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalled();
+      });
+
+      expect(mockAnalyze).toHaveBeenCalledWith(
+        'mockbase64',
+        'image/jpeg',
+        'ollama',
+        expect.any(AbortSignal)
+      );
+      expect(useStructureStore.getState().entities).toHaveLength(1);
+      expect(useStructureStore.getState().entities[0].name).toBe('Raw Enterprise Entity');
+    });
+
+    it('renders provider selection radio group when both providers are configured and allows switching', async () => {
+      const mockAnalyze = vi.fn().mockResolvedValue({
+        chart: {
+          metadata: { chartTitle: 'Dual Provider Chart', effectiveDate: '2026-11-07', confidentialityNotice: '' },
+          entities: [{ id: 'ent-1', name: 'Dual Entity', type: 'Trust', jurisdiction: 'BVI', status: 'Active', associatedParties: [] }],
+          relationships: [],
+        },
+        warnings: [],
+      });
+
+      const dualProviderAdapter: aiConfig.EnterpriseOcrAdapter = {
+        status: {
+          gemini_configured: true,
+          ollama_configured: true,
+          gemini_model: 'gemini-3.8-flash',
+          ollama_model: 'llama3.2-vision',
+          default_provider: 'gemini',
+        },
+        onAnalyzeImage: mockAnalyze,
+      };
+
+      render(
+        <PhotoImportModal
+          onClose={vi.fn()}
+          onOpenSettings={vi.fn()}
+          enterpriseOcr={dualProviderAdapter}
+        />
+      );
+
+      const radioGroup = screen.getByRole('radiogroup', { name: /select enterprise vision provider/i });
+      expect(radioGroup).toBeInTheDocument();
+
+      const geminiRadio = screen.getByRole('radio', { name: /google gemini/i });
+      const ollamaRadio = screen.getByRole('radio', { name: /ollama/i });
+
+      expect(geminiRadio).toHaveAttribute('aria-checked', 'true');
+      expect(ollamaRadio).toHaveAttribute('aria-checked', 'false');
+
+      // Click Ollama radio
+      fireEvent.click(ollamaRadio);
+      expect(ollamaRadio).toHaveAttribute('aria-checked', 'true');
+      expect(geminiRadio).toHaveAttribute('aria-checked', 'false');
+
+      // Upload and analyze
+      const file = new File(['img'], 'dual.png', { type: 'image/png' });
+      const fileInput = screen.getByLabelText(/upload photo/i, { selector: 'input' });
+      fireEvent.change(fileInput, { target: { files: [file] } });
+
+      const analyzeBtn = screen.getByRole('button', { name: /analyze & create chart/i });
+      fireEvent.click(analyzeBtn);
+
+      await waitFor(() => {
+        expect(mockAnalyze).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockAnalyze).toHaveBeenCalledWith(
+        'mockbase64',
+        'image/jpeg',
+        'ollama',
+        expect.any(AbortSignal)
+      );
+    });
+
+    it('handles enterprise OCR analysis errors gracefully and shows error message', async () => {
+      const mockAnalyze = vi.fn().mockRejectedValue(new Error('Enterprise OCR service unavailable'));
+
+      const adapter: aiConfig.EnterpriseOcrAdapter = {
+        status: {
+          gemini_configured: true,
+          ollama_configured: false,
+          gemini_model: 'gemini-3.8-flash',
+          ollama_model: null,
+          default_provider: 'gemini',
+        },
+        onAnalyzeImage: mockAnalyze,
+      };
+
+      render(
+        <PhotoImportModal
+          onClose={vi.fn()}
+          onOpenSettings={vi.fn()}
+          enterpriseOcr={adapter}
+        />
+      );
+
+      const file = new File(['img'], 'err.png', { type: 'image/png' });
+      const fileInput = screen.getByLabelText(/upload photo/i, { selector: 'input' });
+      fireEvent.change(fileInput, { target: { files: [file] } });
+
+      const analyzeBtn = screen.getByRole('button', { name: /analyze & create chart/i });
+      fireEvent.click(analyzeBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Enterprise OCR service unavailable/i)).toBeInTheDocument();
+      });
+    });
+
+    it('covers all helper functions for Enterprise OCR', () => {
+      // isEnterpriseGeminiReady
+      expect(PhotoImportModalModule.isEnterpriseGeminiReady(null)).toBe(false);
+      expect(PhotoImportModalModule.isEnterpriseGeminiReady(undefined)).toBe(false);
+      expect(PhotoImportModalModule.isEnterpriseGeminiReady({ geminiConfigured: true })).toBe(true);
+      expect(PhotoImportModalModule.isEnterpriseGeminiReady({ gemini_configured: false })).toBe(false);
+
+      // isEnterpriseOllamaReady
+      expect(PhotoImportModalModule.isEnterpriseOllamaReady(null)).toBe(false);
+      expect(PhotoImportModalModule.isEnterpriseOllamaReady(undefined)).toBe(false);
+      expect(PhotoImportModalModule.isEnterpriseOllamaReady({ ollamaConfigured: true })).toBe(true);
+      expect(PhotoImportModalModule.isEnterpriseOllamaReady({ ollama_configured: false })).toBe(false);
+
+      // getEnterpriseGeminiModel
+      expect(PhotoImportModalModule.getEnterpriseGeminiModel(null)).toBe('gemini-3.8-flash');
+      expect(PhotoImportModalModule.getEnterpriseGeminiModel({})).toBe('gemini-3.8-flash');
+      expect(PhotoImportModalModule.getEnterpriseGeminiModel({ geminiModel: 'custom-gemini' })).toBe('custom-gemini');
+      expect(PhotoImportModalModule.getEnterpriseGeminiModel({ gemini_model: 'custom-gemini-2' })).toBe('custom-gemini-2');
+
+      // getEnterpriseOllamaModel
+      expect(PhotoImportModalModule.getEnterpriseOllamaModel(null)).toBe('llama3.2-vision');
+      expect(PhotoImportModalModule.getEnterpriseOllamaModel({})).toBe('llama3.2-vision');
+      expect(PhotoImportModalModule.getEnterpriseOllamaModel({ ollamaModel: 'custom-ollama' })).toBe('custom-ollama');
+      expect(PhotoImportModalModule.getEnterpriseOllamaModel({ ollama_model: 'custom-ollama-2' })).toBe('custom-ollama-2');
+
+      // getEnterpriseInitialProvider
+      expect(PhotoImportModalModule.getEnterpriseInitialProvider(null)).toBe('gemini');
+      expect(PhotoImportModalModule.getEnterpriseInitialProvider({})).toBe('gemini');
+      expect(
+        PhotoImportModalModule.getEnterpriseInitialProvider({
+          gemini_configured: true,
+          ollama_configured: true,
+          default_provider: 'ollama',
+        })
+      ).toBe('ollama');
+      expect(
+        PhotoImportModalModule.getEnterpriseInitialProvider({
+          gemini_configured: true,
+          ollama_configured: true,
+          defaultProvider: 'gemini',
+        })
+      ).toBe('gemini');
+      expect(
+        PhotoImportModalModule.getEnterpriseInitialProvider({
+          gemini_configured: false,
+          ollama_configured: true,
+          default_provider: 'gemini',
+        })
+      ).toBe('ollama');
+      expect(
+        PhotoImportModalModule.getEnterpriseInitialProvider({
+          gemini_configured: true,
+          ollama_configured: false,
+          default_provider: 'ollama',
+        })
+      ).toBe('gemini');
+      expect(
+        PhotoImportModalModule.getEnterpriseInitialProvider({
+          gemini_configured: false,
+          ollama_configured: false,
+          default_provider: 'ollama',
+        })
+      ).toBe('ollama');
+
+      // parseEnterpriseOcrResult edge cases
+      expect(() => PhotoImportModalModule.parseEnterpriseOcrResult(null)).toThrow(
+        /Enterprise OCR returned an empty or invalid response/i
+      );
+      expect(() => PhotoImportModalModule.parseEnterpriseOcrResult('invalid')).toThrow(
+        /Enterprise OCR returned an empty or invalid response/i
+      );
+      expect(() => PhotoImportModalModule.parseEnterpriseOcrResult({ foo: 'bar' })).toThrow(
+        /Enterprise OCR returned an unexpected payload structure/i
+      );
+
+      // parseEnterpriseOcrResult with warnings not provided or empty
+      const chartWithoutWarnings = PhotoImportModalModule.parseEnterpriseOcrResult({
+        chart: {
+          metadata: { chartTitle: 'No Warnings', effectiveDate: '2026-11-07', confidentialityNotice: '' },
+          entities: [],
+          relationships: [],
+        },
+      });
+      expect(chartWithoutWarnings.warnings).toEqual([]);
+
+      // parseEnterpriseOcrResult with non-array warnings
+      const chartWithNonArrayWarnings = PhotoImportModalModule.parseEnterpriseOcrResult({
+        chart: {
+          metadata: { chartTitle: 'Non-Array Warnings', effectiveDate: '2026-11-07', confidentialityNotice: '' },
+          entities: [],
+          relationships: [],
+        },
+        warnings: 'not-an-array',
+      });
+      expect(chartWithNonArrayWarnings.warnings).toEqual([]);
+
+      // EnterpriseProviderSection direct test
+      const onSelect = vi.fn();
+      const { rerender } = render(
+        <PhotoImportModalModule.EnterpriseProviderSection
+          status={{
+            gemini_configured: true,
+            ollama_configured: true,
+            gemini_model: 'g-model',
+            ollama_model: 'o-model',
+          }}
+          selectedProvider="gemini"
+          onSelectProvider={onSelect}
+          disabled={false}
+        />
+      );
+      const geminiBtn = screen.getByRole('radio', { name: /google gemini/i });
+      fireEvent.click(geminiBtn);
+      expect(onSelect).toHaveBeenCalledWith('gemini');
+
+      // EnterpriseProviderSection with selectedProvider = 'ollama'
+      rerender(
+        <PhotoImportModalModule.EnterpriseProviderSection
+          status={{
+            gemini_configured: true,
+            ollama_configured: true,
+            gemini_model: 'g-model',
+            ollama_model: 'o-model',
+          }}
+          selectedProvider="ollama"
+          onSelectProvider={onSelect}
+          disabled={false}
+        />
+      );
+      expect(screen.getByText(/Using Ollama \(o-model\)/i)).toBeInTheDocument();
     });
   });
 });
