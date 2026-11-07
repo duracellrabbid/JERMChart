@@ -9,6 +9,7 @@ import {
   CHART_VISION_SCHEMA,
   VISION_USER_PROMPT,
 } from '../../services/ai/prompts';
+import rawVisionSpec from '../../services/ai/chartVisionSchema.json';
 import { AIConfig } from '../../services/ai/aiConfig';
 
 const mockGenerateContent = vi.fn();
@@ -443,6 +444,14 @@ describe('chartVisionService', () => {
 
       expect(result.chart.metadata.chartTitle).toBe('Active Gemini Chart');
       expect(result.chart.entities).toHaveLength(1);
+    });
+  });
+
+  describe('Canonical chartVisionSchema.json synchronization', () => {
+    it('exports SYSTEM_INSTRUCTION, VISION_USER_PROMPT, and CHART_VISION_SCHEMA from canonical JSON', () => {
+      expect(SYSTEM_INSTRUCTION).toBe(rawVisionSpec.systemInstruction);
+      expect(VISION_USER_PROMPT).toBe(rawVisionSpec.visionUserPrompt);
+      expect(CHART_VISION_SCHEMA).toEqual(rawVisionSpec.schema);
     });
   });
 });
