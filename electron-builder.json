@@ -13,7 +13,9 @@
   "extraMetadata": {
     "main": "electron/main.cjs"
   },
+  "publish": null,
   "win": {
+    "verifyUpdateCodeSignature": false,
     "target": [
       {
         "target": "nsis",
